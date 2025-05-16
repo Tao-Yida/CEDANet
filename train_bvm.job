@@ -1,0 +1,22 @@
+#!/bin/bash
+
+# ----------- SLURM 指令（保留必要部分） ------------
+#SBATCH --job-name=generate_gt_image
+#SBATCH --partition=gpu_mig
+#SBATCH --gres=gpu:1
+#SBATCH --time=01:00:00
+#SBATCH --mem=8G
+#SBATCH --cpus-per-task=2
+#SBATCH --output=out_logs/trans_bvm_train_%j.out
+#SBATCH --error=err_logs/trans_bvm_train_%j.err
+
+# 创建日志目录
+mkdir -p out_logs err_logs
+
+# 加载执行环境
+module purge
+module load 2024
+source ~/anaconda3/etc/profile.d/conda.sh
+source activate dl2024 || { echo "Failed to activate Conda env"; exit 1; }
+
+python ijmond-camera-ai/bvm_training/trans_bvm/train.py --dataset_path "data/ijmond_data/test" --save_model_path "models/finetune"
