@@ -91,14 +91,7 @@ class SalObjDataset(data.Dataset):
         return self.size
 
 
-def get_loader(image_root, gt_root, trans_map_root, batchsize, trainsize, aug=False, shuffle=True, num_workers=8, pin_memory=True):
-    dataset = SalObjDataset(image_root, gt_root, trans_map_root, trainsize, aug)
-    print(f"Length of dataset: {len(dataset)}")
-    data_loader = data.DataLoader(dataset=dataset, batch_size=batchsize, shuffle=shuffle, num_workers=num_workers, pin_memory=pin_memory)
-    return data_loader
-
-
-class test_dataset:
+class test_dataset(data.Dataset):
     def __init__(self, image_root, testsize):
         self.testsize = testsize
         self.images = [image_root + f for f in os.listdir(image_root) if f.endswith(".jpg") or f.endswith(".png")]
@@ -144,3 +137,10 @@ class test_dataset:
     def grayscale_loader(self, path):
         img = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
         return img
+
+
+def get_loader(image_root, gt_root, trans_map_root, batchsize, trainsize, aug=False, shuffle=True, num_workers=8, pin_memory=True):
+    dataset = SalObjDataset(image_root, gt_root, trans_map_root, trainsize, aug)
+    print(f"Length of dataset: {len(dataset)}")
+    data_loader = data.DataLoader(dataset=dataset, batch_size=batchsize, shuffle=shuffle, num_workers=num_workers, pin_memory=pin_memory)
+    return data_loader

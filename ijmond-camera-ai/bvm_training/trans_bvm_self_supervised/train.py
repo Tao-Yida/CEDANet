@@ -22,8 +22,8 @@ from PIL import Image
 def argparser():
     parser = argparse.ArgumentParser()
     parser.add_argument("--epoch", type=int, default=50, help="epoch number")
-    parser.add_argument("--lr_gen", type=float, default=2.5e-3, help="learning rate for generator")
-    parser.add_argument("--lr_des", type=float, default=2.5e-3, help="learning rate for descriptor")
+    parser.add_argument("--lr_gen", type=float, default=2.5e-5, help="learning rate for generator")
+    parser.add_argument("--lr_des", type=float, default=2.5e-5, help="learning rate for descriptor")
     parser.add_argument("--batchsize", type=int, default=6, help="training batch size")
     parser.add_argument("--trainsize", type=int, default=352, help="training dataset size")
     parser.add_argument("--clip", type=float, default=0.5, help="gradient clipping margin")
@@ -318,11 +318,11 @@ if __name__ == "__main__":
                 gen_loss_gsnn = (1 - opt.vae_loss_weight) * gen_loss_gsnn + loss_lsc_prior
 
                 ### Total loss ###############################################
-                gen_loss = gen_loss_cvae + gen_loss_gsnn + reg_loss + opt.contrastive_loss_weight * cont_loss
+                gen_loss = gen_loss_cvae + gen_loss_gsnn + reg_loss + opt.contrastive_loss_weight * cont_loss  # type: torch.Tensor
                 # print(gen_loss, gen_loss_cvae, gen_loss_gsnn, reg_loss, cont_loss)
                 gen_loss.backward()
                 generator_optimizer.step()
-                # scheduler.step()
+                scheduler.step()
 
                 if rate == 1:
                     loss_record.update(gen_loss.data, opt.batchsize)
