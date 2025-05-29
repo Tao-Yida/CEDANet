@@ -22,9 +22,9 @@ from PIL import Image
 def argparser():
     parser = argparse.ArgumentParser()
     parser.add_argument("--epoch", type=int, default=50, help="epoch number")
-    parser.add_argument("--lr_gen", type=float, default=2.5e-5, help="learning rate for generator")
-    parser.add_argument("--lr_des", type=float, default=2.5e-5, help="learning rate for descriptor")
-    parser.add_argument("--batchsize", type=int, default=7, help="training batch size")
+    parser.add_argument("--lr_gen", type=float, default=2.5e-3, help="learning rate for generator")
+    parser.add_argument("--lr_des", type=float, default=2.5e-3, help="learning rate for descriptor")
+    parser.add_argument("--batchsize", type=int, default=6, help="training batch size")
     parser.add_argument("--trainsize", type=int, default=352, help="training dataset size")
     parser.add_argument("--clip", type=float, default=0.5, help="gradient clipping margin")
     parser.add_argument("--decay_rate", type=float, default=0.9, help="decay rate of learning rate")
@@ -33,7 +33,7 @@ def argparser():
     parser.add_argument("--gen_reduced_channel", type=int, default=32, help="reduced channel in generator")
     parser.add_argument("--des_reduced_channel", type=int, default=64, help="reduced channel in descriptor")
     parser.add_argument("--langevin_step_num_des", type=int, default=10, help="number of langevin steps for ebm")
-    parser.add_argument("-langevin_step_size_des", type=float, default=0.026, help="step size of EBM langevin")
+    parser.add_argument("--langevin_step_size_des", type=float, default=0.026, help="step size of EBM langevin")
     parser.add_argument("--energy_form", default="identity", help="tanh | sigmoid | identity | softplus")
     parser.add_argument("--latent_dim", type=int, default=3, help="latent dim")
     parser.add_argument("--feat_channel", type=int, default=32, help="reduced channel of saliency feat")
@@ -43,12 +43,12 @@ def argparser():
     parser.add_argument("--lat_weight", type=float, default=10.0, help="weight for latent loss")
     parser.add_argument("--vae_loss_weight", type=float, default=0.4, help="weight for vae loss")
     parser.add_argument("--contrastive_loss_weight", type=float, default=0.1, help="weight for contrastive loss")
-    parser.add_argument("--labeled_dataset_path", type=str, default="data/SMOKE5K/SMOKE5K/train", help="dataset path")
+    parser.add_argument("--labeled_dataset_path", type=str, default="data/SMOKE5K_Dataset/SMOKE5K/train", help="dataset path")
     parser.add_argument("--unlabeled_dataset_path", type=str, default="data/ijmond_data/train", help="dataset path")
     parser.add_argument(
         "--pretrained_weights",
         type=str,
-        default="models/ss_no_samples_50_norm_nosceduler_again/Model_42_gen.pth",
+        default=None,
         help="pretrained weights. it can be none",
     )  # models/ucnet_trans3_baseline/Model_50_gen.pth
     parser.add_argument("--save_model_path", type=str, default="models/ss_no_samples_50_norm_nosceduler_again_part2", help="dataset path")

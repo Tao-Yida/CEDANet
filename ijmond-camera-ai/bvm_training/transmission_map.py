@@ -22,7 +22,7 @@ def atmospheric_light(im, dark):
     imvec = im.reshape(imsz, 3)
 
     indices = darkvec.argsort()
-    indices = indices[imsz - numpx::]
+    indices = indices[imsz - numpx : :]
 
     atmsum = np.zeros([1, 3])
     for ind in range(1, numpx):
@@ -83,7 +83,7 @@ def recover(im, t, A, tx=0.1):
 
 
 def find_transmission_map(im):
-    I = im.astype('float64') / 255
+    I = im.astype("float64") / 255
     dark = dark_channel(I, 15)
     A = atmospheric_light(I, dark)
     te = transmission_estimate(I, A, 15)
@@ -91,16 +91,12 @@ def find_transmission_map(im):
     return t
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--dataset_name', type=str,
-                        default="ijmond")  #  ijmond SMOKE5K
-    parser.add_argument('--dataset_zip', type=str, default="data/SMOKE5K.zip")
-    parser.add_argument('--output',
-                        type=str,
-                        default="data/ijmond_data/transmission_map"
-                        )  # data/ijmond_data data/SMOKE5K
-    parser.add_argument('--mode', type=str, default="train")
+    parser.add_argument("--dataset_name", type=str, default="ijmond")  #  ijmond SMOKE5K
+    parser.add_argument("--dataset_zip", type=str, default="data/SMOKE5K.zip")
+    parser.add_argument("--output", type=str, default="data/ijmond_data/transmission_map")  # data/ijmond_data data/SMOKE5K
+    parser.add_argument("--mode", type=str, default="train")
 
     opt = parser.parse_args()
     dataset_name = opt.dataset_name
@@ -109,14 +105,14 @@ if __name__ == '__main__':
     if dataset_name == "SMOKE5K":
         if not os.path.isdir(output):
             os.makedirs(output)
-            with zipfile.ZipFile(dataset, 'r') as zip_ref:
+            with zipfile.ZipFile(dataset, "r") as zip_ref:
                 zip_ref.extractall(output)
         output_s = os.path.join(output, "SMOKE5K", opt.mode)
     else:
         output_s = os.path.join(output, opt.mode)
 
     for img_path in os.listdir(os.path.join(output_s, "img")):
-        if img_path.endswith('.jpg') or img_path.endswith('.png'):
+        if img_path.endswith(".jpg") or img_path.endswith(".png"):
             fn = os.path.join(os.path.join(output_s, "img"), img_path)
             print(fn)
             src = cv2.imread(fn)

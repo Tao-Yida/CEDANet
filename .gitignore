@@ -6,3 +6,4 @@ out_logs/
 err_logs/
 *.pyc
 train_curves/
+results/

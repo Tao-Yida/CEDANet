@@ -2,8 +2,10 @@ import torch
 import torch.nn as nn
 import torchvision.models as models
 from ResNet import B2_ResNet
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 from torch.nn import Parameter, Softmax
+
 
 class Generator(nn.Module):
     def __init__(self, channel=64):
@@ -14,84 +16,90 @@ class Generator(nn.Module):
         self.sal_feat = self.sal_encoder(x)
         return self.sal_feat
 
+
 class CAM_Module(nn.Module):
-    """ Channel attention module"""
+    """Channel attention module"""
+
     # paper: Dual Attention Network for Scene Segmentation
     def __init__(self):
         super(CAM_Module, self).__init__()
         self.gamma = Parameter(torch.zeros(1))
-        self.softmax  = Softmax(dim=-1)
-    def forward(self,x):
+        self.softmax = Softmax(dim=-1)
+
+    def forward(self, x):
         """
-            inputs :
-                x : input feature maps( B X C X H X W)
-            returns :
-                out : attention value + input feature ( B X C X H X W)
-                attention: B X C X C
+        inputs :
+            x : input feature maps( B X C X H X W)
+        returns :
+            out : attention value + input feature ( B X C X H X W)
+            attention: B X C X C
         """
         m_batchsize, C, height, width = x.size()
         proj_query = x.view(m_batchsize, C, -1)
         proj_key = x.view(m_batchsize, C, -1).permute(0, 2, 1)
         energy = torch.bmm(proj_query, proj_key)
-        energy_new = torch.max(energy, -1, keepdim=True)[0].expand_as(energy)-energy
+        energy_new = torch.max(energy, -1, keepdim=True)[0].expand_as(energy) - energy
         attention = self.softmax(energy_new)
         proj_value = x.view(m_batchsize, C, -1)
 
         out = torch.bmm(attention, proj_value)
         out = out.view(m_batchsize, C, height, width)
 
-        out = self.gamma*out + x
+        out = self.gamma * out + x
         return out
 
+
 class PAM_Module(nn.Module):
-    """ Position attention module"""
-    #paper: Dual Attention Network for Scene Segmentation
+    """Position attention module"""
+
+    # paper: Dual Attention Network for Scene Segmentation
     def __init__(self, in_dim):
         super(PAM_Module, self).__init__()
         self.chanel_in = in_dim
 
-        self.query_conv = nn.Conv2d(in_channels=in_dim, out_channels=in_dim//8, kernel_size=1)
-        self.key_conv = nn.Conv2d(in_channels=in_dim, out_channels=in_dim//8, kernel_size=1)
+        self.query_conv = nn.Conv2d(in_channels=in_dim, out_channels=in_dim // 8, kernel_size=1)
+        self.key_conv = nn.Conv2d(in_channels=in_dim, out_channels=in_dim // 8, kernel_size=1)
         self.value_conv = nn.Conv2d(in_channels=in_dim, out_channels=in_dim, kernel_size=1)
         self.gamma = Parameter(torch.zeros(1))
         self.softmax = Softmax(dim=-1)
 
     def forward(self, x):
         """
-            inputs :
-                x : input feature maps( B X C X H X W)
-            returns :
-                out : attention value + input feature ( B X C X H X W)
-                attention: B X (HxW) X (HxW)
+        inputs :
+            x : input feature maps( B X C X H X W)
+        returns :
+            out : attention value + input feature ( B X C X H X W)
+            attention: B X (HxW) X (HxW)
         """
         m_batchsize, C, height, width = x.size()
-        proj_query = self.query_conv(x).view(m_batchsize, -1, width*height).permute(0, 2, 1)
-        proj_key = self.key_conv(x).view(m_batchsize, -1, width*height)
+        proj_query = self.query_conv(x).view(m_batchsize, -1, width * height).permute(0, 2, 1)
+        proj_key = self.key_conv(x).view(m_batchsize, -1, width * height)
         energy = torch.bmm(proj_query, proj_key)
         attention = self.softmax(energy)
-        proj_value = self.value_conv(x).view(m_batchsize, -1, width*height)
+        proj_value = self.value_conv(x).view(m_batchsize, -1, width * height)
 
         out = torch.bmm(proj_value, attention.permute(0, 2, 1))
         out = out.view(m_batchsize, C, height, width)
 
-        out = self.gamma*out + x
+        out = self.gamma * out + x
         return out
 
 
 class Classifier_Module(nn.Module):
-    def __init__(self,dilation_series,padding_series,NoLabels, input_channel):
+    def __init__(self, dilation_series, padding_series, NoLabels, input_channel):
         super(Classifier_Module, self).__init__()
         self.conv2d_list = nn.ModuleList()
-        for dilation,padding in zip(dilation_series,padding_series):
-            self.conv2d_list.append(nn.Conv2d(input_channel,NoLabels,kernel_size=3,stride=1, padding =padding, dilation = dilation,bias = True))
+        for dilation, padding in zip(dilation_series, padding_series):
+            self.conv2d_list.append(nn.Conv2d(input_channel, NoLabels, kernel_size=3, stride=1, padding=padding, dilation=dilation, bias=True))
         for m in self.conv2d_list:
             m.weight.data.normal_(0, 0.01)
 
     def forward(self, x):
         out = self.conv2d_list[0](x)
-        for i in range(len(self.conv2d_list)-1):
-            out += self.conv2d_list[i+1](x)
+        for i in range(len(self.conv2d_list) - 1):
+            out += self.conv2d_list[i + 1](x)
         return out
+
 
 ## Channel Attention (CA) Layer
 class CALayer(nn.Module):
@@ -101,10 +109,10 @@ class CALayer(nn.Module):
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
         # feature channel downscale and upscale --> channel weight
         self.conv_du = nn.Sequential(
-                nn.Conv2d(channel, channel // reduction, 1, padding=0, bias=True),
-                nn.ReLU(inplace=True),
-                nn.Conv2d(channel // reduction, channel, 1, padding=0, bias=True),
-                nn.Sigmoid()
+            nn.Conv2d(channel, channel // reduction, 1, padding=0, bias=True),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(channel // reduction, channel, 1, padding=0, bias=True),
+            nn.Sigmoid(),
         )
 
     def forward(self, x):
@@ -112,33 +120,35 @@ class CALayer(nn.Module):
         y = self.conv_du(y)
         return x * y
 
+
 ## Residual Channel Attention Block (RCAB)
 class RCAB(nn.Module):
     # paper: Image Super-Resolution Using Very DeepResidual Channel Attention Networks
     # input: B*C*H*W
     # output: B*C*H*W
-    def __init__(
-        self, n_feat, kernel_size=3, reduction=16,
-        bias=True, bn=False, act=nn.ReLU(True), res_scale=1):
+    def __init__(self, n_feat, kernel_size=3, reduction=16, bias=True, bn=False, act=nn.ReLU(True), res_scale=1):
 
         super(RCAB, self).__init__()
         modules_body = []
         for i in range(2):
             modules_body.append(self.default_conv(n_feat, n_feat, kernel_size, bias=bias))
-            if bn: modules_body.append(nn.BatchNorm2d(n_feat))
-            if i == 0: modules_body.append(act)
+            if bn:
+                modules_body.append(nn.BatchNorm2d(n_feat))
+            if i == 0:
+                modules_body.append(act)
         modules_body.append(CALayer(n_feat, reduction))
         self.body = nn.Sequential(*modules_body)
         self.res_scale = res_scale
 
     def default_conv(self, in_channels, out_channels, kernel_size, bias=True):
-        return nn.Conv2d(in_channels, out_channels, kernel_size,padding=(kernel_size // 2), bias=bias)
+        return nn.Conv2d(in_channels, out_channels, kernel_size, padding=(kernel_size // 2), bias=bias)
 
     def forward(self, x):
         res = self.body(x)
-        #res = self.body(x).mul(self.res_scale)
+        # res = self.body(x).mul(self.res_scale)
         res += x
         return res
+
 
 class Saliency_feat_encoder(nn.Module):
     # resnet based encoder decoder
@@ -146,7 +156,7 @@ class Saliency_feat_encoder(nn.Module):
         super(Saliency_feat_encoder, self).__init__()
         self.resnet = B2_ResNet()
         self.relu = nn.ReLU(inplace=True)
-        self.upsample = nn.Upsample(scale_factor=8, mode='bilinear', align_corners=True)
+        self.upsample = nn.Upsample(scale_factor=8, mode="bilinear", align_corners=True)
         self.dropout = nn.Dropout(0.3)
         self.layer5 = self._make_pred_layer(Classifier_Module, [6, 12, 18, 24], [6, 12, 18, 24], channel, 2048)
         self.layer6 = self._make_pred_layer(Classifier_Module, [6, 12, 18, 24], [6, 12, 18, 24], 1, channel * 4)
@@ -157,8 +167,8 @@ class Saliency_feat_encoder(nn.Module):
         self.conv4 = nn.Conv2d(2048, channel, kernel_size=3, padding=1)
 
         self.conv_feat = nn.Conv2d(32 * 5, channel, kernel_size=3, padding=1)
-        self.upsample4 = nn.Upsample(scale_factor=4, mode='bilinear', align_corners=True)
-        self.upsample2 = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
+        self.upsample4 = nn.Upsample(scale_factor=4, mode="bilinear", align_corners=True)
+        self.upsample2 = nn.Upsample(scale_factor=2, mode="bilinear", align_corners=True)
         self.cam_attention = CAM_Module()
         self.pam_attention = PAM_Module(channel)
         self.racb_layer = RCAB(channel * 4)
@@ -204,12 +214,12 @@ class Saliency_feat_encoder(nn.Module):
             if k in pretrained_dict.keys():
                 v = pretrained_dict[k]
                 all_params[k] = v
-            elif '_1' in k:
-                name = k.split('_1')[0] + k.split('_1')[1]
+            elif "_1" in k:
+                name = k.split("_1")[0] + k.split("_1")[1]
                 v = pretrained_dict[name]
                 all_params[k] = v
-            elif '_2' in k:
-                name = k.split('_2')[0] + k.split('_2')[1]
+            elif "_2" in k:
+                name = k.split("_2")[0] + k.split("_2")[1]
                 v = pretrained_dict[name]
                 all_params[k] = v
         assert len(all_params.keys()) == len(self.resnet.state_dict().keys())

@@ -10,7 +10,7 @@ from model.HolisticAttention import HA
 from torch.autograd import Variable
 from torch.distributions import Normal, Independent, kl
 import numpy as np
-from model.Res2Net import res2net50_v1b_26w_4s
+from typing import List
 
 
 class Descriptor(nn.Module):
@@ -365,7 +365,7 @@ class Generator(nn.Module):
         kl_div = kl.kl_divergence(posterior_latent_space, prior_latent_space)
         return kl_div
 
-    def reparametrize(self, mu, logvar):
+    def reparametrize(self, mu: torch.Tensor, logvar: torch.Tensor):
         """
         通过重参数化技巧从潜在空间分布中采样
         Args:
@@ -374,7 +374,7 @@ class Generator(nn.Module):
         Returns:
             eps: 采样得到的潜在空间向量
         """
-        std = logvar.mul(0.5).exp_()  # 标准差([B, latent_dim])
+        std = logvar.mul(0.5).exp_()  # 标准差([B, latent_dim])，exp_()表示就地操作
         # eps = Variable(std.data.new(std.size()).normal_())
         eps = torch.randn_like(std)
         return eps.mul(std).add_(mu)
@@ -412,7 +412,7 @@ class Generator(nn.Module):
             # 5. 通过编码器得到初始/精细显著性图
             self.sal_init_post, self.sal_ref_post = self.sal_encoder(x, z_noise_post)
             self.sal_init_prior, self.sal_ref_prior = self.sal_encoder(x, z_noise_prior)
-            
+
             self.sal_init_post = F.interpolate(self.sal_init_post, size=(x.shape[2], x.shape[3]), mode="bilinear", align_corners=True)
             self.sal_ref_post = F.interpolate(self.sal_ref_post, size=(x.shape[2], x.shape[3]), mode="bilinear", align_corners=True)
             self.sal_init_prior = F.interpolate(self.sal_init_prior, size=(x.shape[2], x.shape[3]), mode="bilinear", align_corners=True)
@@ -544,27 +544,58 @@ class PAM_Module(nn.Module):
 
 
 class Classifier_Module(nn.Module):
-    def __init__(self, dilation_series, padding_series, NoLabels, input_channel):
+    """
+    Classifier Module with Multi-scale Dilation Convolutions
+    多尺度膨胀卷积分类器模块：通过若干个相同输入/输出通道的卷积层，使用不同的膨胀率和填充率来提取多尺度特征，扩大感受野。
+    各分支并行处理输入特征图，最后将所有分支的输出相加得到最终输出，得到多尺度上下文信息的输出。
+    """
+
+    def __init__(self, dilation_series, padding_series, NumLabels, input_channel):
+        """
+        Args:
+            dilation_series: 膨胀卷积的膨胀率列表
+            padding_series: 膨胀卷积的填充率列表
+            NumLabels: 输出通道数
+            input_channel: 输入通道数
+        """
         super(Classifier_Module, self).__init__()
-        self.conv2d_list = nn.ModuleList()
-        for dilation, padding in zip(dilation_series, padding_series):
-            self.conv2d_list.append(nn.Conv2d(input_channel, NoLabels, kernel_size=3, stride=1, padding=padding, dilation=dilation, bias=True))
+        self.conv2d_list = nn.ModuleList()  # type: List[nn.Conv2d]
+        # 向卷积层列表中添加多个卷积层，每个卷积层使用不同的膨胀率和填充率
+        for d, p in zip(dilation_series, padding_series):
+            self.conv2d_list.append(nn.Conv2d(input_channel, NumLabels, kernel_size=3, stride=1, padding=p, dilation=d, bias=True))
         for m in self.conv2d_list:
             m.weight.data.normal_(0, 0.01)
 
     def forward(self, x):
-        out = self.conv2d_list[0](x)
+        """
+        Args:
+            x: 输入特征图，形状为 (B, C, H, W)，B为批大小，C为通道数，H和W为特征图的高度和宽度
+        Returns:
+            out: 输出特征图，形状为 (B, NumLabels, H, W)"""
+        out = self.conv2d_list[0](x)  # 第一个卷积层的输出
+        # 对于后续的卷积层，将它们的输出与第一个卷积层的输出相加
         for i in range(len(self.conv2d_list) - 1):
             out += self.conv2d_list[i + 1](x)
-        return out
+        return out  # out.shape = (B, NumLabels, H, W)
 
 
 ## Channel Attention (CA) Layer
 class CALayer(nn.Module):
+    """
+    Channel Attention Layer (CALayer)
+    为输入特征图的每个通道生成一个标量权重，以通道注意力的方式突出有用特征、抑制冗余信息。
+    该层通过全局平均池化将特征图压缩为通道描述符，然后通过两层卷积生成通道权重。
+    """
+
     def __init__(self, channel, reduction=16):
+        """
+        Args:
+            channel: 输入特征图的通道数
+            reduction: 通道压缩比例，默认为16
+        """
         super(CALayer, self).__init__()
         # global average pooling: feature --> point
-        self.avg_pool = nn.AdaptiveAvgPool2d(1)
+        self.avg_pool = nn.AdaptiveAvgPool2d(1)  # (1, 1)  # 将每个通道的特征图压缩为一个点，得到通道描述符，即通道的全局信息
         # feature channel downscale and upscale --> channel weight
         self.conv_du = nn.Sequential(
             nn.Conv2d(channel, channel // reduction, 1, padding=0, bias=True),
@@ -574,6 +605,13 @@ class CALayer(nn.Module):
         )
 
     def forward(self, x):
+        """
+        通道重加权
+        Args:
+            x: 输入特征图，形状为 (B, C, H, W)，B为批大小，C为通道数，H和W为特征图的高度和宽度
+        Returns:
+            x*y: 重加权后的特征图，形状同输入
+        """
         y = self.avg_pool(x)
         y = self.conv_du(y)
         return x * y
@@ -581,27 +619,58 @@ class CALayer(nn.Module):
 
 ## Residual Channel Attention Block (RCAB)
 class RCAB(nn.Module):
-    # paper: Image Super-Resolution Using Very DeepResidual Channel Attention Networks
-    # input: B*C*H*W
-    # output: B*C*H*W
-    def __init__(self, n_feat, kernel_size=3, reduction=16, bias=True, bn=False, act=nn.ReLU(True), res_scale=1):
+    """
+    Residual Channel Attention Block (RCAB)
+    参考Image Super-Resolution Using Very DeepResidual Channel Attention Networks
+    实现了残差通道注意力块，包含两个卷积层和一个通道注意力层。
+    输入特征图经过两个卷积层和一个通道注意力层后，输出与输入特征图相加，形成残差连接。
+    """
 
+    def __init__(self, n_feat, kernel_size=3, reduction=16, bias=True, bn=False, act=nn.ReLU(True), res_scale=1):
+        """
+        Args:
+            n_feat: 输入特征图的通道数
+            kernel_size: 卷积核大小，默认为3
+            reduction: 通道压缩比例，默认为16
+            bias: 是否使用偏置，默认为True
+            bn: 是否使用批归一化，默认为False
+            act: 激活函数，默认为ReLU
+            res_scale: 残差缩放系数，默认为1
+        """
         super(RCAB, self).__init__()
         modules_body = []
+        # 堆叠两个卷积层和一个通道注意力层（可选批归一化+激活函数）
         for i in range(2):
             modules_body.append(self.default_conv(n_feat, n_feat, kernel_size, bias=bias))
             if bn:
                 modules_body.append(nn.BatchNorm2d(n_feat))
-            if i == 0:
+            if i == 0:  # 第一个卷积层后添加激活函数
                 modules_body.append(act)
-        modules_body.append(CALayer(n_feat, reduction))
-        self.body = nn.Sequential(*modules_body)
-        self.res_scale = res_scale
+        modules_body.append(CALayer(n_feat, reduction))  # 在两个卷积层后添加通道注意力层
+        self.body = nn.Sequential(*modules_body)  # 将所有层组合成一个序列，*表示解包列表，相当于(nn.Conv2d, nn.BatchNorm2d, nn.ReLU, CALayer)
+        self.res_scale = res_scale  # 残差缩放系数，用于控制残差连接的强度
 
     def default_conv(self, in_channels, out_channels, kernel_size, bias=True):
+        """
+        默认卷积层，输出特征图的通道数与输入特征图相同，使用padding保持输出尺寸不变。
+        Args:
+            in_channels: 输入特征图的通道数
+            out_channels: 输出特征图的通道数
+            kernel_size: 卷积核大小
+            bias: 是否使用偏置，默认为True
+        Returns:
+            nn.Conv2d: 卷积层
+        """
         return nn.Conv2d(in_channels, out_channels, kernel_size, padding=(kernel_size // 2), bias=bias)
 
     def forward(self, x):
+        """
+        前向传播函数
+        Args:
+            x: 输入特征图，形状为 (B, C, H, W)，B为批大小，C为通道数，H和W为特征图的高度和宽度
+        Returns:
+            res: 残差连接后的特征图，形状同输入
+        """
         res = self.body(x)
         # res = self.body(x).mul(self.res_scale)
         res += x
@@ -609,7 +678,21 @@ class RCAB(nn.Module):
 
 
 class BasicConv2d(nn.Module):
+    """
+    Basic Convolutional Layer with Batch Normalization
+    将一个卷积层和一个批归一化层封装在一起，形成一个基本的卷积模块。
+    """
+
     def __init__(self, in_planes, out_planes, kernel_size, stride=1, padding=0, dilation=1):
+        """
+        Args:
+            in_planes: 输入特征图的通道数
+            out_planes: 输出特征图的通道数
+            kernel_size: 卷积核大小
+            stride: 步幅，默认为1
+            padding: 填充，默认为0
+            dilation: 膨胀率，默认为1
+        """
         super(BasicConv2d, self).__init__()
         self.conv_bn = nn.Sequential(
             nn.Conv2d(
@@ -619,42 +702,80 @@ class BasicConv2d(nn.Module):
                 stride=stride,
                 padding=padding,
                 dilation=dilation,
-                bias=False,
+                bias=False,  # 不使用偏置，因为后面有批归一化层
             ),
             nn.BatchNorm2d(out_planes),
         )
 
     def forward(self, x):
+        """
+        前向传播函数
+        Args:
+            x: 输入特征图，形状为 (B, C, H, W)，B为批大小，C为通道数，H和W为特征图的高度和宽度
+        Returns:
+            x: 输出特征图，形状同输入
+        """
         x = self.conv_bn(x)
         return x
 
 
 class Triple_Conv(nn.Module):
+    """
+    Triple Convolutional Layer
+    将三个卷积层封装在一起，形成一个三重卷积模块。
+    """
+
     def __init__(self, in_channel, out_channel):
+        """
+        Args:
+            in_channel: 输入特征图的通道数
+            out_channel: 输出特征图的通道数
+        """
         super(Triple_Conv, self).__init__()
         self.reduce = nn.Sequential(
-            BasicConv2d(in_channel, out_channel, 1),
-            BasicConv2d(out_channel, out_channel, 3, padding=1),
-            BasicConv2d(out_channel, out_channel, 3, padding=1),
+            BasicConv2d(in_channel, out_channel, 1),  # 1x1卷积用于通道数变换
+            BasicConv2d(out_channel, out_channel, 3, padding=1),  # 3x3卷积用于特征提取
+            BasicConv2d(out_channel, out_channel, 3, padding=1),  # 再次3x3卷积用于进一步特征提取
         )
 
     def forward(self, x):
+        """
+        前向传播函数
+        Args:
+            x: 输入特征图，形状为 (B, C, H, W)，B为批大小，C为通道数，H和W为特征图的高度和宽度
+        Returns:
+            self.reduce(x): 输出特征图，形状同输入"""
         return self.reduce(x)
 
 
 class Saliency_feat_encoder(nn.Module):
+    """
+    It merges features from a backbone with latent variables and applies
+    attention mechanisms to produce initial and refined saliency maps.
+    """
+
     # resnet based encoder decoder
     def __init__(self, channel, latent_dim):
+        """
+        Args:
+            channel: 通道数
+            latent_dim: 潜在空间维度
+        """
         super(Saliency_feat_encoder, self).__init__()
-        self.resnet = B2_ResNet()
+        self.resnet = B2_ResNet()  # 基于ResNet构建特征提取主干
         # self.resnet=res2net50_v1b_26w_4s(pretrained=True)
         # self.relu = nn.ReLU(inplace=True)
-        self.upsample8 = nn.Upsample(scale_factor=8, mode="bilinear", align_corners=True)
+        self.upsample8 = nn.Upsample(
+            scale_factor=8, mode="bilinear", align_corners=True
+        )  # 上采样，scale_factor=8表示将特征图的尺寸扩大8倍，用于恢复到原始输入图像的尺寸
         self.dropout = nn.Dropout(0.3)
-        self.layer5 = self._make_pred_layer(Classifier_Module, [6, 12, 18, 24], [6, 12, 18, 24], channel, 2048)
-        self.layer6 = self._make_pred_layer(Classifier_Module, [6, 12, 18, 24], [6, 12, 18, 24], 1, channel * 3)
+        # 构建两个多尺度膨胀卷积分类器
+        # self.layer5 = self._make_pred_layer(
+        #     Classifier_Module, [6, 12, 18, 24], [6, 12, 18, 24], channel, 2048
+        # )
+        self.layer6 = self._make_pred_layer(Classifier_Module, [6, 12, 18, 24], [6, 12, 18, 24], 1, channel * 3)  # 将通道数变为1，用于初始显著性预测
 
-        # self.conv1 = nn.Conv2d(256, channel, kernel_size=3, padding=1)
+        # 下采样后各层统一降到channel通道数，对ResNet的第2/3/4层输出（256/512/1024通道）分别做1x1卷积降维到channel通道数和两个3x3卷积层特征提取
         self.conv2_1 = nn.Conv2d(512, channel, kernel_size=1, padding=0)
         self.conv2_2 = nn.Conv2d(channel, channel, kernel_size=3, padding=1)
         self.conv2_3 = nn.Conv2d(channel, channel, kernel_size=3, padding=1)
@@ -665,41 +786,44 @@ class Saliency_feat_encoder(nn.Module):
         self.conv4_2 = nn.Conv2d(channel, channel, kernel_size=3, padding=1)
         self.conv4_3 = nn.Conv2d(channel, channel, kernel_size=3, padding=1)
 
-        # self.conv1 = Triple_Conv(256, channel)
-        # self.conv2 = Triple_Conv(512, channel)
-        # self.conv3 = Triple_Conv(1024, channel)
-        # self.conv4 = Triple_Conv(2048, channel)
-
+        # 预留的多支路特征融合降维卷积
         self.conv_feat = nn.Conv2d(32 * 5, channel, kernel_size=3, padding=1)
+
+        # 4倍上采样和2倍上采样，用于多层次特征融合时的尺寸对齐
         self.upsample4 = nn.Upsample(scale_factor=4, mode="bilinear", align_corners=True)
         self.upsample2 = nn.Upsample(scale_factor=2, mode="bilinear", align_corners=True)
 
-        self.pam_attention5 = PAM_Module(channel)
+        # self.pam_attention5 = PAM_Module(channel)
+        # 空间注意力
         self.pam_attention4 = PAM_Module(channel)
         self.pam_attention3 = PAM_Module(channel)
         self.pam_attention2 = PAM_Module(channel)
-
+        self.pam_attention1 = PAM_Module(channel)
+        # 通道注意力
         self.cam_attention4 = CAM_Module(channel)
         self.cam_attention3 = CAM_Module(channel)
         self.cam_attention2 = CAM_Module(channel)
 
-        self.pam_attention1 = PAM_Module(channel)
-        self.racb_layer = RCAB(channel * 4)
+        self.racb_layer = RCAB(channel * 4)  # 残差通道注意力块，输入特征图的通道数为channel * 4
 
+        # 多尺度特征融合卷积层，为ResNet的第4/3/2层输出特征图分别做特征融合，用于精细预测分支
         self.conv4 = self._make_pred_layer(Classifier_Module, [3, 6, 12, 18], [3, 6, 12, 18], channel, 2048)
         self.conv3 = self._make_pred_layer(Classifier_Module, [3, 6, 12, 18], [3, 6, 12, 18], channel, 1024)
         self.conv2 = self._make_pred_layer(Classifier_Module, [3, 6, 12, 18], [3, 6, 12, 18], channel, 512)
         self.conv1 = self._make_pred_layer(Classifier_Module, [3, 6, 12, 18], [3, 6, 12, 18], channel, 256)
 
+        # 残差通道注意力块，输入特征图的通道数为channel * 2/3/4
         self.racb_43 = RCAB(channel * 2)
         self.racb_432 = RCAB(channel * 3)
         self.racb_4321 = RCAB(channel * 4)
-
+        # 三重卷积层，输入特征图的通道数为2 * channel/3 * channel/4 * channel
         self.conv43 = Triple_Conv(2 * channel, channel)
         self.conv432 = Triple_Conv(3 * channel, channel)
         self.conv4321 = Triple_Conv(4 * channel, channel)
 
-        self.HA = HA()
+        self.HA = HA()  # 引入Holistic Attention模块，将初始显著性图与特征图融合
+
+        # 第二路特征融合分支，完整复制一套融合、注意力、融合、分类器，用于细化显著性
         self.conv4_2 = self._make_pred_layer(Classifier_Module, [3, 6, 12, 18], [3, 6, 12, 18], channel, 2048)
         self.conv3_2 = self._make_pred_layer(Classifier_Module, [3, 6, 12, 18], [3, 6, 12, 18], channel, 1024)
         self.conv2_2 = self._make_pred_layer(Classifier_Module, [3, 6, 12, 18], [3, 6, 12, 18], channel, 512)
@@ -714,20 +838,45 @@ class Saliency_feat_encoder(nn.Module):
         self.conv43_2 = Triple_Conv(2 * channel, channel)
         self.conv432_2 = Triple_Conv(3 * channel, channel)
         self.conv4321_2 = Triple_Conv(4 * channel, channel)
-        self.spatial_axes = [2, 3]
-        self.conv_depth1 = BasicConv2d(3 + latent_dim, 3, kernel_size=3, padding=1)
-        self.layer7 = self._make_pred_layer(Classifier_Module, [6, 12, 18, 24], [6, 12, 18, 24], 1, channel * 4)
+
+        self.spatial_axes = [2, 3]  # 用于tile中指定空间维度的索引
+
+        self.conv_depth1 = BasicConv2d(
+            3 + latent_dim, 3, kernel_size=3, padding=1
+        )  # 将输入的RGB图像和潜在变量z合并后，经过一个3x3卷积层，输出通道数为3，作为ResNet的输入
+
+        self.layer7 = self._make_pred_layer(
+            Classifier_Module, [6, 12, 18, 24], [6, 12, 18, 24], 1, channel * 4
+        )  # 最终多尺度分类器，输出通道数为1，用于生成精细显著性图
 
         if self.training:
             self.initialize_weights()
 
-    def _make_pred_layer(self, block, dilation_series, padding_series, NoLabels, input_channel):
-        return block(dilation_series, padding_series, NoLabels, input_channel)
+    def _make_pred_layer(self, block, dilation_series, padding_series, NumLabels, input_channel):
+        """
+        创建一个多尺度膨胀卷积分类器模块
+        Args:
+            block: 分类器模块类
+            dilation_series: 膨胀率列表
+            padding_series: 填充率列表
+            NumLabels: 输出通道数
+            input_channel: 输入特征图的通道数
+        Returns:
+            block: 分类器模块实例
+        """
+        return block(dilation_series, padding_series, NumLabels, input_channel)
 
     def tile(self, a, dim, n_tile):
         """
         This function is taken form PyTorch forum and mimics the behavior of tf.tile.
         Source: https://discuss.pytorch.org/t/how-to-tile-a-tensor/13853/3
+        用于在指定维度上重复张量 a n_tile 次。
+        Args:
+            a (torch.Tensor): 输入张量
+            dim (int): 指定的维度
+            n_tile (int): 重复次数
+        Returns:
+            torch.Tensor: 重复后的张量
         """
         init_dim = a.size(dim)
         repeat_idx = [1] * a.dim()
@@ -737,12 +886,23 @@ class Saliency_feat_encoder(nn.Module):
         return torch.index_select(a, dim, order_index)
 
     def forward(self, x, z):
-        z = torch.unsqueeze(z, 2)
-        z = self.tile(z, 2, x.shape[self.spatial_axes[0]])
-        z = torch.unsqueeze(z, 3)
-        z = self.tile(z, 3, x.shape[self.spatial_axes[1]])
-        x = torch.cat((x, z), 1)
-        x = self.conv_depth1(x)
+        """
+        前向传播函数
+        Args:
+            x: 输入特征图，形状为 (B, C, H, W)，B为批大小，C为通道数，H和W为特征图的高度和宽度
+            z: 潜在变量，形状为 (B, latent_dim)
+        Returns:
+            sal_init: 初始显著性图，形状为 (B, 1, H, W)
+            sal_ref: 精细显著性图，形状为 (B, 1, H, W)"""
+
+        z = torch.unsqueeze(z, 2)  # 在H轴前添加一个维度
+        z = self.tile(z, 2, x.shape[self.spatial_axes[0]])  # 沿H轴重复z，使其与输入特征图x的高度相同
+        z = torch.unsqueeze(z, 3)  # 在W轴前添加一个维度
+        z = self.tile(z, 3, x.shape[self.spatial_axes[1]])  # 沿W轴重复z，使其与输入特征图x的宽度相同，维度为 (B, latent_dim, H, W)
+        x = torch.cat((x, z), 1)  # 与RGB图像x在通道维度上拼接，形成一个新的输入特征图，形状为 (B, C + latent_dim, H, W)
+        x = self.conv_depth1(x)  # 将拼接后的特征图通过一个3x3卷积层，输出通道数为3，作为ResNet的输入
+
+        # ResNet特征提取
         x = self.resnet.conv1(x)
         x = self.resnet.bn1(x)
         x = self.resnet.relu(x)
@@ -752,6 +912,7 @@ class Saliency_feat_encoder(nn.Module):
         x3 = self.resnet.layer3_1(x2)  # 1024 x 16 x 16
         x4 = self.resnet.layer4_1(x3)  # 2048 x 8 x 8
 
+        # 特征融合和注意力机制
         conv1_feat = self.conv1(x1)
         conv2_feat = self.conv2(x2)
         conv2_feat1 = self.pam_attention2(conv2_feat)
@@ -767,10 +928,10 @@ class Saliency_feat_encoder(nn.Module):
         conv4_feat = conv4_feat1 + conv4_feat2
         conv4_feat = self.upsample2(conv4_feat)
 
+        # 同时处理conv4_feat和conv3_feat，生成初始显著性图，多层融合
         conv43 = torch.cat((conv4_feat, conv3_feat), 1)
         conv43 = self.racb_43(conv43)
         conv43 = self.conv43(conv43)
-
         conv43 = self.upsample2(conv43)
         conv432 = torch.cat((self.upsample2(conv4_feat), conv43, conv2_feat), 1)
         conv432 = self.racb_432(conv432)
@@ -781,9 +942,10 @@ class Saliency_feat_encoder(nn.Module):
         # conv4321 = self.racb_4321(conv4321)
         # conv4321 = self.conv4321(conv4321)
 
-        sal_init = self.layer6(conv432)
+        sal_init = self.layer6(conv432)  #  # 初始显著性图，形状为 (B, 1, H, W)
 
-        x2_2 = self.HA(sal_init.sigmoid(), x2)
+        # 第二路特征融合分支，完整复制一套融合、注意力、融合、分类器，用于细化显著性
+        x2_2 = self.HA(sal_init.sigmoid(), x2)  # 用初始显著性指导中层特征
         x3_2 = self.resnet.layer3_2(x2_2)  # 1024 x 16 x 16
         x4_2 = self.resnet.layer4_2(x3_2)  # 2048 x 8 x 8
 
@@ -820,18 +982,21 @@ class Saliency_feat_encoder(nn.Module):
         return self.upsample8(sal_init), self.upsample4(sal_ref)
 
     def initialize_weights(self):
+        """
+        初始化ResNet的权重
+        """
         res50 = models.resnet50(pretrained=True)
         pretrained_dict = res50.state_dict()
         all_params = {}
         for k, v in self.resnet.state_dict().items():
-            if k in pretrained_dict.keys():
+            if k in pretrained_dict.keys():  # 直接映射：如果自定义 ResNet 中的层名与预训练模型中的层名完全匹配，直接复制权重
                 v = pretrained_dict[k]
                 all_params[k] = v
-            elif "_1" in k:
+            elif "_1" in k:  # 对于包含"_1"的层名，去除"_1"后缀来匹配原始层名
                 name = k.split("_1")[0] + k.split("_1")[1]
                 v = pretrained_dict[name]
                 all_params[k] = v
-            elif "_2" in k:
+            elif "_2" in k:  # 对于包含"_2"的层名，去除"_2"后缀来匹配原始层名
                 name = k.split("_2")[0] + k.split("_2")[1]
                 v = pretrained_dict[name]
                 all_params[k] = v
