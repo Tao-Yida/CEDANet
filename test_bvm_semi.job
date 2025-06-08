@@ -7,11 +7,11 @@
 #SBATCH --time=06:00:00
 #SBATCH --mem=16G
 #SBATCH --cpus-per-task=8
-#SBATCH --output=out_logs/trans_bvm_test_%j.out
-#SBATCH --error=err_logs/trans_bvm_test_%j.err
+#SBATCH --output=logs_out/trans_bvm_test_%j.out
+#SBATCH --error=logs_err/trans_bvm_test_%j.err
 
 # 创建日志目录
-mkdir -p out_logs err_logs
+mkdir -p logs_out logs_err
 
 # 加载执行环境
 module purge

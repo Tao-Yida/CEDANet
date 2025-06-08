@@ -770,9 +770,7 @@ class Saliency_feat_encoder(nn.Module):
         )  # 上采样，scale_factor=8表示将特征图的尺寸扩大8倍，用于恢复到原始输入图像的尺寸
         self.dropout = nn.Dropout(0.3)
         # 构建两个多尺度膨胀卷积分类器
-        # self.layer5 = self._make_pred_layer(
-        #     Classifier_Module, [6, 12, 18, 24], [6, 12, 18, 24], channel, 2048
-        # )
+        self.layer5 = self._make_pred_layer(Classifier_Module, [6, 12, 18, 24], [6, 12, 18, 24], channel, 2048)
         self.layer6 = self._make_pred_layer(Classifier_Module, [6, 12, 18, 24], [6, 12, 18, 24], 1, channel * 3)  # 将通道数变为1，用于初始显著性预测
 
         # 下采样后各层统一降到channel通道数，对ResNet的第2/3/4层输出（256/512/1024通道）分别做1x1卷积降维到channel通道数和两个3x3卷积层特征提取
@@ -793,8 +791,8 @@ class Saliency_feat_encoder(nn.Module):
         self.upsample4 = nn.Upsample(scale_factor=4, mode="bilinear", align_corners=True)
         self.upsample2 = nn.Upsample(scale_factor=2, mode="bilinear", align_corners=True)
 
-        # self.pam_attention5 = PAM_Module(channel)
         # 空间注意力
+        self.pam_attention5 = PAM_Module(channel)
         self.pam_attention4 = PAM_Module(channel)
         self.pam_attention3 = PAM_Module(channel)
         self.pam_attention2 = PAM_Module(channel)
