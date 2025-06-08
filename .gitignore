@@ -2,8 +2,8 @@ checkpoints/
 models/
 data/
 pretrained_model
-out_logs/
-err_logs/
+logs_out/
+logs_err/
 *.pyc
 train_curves/
 results/

@@ -983,7 +983,7 @@ class Saliency_feat_encoder(nn.Module):
         """
         初始化ResNet的权重
         """
-        res50 = models.resnet50(pretrained=True)
+        res50 = models.resnet50(weights=models.ResNet50_Weights.DEFAULT)  # 加载预训练的ResNet50模型
         pretrained_dict = res50.state_dict()
         all_params = {}
         for k, v in self.resnet.state_dict().items():

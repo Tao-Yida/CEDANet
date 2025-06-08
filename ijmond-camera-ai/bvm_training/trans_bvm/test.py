@@ -44,7 +44,7 @@ generator = Generator(channel=opt.feat_channel, latent_dim=opt.latent_dim)
 print("Loading model...")
 try:
     if device.type == "cuda":
-        state_dict = torch.load(opt.model_path)
+        state_dict = torch.load(opt.model_path, weights_only=True)
     else:
         state_dict = torch.load(opt.model_path, map_location="cpu")
 
@@ -85,15 +85,17 @@ def compute_energy(disc_score):
 
 
 for dataset in test_datasets:
-    # 从模型路径中提取模型名称，去掉models/根路径
+    # 从模型路径中提取完整的模型信息
     model_rel_path = opt.model_path.replace("models/", "") if opt.model_path.startswith("models/") else opt.model_path
-    model_name = os.path.splitext(os.path.basename(model_rel_path))[0]
-    model_dir = os.path.dirname(model_rel_path)
+    model_name = os.path.splitext(os.path.basename(model_rel_path))[0]  # 不带扩展名的文件名
+    model_dir = os.path.dirname(model_rel_path)  # 父目录路径
 
-    # 构建包含模型路径的保存路径
+    # 构建包含完整模型信息的保存路径，避免同目录下多个模型混淆
     if model_dir and model_dir != ".":
-        save_path = os.path.join("./results", opt.method, opt.test_dataset, model_dir, dataset)
+        # 包含目录和具体模型名: ./results/method/dataset/model_dir/model_name/
+        save_path = os.path.join("./results", opt.method, opt.test_dataset, model_dir, model_name, dataset)
     else:
+        # 只有模型名: ./results/method/dataset/model_name/
         save_path = os.path.join("./results", opt.method, opt.test_dataset, model_name, dataset)
 
     if not os.path.exists(save_path):
@@ -114,7 +116,7 @@ for dataset in test_datasets:
         image = image.to(device)  # 使用设备无关的方法
         generator_pred = generator.forward(image, training=False)
         res = generator_pred
-        res = F.upsample(res, size=[WW, HH], mode="bilinear", align_corners=False)
+        res = F.interpolate(res, size=[WW, HH], mode="bilinear", align_corners=False)
         res = res.sigmoid().data.cpu().numpy().squeeze()
         res = 255 * (res - res.min()) / (res.max() - res.min() + 1e-8)
 
