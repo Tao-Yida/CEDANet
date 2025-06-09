@@ -5,15 +5,11 @@ import torchvision.transforms as transforms
 import numpy as np
 
 
-def get_loader(
-    image_root, gt_root, trans_map_root, batchsize, trainsize, shuffle=True, num_workers=12, pin_memory=True
-):
+def get_loader(image_root, gt_root, trans_map_root, batchsize, trainsize, shuffle=True, num_workers=12, pin_memory=True) -> data.DataLoader:
 
     dataset = SalObjDataset(image_root, gt_root, trans_map_root, trainsize)
     print(f"Length of dataset: {len(dataset)}")
-    data_loader = data.DataLoader(
-        dataset=dataset, batch_size=batchsize, shuffle=shuffle, num_workers=num_workers, pin_memory=pin_memory
-    )
+    data_loader = data.DataLoader(dataset=dataset, batch_size=batchsize, shuffle=shuffle, num_workers=num_workers, pin_memory=pin_memory)
     return data_loader
 
 
@@ -22,9 +18,7 @@ class SalObjDataset(data.Dataset):
         self.trainsize = trainsize
         self.images = [image_root + f for f in os.listdir(image_root) if f.endswith(".jpg") or f.endswith(".png")]
         self.gts = [gt_root + f for f in os.listdir(gt_root) if f.endswith(".jpg") or f.endswith(".png")]
-        self.trans = [
-            trans_map_root + f for f in os.listdir(trans_map_root) if f.endswith(".jpg") or f.endswith(".png")
-        ]
+        self.trans = [trans_map_root + f for f in os.listdir(trans_map_root) if f.endswith(".jpg") or f.endswith(".png")]
         self.images = sorted(self.images)
         self.gts = sorted(self.gts)
         self.trans = sorted(self.trans)
@@ -37,12 +31,8 @@ class SalObjDataset(data.Dataset):
                 transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
             ]
         )
-        self.gt_transform = transforms.Compose(
-            [transforms.Resize((self.trainsize, self.trainsize)), transforms.ToTensor()]
-        )
-        self.trans_transform = transforms.Compose(
-            [transforms.Resize((self.trainsize, self.trainsize)), transforms.ToTensor()]
-        )
+        self.gt_transform = transforms.Compose([transforms.Resize((self.trainsize, self.trainsize)), transforms.ToTensor()])
+        self.trans_transform = transforms.Compose([transforms.Resize((self.trainsize, self.trainsize)), transforms.ToTensor()])
 
     def __getitem__(self, index):
         image = self.rgb_loader(self.images[index])

@@ -19,30 +19,9 @@ module load 2024
 source ~/anaconda3/etc/profile.d/conda.sh
 source activate dl2024 || { echo "Failed to activate Conda env"; exit 1; }
 
-python ijmond-camera-ai/bvm_training/trans_bvm_self_supervised/test.py
-python ijmond-camera-ai/bvm_training/trans_bvm_self_supervised_domain_adaptation/train_domain_adapt.py \
---epoch 100 \
+python ijmond-camera-ai/bvm_training/trans_bvm_self_supervised_domain_adaptation/train.py \
+--epoch 50 \
 --lr_gen 2.5e-5 \
---batchsize 6 \
---trainsize 352 \
 --source_dataset_path "data/SMOKE5K_Dataset/SMOKE5K/train" \
 --target_dataset_path "data/ijmond_data/test" \
 --save_path "models/domain_adapt_smoke5k_ijmond" \
---domain_loss_weight 0.15 \
---lambda_grl_max 1.0 \
---contrastive_loss_weight 0.1 \
---vae_loss_weight 0.4 \
---lat_weight 10.0 \
---reg_weight 1e-4 \
---sm_weight 0.1 \
---num_domains 2 \
---feat_channel 32 \
---gen_reduced_channel 32 \
---latent_dim 3 \
---num_filters 16
-
-# 可选：训练完成后进行测试
-# python ijmond-camera-ai/bvm_training/trans_bvm_self_supervised_domain_adaptation/test_domain_adapt.py \
-#     --model_path "models/domain_adapt_smoke5k_ijmond/domain_adaptive_model_best.pth" \
-#     --test_path "data/ijmond_data/test" \
-#     --save_path "results/domain_adapt_ijmond/"
