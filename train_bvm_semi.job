@@ -19,6 +19,6 @@ module load 2024
 source ~/anaconda3/etc/profile.d/conda.sh
 source activate dl2024 || { echo "Failed to activate Conda env"; exit 1; }
 
-python ijmond-camera-ai/bvm_training/trans_bvm_self_supervised/test.pyth "data/ijmond_data/test" --save_model_path "models/finetune"
+# python ijmond-camera-ai/bvm_training/trans_bvm_self_supervised/test.pyth "data/ijmond_data/test" --save_model_path "models/finetune"
 python ijmond-camera-ai/bvm_training/trans_bvm_self_supervised/train.py --contrastive_loss_weight 0.1 --labeled_dataset_path "data/SMOKE5K_Dataset/SMOKE5K/train" --unlabeled_dataset_path "data/SMOKE5K_Dataset/SMOKE5K/weak_supervision" --save_model_path "models/ss__no_samples_1000" --aug False --no_samples 1000
 # python ijmond-camera-ai/bvm_training/trans_bvm_self_supervised/test.py

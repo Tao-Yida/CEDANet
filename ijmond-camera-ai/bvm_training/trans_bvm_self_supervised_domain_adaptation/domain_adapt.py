@@ -6,17 +6,24 @@ import numpy as np
 
 # Gradient Reversal Layer
 def grad_reverse(x, lambda_=1.0):
-    return GradientReversalFunction.apply(x, lambda_)
+    return GradientReversalLayer.apply(x, lambda_)
 
 
-class GradientReversalFunction(torch.autograd.Function):
+class GradientReversalLayer(torch.autograd.Function):
+    """
+    Gradient Reversal Layer (GRL) for domain adaptation.
+    This layer reverses the gradient during backpropagation,
+    effectively allowing the model to learn domain-invariant features.
+    """
+
     @staticmethod
-    def forward(ctx, x, lambda_):
+    def forward(ctx, x: torch.Tensor, lambda_):
         ctx.lambda_ = lambda_
-        return x.view_as(x)
+        return x.clone()
 
     @staticmethod
-    def backward(ctx, grad_output):
+    def backward(ctx, grad_output: torch.Tensor):
+        # Reverse the gradient
         return grad_output.neg() * ctx.lambda_, None
 
 
@@ -234,7 +241,7 @@ def log_domain_adaptation_stats(d_smoke_src, d_bg_src, d_smoke_tgt, d_bg_tgt, ba
     # 计算域混淆程度 (理想值接近0.5)
     confusion_score = abs(0.5 - domain_acc_dict["overall"])
 
-    print(f"\n🔄 域适应统计 [Epoch {epoch}, Step {step}]:")
+    print(f"\n 域适应统计 [Epoch {epoch}, Step {step}]:")
     print(f"   域判别准确率: {domain_acc_dict['overall']:.3f} (理想值~0.5)")
     print(f"   域混淆得分: {confusion_score:.3f} (越小越好)")
     print(f"   烟雾区域: 源域准确率={domain_acc_dict['smoke_src']:.3f}, 目标域准确率={domain_acc_dict['smoke_tgt']:.3f}")
@@ -243,11 +250,11 @@ def log_domain_adaptation_stats(d_smoke_src, d_bg_src, d_smoke_tgt, d_bg_tgt, ba
 
     # 判断域适应效果
     if domain_acc_dict["overall"] > 0.8:
-        print("   ⚠️  域判别器过于准确，可能需要增加GRL强度")
+        print("   域判别器过于准确，可能需要增加GRL强度")
     elif domain_acc_dict["overall"] < 0.3:
-        print("   ⚠️  域判别器准确率过低，可能需要减少GRL强度")
+        print("   域判别器准确率过低，可能需要减少GRL强度")
     elif 0.4 <= domain_acc_dict["overall"] <= 0.6:
-        print("   ✅ 域混淆效果良好，域适应正在有效工作！")
+        print("   域混淆效果良好，域适应正在有效工作！")
 
     return {
         "domain_loss": domain_loss.item(),
@@ -255,75 +262,6 @@ def log_domain_adaptation_stats(d_smoke_src, d_bg_src, d_smoke_tgt, d_bg_tgt, ba
         "confusion_score": confusion_score,
         "individual_accuracies": domain_acc_dict,
     }
-
-
-# 训练示例函数
-def train_with_domain_adaptation(model, source_loader, target_loader, optimizer, epoch, opt):
-    """领域自适应训练的示例函数"""
-    model.train()
-    device = next(model.parameters()).device
-
-    # 计算梯度反转层的lambda值（逐渐增加）
-    p = float(epoch) / opt.epoch
-    lambda_grl = 2.0 / (1.0 + np.exp(-10 * p)) - 1
-
-    target_iter = iter(target_loader)
-
-    for i, source_batch in enumerate(source_loader):
-        try:
-            target_batch = next(target_iter)
-        except StopIteration:
-            target_iter = iter(target_loader)
-            target_batch = next(target_iter)
-
-        # 源域数据
-        src_images, src_gts, src_trans = source_batch
-        src_images, src_gts, src_trans = src_images.to(device), src_gts.to(device), src_trans.to(device)
-
-        # 目标域数据（无标签）
-        tgt_images, _, _ = target_batch
-        tgt_images = tgt_images.to(device)
-
-        optimizer.zero_grad()
-
-        # 源域前向传播
-        src_outputs = model(src_images, src_gts, training=True, lambda_grl=lambda_grl, source_domain=True)
-        sal_init_post, sal_ref_post, sal_init_prior, sal_ref_prior, latent_loss, output_post, output_prior, d_smoke_src, d_bg_src = src_outputs
-
-        # 目标域前向传播（无监督）
-        tgt_outputs = model(tgt_images, None, training=True, lambda_grl=lambda_grl, source_domain=False)
-        _, _, _, _, _, _, _, d_smoke_tgt, d_bg_tgt = tgt_outputs
-
-        # 计算各种损失
-        # 1. 分割损失（仅源域）
-        seg_loss = compute_segmentation_loss(sal_ref_post, src_gts)
-
-        # 2. 域判别损失
-        domain_loss, domain_loss_dict = compute_domain_loss(d_smoke_src, d_bg_src, d_smoke_tgt, d_bg_tgt, src_images.size(0))
-
-        # 3. 其他原有损失（VAE损失等）
-        vae_loss = latent_loss  # 简化处理
-
-        # 总损失
-        total_loss = seg_loss + model.domain_loss_weight * domain_loss + 0.1 * vae_loss
-
-        total_loss.backward()
-        optimizer.step()
-
-        if i % 10 == 0:
-            print(
-                f"Epoch {epoch}, Step {i}, Total Loss: {total_loss.item():.4f}, "
-                f"Seg Loss: {seg_loss.item():.4f}, Domain Loss: {domain_loss.item():.4f}, "
-                f"Lambda GRL: {lambda_grl:.3f}"
-            )
-
-            # 记录域适应统计信息
-            log_domain_adaptation_stats(d_smoke_src, d_bg_src, d_smoke_tgt, d_bg_tgt, src_images.size(0), epoch, i)
-
-
-def compute_segmentation_loss(pred, target):
-    """计算分割损失（简化版本）"""
-    return F.binary_cross_entropy_with_logits(pred, target)
 
 
 # 领域自适应模型创建函数

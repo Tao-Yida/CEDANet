@@ -8,8 +8,8 @@ import os, argparse
 from datetime import datetime
 from torch.optim import lr_scheduler
 from model.ResNet_models import Generator, Descriptor
-from data import get_loader
-from utils import adjust_lr, AvgMeter
+from dataloader import get_train_val_loaders, get_dataset_name_from_path
+from utils import adjust_lr, AvgMeter, EarlyStopping, validate_model, generate_model_name, generate_checkpoint_filename, generate_best_model_filename
 from scipy import misc
 import cv2
 import torchvision.transforms as transforms
@@ -24,8 +24,10 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--epoch", type=int, default=50, help="epoch number")  # 训练轮数
 parser.add_argument("--lr_gen", type=float, default=2.5e-5, help="learning rate for generator")  # 生成器学习率
 parser.add_argument("--lr_des", type=float, default=2.5e-5, help="learning rate for descriptor")  # 描述器学习率
-parser.add_argument("--batchsize", type=int, default=7, help="training batch size")  # 批量大小
-parser.add_argument("--trainsize", type=int, default=352, help="training dataset size")  # 训练数据集大小
+parser.add_argument("--batchsize", type=int, default=7, help="number of samples per batch")  # 批量大小
+parser.add_argument(
+    "--trainsize", type=int, default=352, help="input image resolution (trainsize x trainsize)"
+)  # 输入图像分辨率，训练时的图像大小，别随便调！！
 parser.add_argument("--clip", type=float, default=0.5, help="gradient clipping margin")  # 梯度裁剪边际，用于防止梯度爆炸
 parser.add_argument("--decay_rate", type=float, default=0.9, help="decay rate of learning rate")  # 学习率衰减率，用于调整学习率
 parser.add_argument("--decay_epoch", type=int, default=20, help="every n epochs decay learning rate")  # 学习率衰减周期
@@ -45,12 +47,23 @@ parser.add_argument("--sm_weight", type=float, default=0.1, help="weight for smo
 parser.add_argument("--reg_weight", type=float, default=1e-4, help="weight for regularization term")  # 正则化项的权重
 parser.add_argument("--lat_weight", type=float, default=10.0, help="weight for latent loss")  # 潜在损失的权重
 parser.add_argument("--vae_loss_weight", type=float, default=0.4, help="weight for vae loss")  # VAE损失的权重，VAE是变分自编码器，用于生成模型
-parser.add_argument("--dataset_path", type=str, default="data/ijmond_data/train", help="dataset path")  # 数据集路径
+parser.add_argument("--dataset_path", type=str, default="data/ijmond_data/train", help="dataset path")  # 训练数据集路径
 parser.add_argument("--pretrained_weights", type=str, default=None, help="pretrained weights. it can be none")  # 预训练权重路径，可以为None
-parser.add_argument("--save_model_path", type=str, default="models/finetune", help="dataset path")  # 模型保存路径
+parser.add_argument("--save_model_path", type=str, default="models/full-supervision", help="dataset path")  # 模型保存路径
+# 校验相关参数
+parser.add_argument("--val_split", type=float, default=0.2, help="fraction of dataset used for validation (0.0-1.0)")
+parser.add_argument("--patience", type=int, default=15, help="early stopping patience")  # 早停耐心值
+parser.add_argument("--min_delta", type=float, default=0.001, help="minimum improvement for early stopping")  # 早停最小改善值
 
 # 所有超参数保存在opt中
 opt = parser.parse_args()
+
+# 获取数据集名称并生成模型名称
+dataset_name = get_dataset_name_from_path(opt.dataset_path)
+model_name = generate_model_name(dataset_name, opt.pretrained_weights)
+original_save_path = opt.save_model_path
+opt.save_model_path = os.path.join(original_save_path, model_name)
+
 print("\n========== Training Configuration ==========")
 print("Training Epochs: {}".format(opt.epoch))
 print("Learning Rates:")
@@ -76,8 +89,15 @@ print("  - Latent Loss Weight: {}".format(opt.lat_weight))
 print("  - VAE Loss Weight: {}".format(opt.vae_loss_weight))
 print("\nPaths:")
 print("  - Dataset Path: {}".format(opt.dataset_path))
-print("  - Save Model Path: {}".format(opt.save_model_path))
+print("  - Dataset Name: {}".format(dataset_name))
+print("  - Model Name: {}".format(model_name))
+print("  - Original Save Path: {}".format(original_save_path))
+print("  - Final Save Path: {}".format(opt.save_model_path))
 print("  - Pretrained Weights: {}".format(opt.pretrained_weights))
+print("\nValidation Settings:")
+print("  - Validation Split: {}".format(opt.val_split))
+print("  - Early Stopping Patience: {}".format(opt.patience))
+print("  - Min Delta: {}".format(opt.min_delta))
 print("\nEBM Settings:")
 print("  - Langevin Steps: {}".format(opt.langevin_step_num_des))
 print("  - Langevin Step Size: {}".format(opt.langevin_step_size_des))
@@ -102,18 +122,26 @@ image_root = os.path.join(opt.dataset_path, "img/")  # data/ijmond_data/test/img
 gt_root = os.path.join(opt.dataset_path, "gt/")  # data/ijmond_data/test/gt
 trans_map_root = os.path.join(opt.dataset_path, "trans/")  # data/ijmond_data/test/trans
 
-# 获取数据加载器
-train_loader = get_loader(image_root, gt_root, trans_map_root, batchsize=opt.batchsize, trainsize=opt.trainsize)
+# 获取数据加载器 - 修改为使用训练/校验分割
+train_loader, val_loader = get_train_val_loaders(
+    image_root, gt_root, trans_map_root, batchsize=opt.batchsize, trainsize=opt.trainsize, val_split=opt.val_split, random_seed=42
+)
 # 计算数据集的总步数，训练集被分成多个batch进行训练
 total_step = len(train_loader)
-print(f"Dataset size: {total_step}")
+print(f"Training steps per epoch: {total_step}")
+print(f"Validation steps per epoch: {len(val_loader)}")
+
+# 初始化早停策略和最佳模型跟踪
+early_stopping = EarlyStopping(patience=opt.patience, min_delta=opt.min_delta, restore_best_weights=True)
+best_val_iou = 0.0
+best_epoch = 0
 
 scheduler = lr_scheduler.StepLR(generator_optimizer, step_size=10, gamma=0.5)
 bce_loss = torch.nn.BCELoss()
 mse_loss = torch.nn.MSELoss(reduction="mean")  # 新版PyTorch使用reduction参数
 size_rates = [1]  # multi-scale training，尺度因子，这里设置为1表示不进行缩放
 smooth_loss = smoothness.smoothness_loss(size_average=True)  # 平滑性损失函数，约束生成的图像平滑性
-lsc_loss = LocalSaliencyCoherence().cuda()  # 局部显著性一致性损失函数，在细粒度区域加强预测的一致性
+lsc_loss = LocalSaliencyCoherence().to(device)  # 局部显著性一致性损失函数，在细粒度区域加强预测的一致性
 lsc_loss_kernels_desc_defaults = [{"weight": 0.1, "xy": 3, "trans": 0.1}]  # 用于计算核函数
 lsc_loss_radius = 2  # 邻域半径
 weight_lsc = 0.01  # 控制局部显著性一致性损失在总损失中的权重
@@ -229,19 +257,27 @@ def linear_annealing(init, fin, step, annealing_steps):
 
 
 print("Let's go!")
+# 在训练开始前确保保存目录存在
+save_path = opt.save_model_path
+if not os.path.exists(save_path):
+    os.makedirs(save_path)
+    print(f"Created save directory: {save_path}")
+
 for epoch in range(1, (opt.epoch + 1)):
     print("--" * 10 + "Epoch: {}/{}".format(epoch, opt.epoch) + "--" * 10)
-    scheduler.step()
+    # 移除此处的scheduler.step()，将在epoch结束后调用
     generator.train()
     loss_record = AvgMeter()
-    print("Generator Learning Rate: {}".format(generator_optimizer.param_groups[0]["lr"]))
+
+    # 训练阶段
     for i, pack in enumerate(train_loader, start=1):
         for rate in size_rates:
             generator_optimizer.zero_grad()
             images, gts, trans = pack
-            images = images.cuda()
-            gts = gts.cuda()
-            trans = trans.cuda()
+            # 使用设备无关的.to(device)替代.cuda()
+            images = images.to(device)
+            gts = gts.to(device)
+            trans = trans.to(device)
             # multi-scale training samples
             trainsize = int(round(opt.trainsize * rate / 32) * 32)  # 将训练大小调整为32的倍数，兼容大多数网络（上下采样操作需要输入尺寸为32的倍数）
             if rate != 1:  # 如果不是原始大小，则进行上采样
@@ -346,10 +382,59 @@ for epoch in range(1, (opt.epoch + 1)):
                 )
             )
 
-    # adjust_lr(generator_optimizer, opt.lr_gen, epoch, opt.decay_rate, opt.decay_epoch)
+    # 在训练循环结束后调用scheduler.step()
+    scheduler.step()
+    current_lr = scheduler.get_last_lr()[0]
+    print(f"Epoch {epoch} completed. Current learning rate: {current_lr}")
 
-    save_path = opt.save_model_path  #'models/ucnet_trans3_baseline_extention/'
+    # 校验阶段
+    print("Starting validation...")
+    val_loss, val_metrics = validate_model(generator, val_loader, device, structure_loss)
+
+    print(f"Validation Results - Loss: {val_loss:.4f}")
+    print(f"  🎯 IoU: {val_metrics['iou']:.4f}")
+    print(f"  F1-Score: {val_metrics['f1']:.4f}")
+    print(f"  Precision: {val_metrics['precision']:.4f}")
+    print(f"  Recall: {val_metrics['recall']:.4f}")
+    print(f"  Accuracy: {val_metrics['accuracy']:.4f}")
+
+    # 检查是否是最佳模型 - 使用IoU作为主要指标
+    current_iou = val_metrics["iou"]
+    current_f1 = val_metrics["f1"]
+    if current_iou > best_val_iou:
+        best_val_iou = current_iou
+        best_epoch = epoch
+        # 保存最佳模型 - 使用动态文件名
+        save_path = opt.save_model_path
+        if not os.path.exists(save_path):
+            os.makedirs(save_path)
+        best_model_filename = generate_best_model_filename(model_name, opt.pretrained_weights)
+        best_model_path = os.path.join(save_path, best_model_filename)
+        torch.save(generator.state_dict(), best_model_path)
+        print(f"🎉 New best model saved! IoU: {current_iou:.4f}, F1: {current_f1:.4f}")
+        print(f"   Saved as: {best_model_filename}")
+
+    # 早停检查 - 使用IoU
+    early_stopping(current_iou, generator)
+    if early_stopping.early_stop:
+        print(f"Early stopping triggered at epoch {epoch}")
+        print(f"Best IoU score: {best_val_iou:.4f} at epoch {best_epoch}")
+        break
+
+    # 定期保存检查点 - 使用动态文件名
+    save_path = opt.save_model_path
     if not os.path.exists(save_path):
         os.makedirs(save_path)
     if epoch >= 0 and epoch % 10 == 0:
-        torch.save(generator.state_dict(), os.path.join(save_path, "Model" + "_%d" % epoch + "_gen_no_pretrained_weights.pth"))
+        checkpoint_filename = generate_checkpoint_filename(epoch, model_name, opt.pretrained_weights)
+        checkpoint_path = os.path.join(save_path, checkpoint_filename)
+        torch.save(generator.state_dict(), checkpoint_path)
+        print(f"Checkpoint saved: {checkpoint_filename}")
+
+# 训练结束后的总结
+print("\n" + "=" * 50)
+print("Training completed!")
+print(f"Best validation IoU score: {best_val_iou:.4f} achieved at epoch {best_epoch}")
+best_model_filename = generate_best_model_filename(model_name, opt.pretrained_weights)
+print(f"Best model saved at: {os.path.join(opt.save_model_path, best_model_filename)}")
+print("=" * 50)

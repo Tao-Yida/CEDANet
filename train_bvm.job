@@ -1,14 +1,62 @@
 #!/bin/bash
 
 # ----------- SLURM 指令（保留必要部分） ------------
-#SBATCH --job-name=generate_gt_image
+#SBATCH --job-name=train_bvm_trans
 #SBATCH --partition=gpu_mig
 #SBATCH --gres=gpu:1
 #SBATCH --time=06:00:00
 #SBATCH --mem=16G
 #SBATCH --cpus-per-task=8
-#SBATCH --output=logs_out/trans_bvm_test_%j.out
-#SBATCH --error=logs_err/trans_bvm_test_%j.err
+#SBATCH --output=logs_out/trans_bvm_train_%j.out
+#SBATCH --error=logs_err/trans_bvm_train_%j.err
+
+# ============================================================================
+# BVM 训练脚本参数说明
+# ============================================================================
+
+# --------------- 训练基础参数 ---------------
+# --epoch:             训练轮数 (默认: 50)
+# --lr_gen:            生成器学习率 (默认: 2.5e-5)
+# --lr_des:            描述器学习率 (默认: 2.5e-5)
+# --batchsize:         每批次样本数量 (默认: 7)
+# --trainsize:         输入图像分辨率 (默认: 352x352)
+
+# --------------- 优化相关参数 ---------------
+# --clip:              梯度裁剪边际，防止梯度爆炸 (默认: 0.5)
+# --decay_rate:        学习率衰减率 (默认: 0.9)
+# --decay_epoch:       学习率衰减周期 (默认: 20)
+# --beta:              Adam优化器beta参数 (默认: 0.5)
+
+# --------------- 模型架构参数 ---------------
+# --gen_reduced_channel:  生成器通道数 (默认: 32)
+# --des_reduced_channel:  描述器通道数 (默认: 64)
+# --feat_channel:         特征通道数 (默认: 32)
+# --latent_dim:           潜在空间维度 (默认: 3)
+
+# --------------- 损失权重参数 ---------------
+# --sm_weight:         平滑性损失权重 (默认: 0.1)
+# --reg_weight:        正则化损失权重 (默认: 1e-4)
+# --lat_weight:        潜在损失权重 (默认: 10.0)
+# --vae_loss_weight:   VAE损失权重 (默认: 0.4)
+
+# --------------- EBM 相关参数 ---------------
+# --langevin_step_num_des:  Langevin步骤数 (默认: 10)
+# --langevin_step_size_des: Langevin步长 (默认: 0.026)
+# --energy_form:            能量函数形式 (默认: identity)
+#                          选项: tanh | sigmoid | identity | softplus
+
+# --------------- 数据和保存路径 ---------------
+# --dataset_path:      训练数据集路径 (默认: data/ijmond_data/train)
+# --save_model_path:   模型保存路径 (默认: models/full-supervision)
+# --pretrained_weights: 预训练权重路径 (默认: None)
+
+# --------------- 校验相关参数 ---------------
+# --val_split:         校验集比例 (默认: 0.2, 即20%用于校验)
+# --patience:          早停耐心值 (默认: 15)
+# --min_delta:         早停最小改善阈值 (默认: 0.001)
+
+
+# ============================================================================
 
 # 创建日志目录
 mkdir -p logs_out logs_err
@@ -19,4 +67,5 @@ module load 2024
 source ~/anaconda3/etc/profile.d/conda.sh
 source activate dl2024 || { echo "Failed to activate Conda env"; exit 1; }
 
-python ijmond-camera-ai/bvm_training/trans_bvm_self_supervised/test.py "data/ijmond_data/test" --save_model_path "models/finetune"
+# 执行训练脚本
+python ijmond-camera-ai/bvm_training/trans_bvm/train.py --epoch 100 --val_split 0.3 --patience 20 --dataset_path "data/SMOKE5K_Dataset/SMOKE5K/train" --save_model_path "models/full-supervision"
