@@ -55,6 +55,18 @@ parser.add_argument("--val_split", type=float, default=0.2, help="fraction of da
 parser.add_argument("--patience", type=int, default=15, help="early stopping patience")  # 早停耐心值
 parser.add_argument("--min_delta", type=float, default=0.001, help="minimum improvement for early stopping")  # 早停最小改善值
 
+# 数据增强和可重现性参数
+parser.add_argument("--aug", action="store_true", default=False, help="enable data augmentation for training")  # 启用数据增强
+parser.add_argument("--freeze", action="store_true", default=False, help="freeze all randomness for full reproducibility")  # 冻结所有随机性
+parser.add_argument("--random_seed", type=int, default=42, help="random seed for reproducibility")  # 随机种子
+
+# aug	freeze	效果	适用场景
+# ❌	❌	基础训练，无增强	快速测试
+# ✅	❌	正常训练，有增强	推荐训练
+# ❌	✅	调试模式，完全固定	调试模型
+# ✅	✅	调试模式，禁用增强	调试增强逻辑
+
+
 # 所有超参数保存在opt中
 opt = parser.parse_args()
 
@@ -102,6 +114,14 @@ print("\nEBM Settings:")
 print("  - Langevin Steps: {}".format(opt.langevin_step_num_des))
 print("  - Langevin Step Size: {}".format(opt.langevin_step_size_des))
 print("  - Energy Form: {}".format(opt.energy_form))
+print("\nData Augmentation & Reproducibility:")
+print("  - Data Augmentation: {}".format("Enabled" if opt.aug else "Disabled"))
+print("  - Freeze Mode: {}".format("Enabled" if opt.freeze else "Disabled"))
+print("  - Random Seed: {}".format(opt.random_seed))
+if opt.freeze:
+    print("  - [WARNING] Freeze mode enabled - all randomness frozen for debugging")
+if opt.freeze and opt.aug:
+    print("  - [INFO] Data augmentation will be disabled due to freeze mode")
 print("==========================================\n")
 
 # build models
@@ -122,9 +142,17 @@ image_root = os.path.join(opt.dataset_path, "img/")  # data/ijmond_data/test/img
 gt_root = os.path.join(opt.dataset_path, "gt/")  # data/ijmond_data/test/gt
 trans_map_root = os.path.join(opt.dataset_path, "trans/")  # data/ijmond_data/test/trans
 
-# 获取数据加载器 - 修改为使用训练/校验分割
+# 获取数据加载器 - 使用新的数据增强和可重现性参数
 train_loader, val_loader = get_train_val_loaders(
-    image_root, gt_root, trans_map_root, batchsize=opt.batchsize, trainsize=opt.trainsize, val_split=opt.val_split, random_seed=42
+    image_root,
+    gt_root,
+    trans_map_root,
+    batchsize=opt.batchsize,
+    trainsize=opt.trainsize,
+    val_split=opt.val_split,
+    aug=opt.aug,
+    freeze=opt.freeze,
+    random_seed=opt.random_seed,
 )
 # 计算数据集的总步数，训练集被分成多个batch进行训练
 total_step = len(train_loader)
@@ -392,7 +420,7 @@ for epoch in range(1, (opt.epoch + 1)):
     val_loss, val_metrics = validate_model(generator, val_loader, device, structure_loss)
 
     print(f"Validation Results - Loss: {val_loss:.4f}")
-    print(f"  🎯 IoU: {val_metrics['iou']:.4f}")
+    print(f"  IoU: {val_metrics['iou']:.4f}")
     print(f"  F1-Score: {val_metrics['f1']:.4f}")
     print(f"  Precision: {val_metrics['precision']:.4f}")
     print(f"  Recall: {val_metrics['recall']:.4f}")
