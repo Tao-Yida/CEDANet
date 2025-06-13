@@ -5,7 +5,7 @@ import os, argparse
 from datetime import datetime
 from torch.optim import lr_scheduler
 from model.ResNet_models import Generator
-from data import get_loader
+from dataloader import get_loader
 from utils import adjust_lr, AvgMeter
 from scipy import misc
 import cv2
