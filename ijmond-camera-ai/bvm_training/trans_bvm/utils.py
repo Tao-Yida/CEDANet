@@ -289,10 +289,3 @@ def generate_best_model_filename(model_name, pretrained_weights_path=None):
     else:
         pretrained_name = extract_pretrained_model_name(pretrained_weights_path)
         return f"{model_name}_best_from_{pretrained_name}.pth"
-
-
-# def save_mask_prediction_example(mask, pred, iter):
-# 	plt.imshow(pred[0,:,:],cmap='Greys')
-# 	plt.savefig('images/'+str(iter)+"_prediction.png")
-# 	plt.imshow(mask[0,:,:],cmap='Greys')
-#     plt.savefig('images/'+str(iter)+"_mask.png")

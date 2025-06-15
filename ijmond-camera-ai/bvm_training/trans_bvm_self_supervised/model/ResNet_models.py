@@ -193,9 +193,16 @@ class Generator(nn.Module):
         return kl_div
 
     def reparametrize(self, mu, logvar):
+        """
+        通过重参数化技巧从潜在空间分布中采样
+        Args:
+            mu: 潜在空间均值
+            logvar: 潜在空间对数方差
+        Returns:
+            采样得到的潜在空间向量
+        """
         std = logvar.mul(0.5).exp_()
-        eps = torch.randn(size=std.size(), dtype=torch.float32, device="cuda")  # old version torch.cuda.FloatTensor(std.size()).normal_()
-        eps = Variable(eps)
+        eps = torch.randn_like(std)  # 使用torch.randn_like自动匹配设备和数据类型
         return eps.mul(std).add_(mu)
 
     def forward(self, x, y=None, training=True):

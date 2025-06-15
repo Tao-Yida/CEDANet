@@ -1,14 +1,77 @@
 #!/bin/bash
 
 # ----------- SLURM 指令（保留必要部分） ------------
-#SBATCH --job-name=generate_gt_image
+#SBATCH --job-name=train_bvm_semi_supervised
 #SBATCH --partition=gpu_mig
 #SBATCH --gres=gpu:1
+#SBATCH --nodelist=gcn3  # 如果想指定gcn3
 #SBATCH --time=06:00:00
-#SBATCH --mem=16G
-#SBATCH --cpus-per-task=8
-#SBATCH --output=logs_out/trans_bvm_test_%j.out
-#SBATCH --error=logs_err/trans_bvm_test_%j.err
+#SBATCH --mem=24G
+#SBATCH --cpus-per-task=6
+#SBATCH --output=logs_out/trans_bvm_semi_train_%j.out
+#SBATCH --error=logs_err/trans_bvm_semi_train_%j.err
+
+# ============================================================================
+# BVM 半监督训练脚本参数说明
+# ============================================================================
+
+# --------------- 基础训练参数 ---------------
+# --epoch:                训练轮数 (默认: 50)
+# --batchsize:            每批次样本数量 (默认: 6)
+# --trainsize:            输入图像分辨率 (默认: 352x352)
+
+# --------------- 优化器参数 ---------------
+# --lr_gen:               生成器学习率 (默认: 2.5e-5)
+# --lr_des:               描述器学习率 (默认: 2.5e-5)
+# --beta:                 Adam优化器beta参数 (默认: 0.5)
+# --clip:                 梯度裁剪边际，防止梯度爆炸 (默认: 0.5)
+# --decay_rate:           学习率衰减率 (默认: 0.9)
+# --decay_epoch:          学习率衰减周期 (默认: 20)
+
+# --------------- 模型架构参数 ---------------
+# --gen_reduced_channel:  生成器中减少的通道数 (默认: 32)
+# --des_reduced_channel:  描述器中减少的通道数 (默认: 64)
+# --feat_channel:         重要性特征的通道数 (默认: 32)
+# --latent_dim:           潜在维度 (默认: 3)
+# --num_filters:          最终对比损失特定层的通道数 (默认: 16)
+
+# --------------- EBM相关参数 ---------------
+# --langevin_step_num_des:  EBM的langevin步骤数 (默认: 10)
+# --langevin_step_size_des: EBM langevin的步长 (默认: 0.026)
+# --energy_form:            能量函数的形式 (默认: identity)
+#                          选项: tanh | sigmoid | identity | softplus
+
+# --------------- 损失函数权重 ---------------
+# --sm_weight:            平滑性损失的权重 (默认: 0.1)
+# --reg_weight:           正则化项的权重 (默认: 1e-4)
+# --lat_weight:           潜在损失的权重 (默认: 10.0)
+# --vae_loss_weight:      VAE损失的权重 (默认: 0.4)
+# --contrastive_loss_weight: 对比损失的权重 (默认: 0.1)
+
+# --------------- 半监督学习特有参数 ---------------
+# --inter:                是否进行跨图像像素匹配 (默认: False)
+#                        如果为True，则在不同图像之间进行匹配
+#                        否则在同一图像内进行匹配
+# --no_samples:           对比损失中考虑的像素数量 (默认: 50)
+
+# --------------- 数据集路径 ---------------
+# --labeled_dataset_path:   标注数据集路径 (默认: data/SMOKE5K_Dataset/SMOKE5K/train)
+# --unlabeled_dataset_path: 无标注数据集路径 (默认: data/SMOKE5K_Dataset/SMOKE5K/weak_supervision)
+# --pretrained_weights:     预训练权重路径 (默认: None)
+# --save_model_path:        模型保存路径 (默认: models/self-supervision)
+
+# --------------- 校验和早停参数 ---------------
+# --val_split:            标注数据集中用于校验的比例 (默认: 0.2)
+# --patience:             早停耐心值 (默认: 15)
+# --min_delta:            早停最小改善值 (默认: 0.001)
+# --enable_validation:    启用在标注数据子集上的校验 (默认: False)
+
+# --------------- 数据增强和可重现性参数 ---------------
+# --aug:                  启用无标注数据的数据增强 (默认: False)
+# --freeze:               冻结所有随机性以确保完全可重现 (默认: False)
+# --random_seed:          随机种子 (默认: 42)
+
+# ============================================================================
 
 # 创建日志目录
 mkdir -p logs_out logs_err
@@ -19,6 +82,7 @@ module load 2024
 source ~/anaconda3/etc/profile.d/conda.sh
 source activate dl2024 || { echo "Failed to activate Conda env"; exit 1; }
 
+# 执行半监督训练脚本
 # python ijmond-camera-ai/bvm_training/trans_bvm_self_supervised/test.pyth "data/ijmond_data/test" --save_model_path "models/finetune"
-python ijmond-camera-ai/bvm_training/trans_bvm_self_supervised/train.py --contrastive_loss_weight 0.1 --labeled_dataset_path "data/SMOKE5K_Dataset/SMOKE5K/train" --unlabeled_dataset_path "data/SMOKE5K_Dataset/SMOKE5K/weak_supervision" --save_model_path "models/ss__no_samples_1000" --aug False --no_samples 1000
+python ijmond-camera-ai/bvm_training/trans_bvm_self_supervised/train.py --contrastive_loss_weight 0.1 --labeled_dataset_path "data/SMOKE5K_Dataset/SMOKE5K/train" --unlabeled_dataset_path "data/SMOKE5K_Dataset/SMOKE5K/weak_supervision" --save_model_path "models/SS_500" --no_samples 500
 # python ijmond-camera-ai/bvm_training/trans_bvm_self_supervised/test.py

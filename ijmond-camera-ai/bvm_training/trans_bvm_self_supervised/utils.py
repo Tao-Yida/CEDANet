@@ -11,7 +11,7 @@ def clip_gradient(optimizer, grad_clip):
     for group in optimizer.param_groups:
         for param in group["params"]:
             if param.grad is not None:
-                param.grad.data.clamp_(-grad_clip, grad_clip) 
+                param.grad.data.clamp_(-grad_clip, grad_clip)
 
 
 def adjust_lr(optimizer, init_lr, epoch, decay_rate=0.1, decay_epoch=5):
@@ -159,7 +159,7 @@ def calculate_metrics(pred, gt, threshold=0.5):
 
 def validate_model(generator, val_loader, device, structure_loss_fn):
     """
-    模型校验函数
+    模型校验函数（适用于半监督模型）
     Args:
         generator: 生成器模型
         val_loader: 校验数据加载器
@@ -177,7 +177,8 @@ def validate_model(generator, val_loader, device, structure_loss_fn):
             images, gts, trans = images.to(device), gts.to(device), trans.to(device)
 
             # 前向传播（仅使用后验预测进行校验）
-            pred_post_init, pred_post_ref, _, _, _ = generator(images, gts)
+            # 对于半监督模型，Generator的forward返回多个输出
+            pred_post_init, pred_post_ref, pred_prior_init, pred_prior_ref, latent_loss, out_post, out_prior = generator(images, gts)
 
             # 计算损失
             sal_loss = 0.5 * (structure_loss_fn(pred_post_init, gts) + structure_loss_fn(pred_post_ref, gts))
@@ -203,22 +204,23 @@ def validate_model(generator, val_loader, device, structure_loss_fn):
     return val_loss, metrics
 
 
-def generate_model_name(dataset_name, pretrained_weights_path=None):
+def generate_model_name(labeled_dataset_name, unlabeled_dataset_name, pretrained_weights_path=None):
     """
-    根据数据集名称和预训练模型生成模型名称
+    根据标注和非标注数据集名称以及预训练模型生成模型名称（半监督版本）
     Args:
-        dataset_name: 数据集名称
+        labeled_dataset_name: 标注数据集名称
+        unlabeled_dataset_name: 非标注数据集名称
         pretrained_weights_path: 预训练权重路径，如果为None则表示从头训练
     Returns:
         str: 生成的模型名称
     """
     if pretrained_weights_path is None:
-        # 没有使用预训练模型，只使用数据集名称
-        return dataset_name
+        # 没有使用预训练模型，使用两个数据集名称
+        return f"{labeled_dataset_name}_ssl_{unlabeled_dataset_name}"
     else:
         # 使用了预训练模型，需要提取预训练模型名称
         pretrained_model_name = extract_pretrained_model_name(pretrained_weights_path)
-        return f"{dataset_name}_from_{pretrained_model_name}"
+        return f"{labeled_dataset_name}_ssl_{unlabeled_dataset_name}_from_{pretrained_model_name}"
 
 
 def extract_pretrained_model_name(pretrained_path):
@@ -289,10 +291,3 @@ def generate_best_model_filename(model_name, pretrained_weights_path=None):
     else:
         pretrained_name = extract_pretrained_model_name(pretrained_weights_path)
         return f"{model_name}_best_from_{pretrained_name}.pth"
-
-
-# def save_mask_prediction_example(mask, pred, iter):
-# 	plt.imshow(pred[0,:,:],cmap='Greys')
-# 	plt.savefig('images/'+str(iter)+"_prediction.png")
-# 	plt.imshow(mask[0,:,:],cmap='Greys')
-#     plt.savefig('images/'+str(iter)+"_mask.png")

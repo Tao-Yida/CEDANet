@@ -5,7 +5,7 @@ import numpy as np
 import pdb, os, argparse
 from scipy import misc
 from model.ResNet_models import Generator
-from data import test_dataset
+from dataloader import test_dataset
 import cv2
 
 

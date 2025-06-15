@@ -1,32 +1,37 @@
 import torch
 import torch.nn.functional as F
+
+
 # from torch.autograd import Variable
 # import numpy as np
 def laplacian_edge(img):
     laplacian_filter = torch.Tensor([[-1, -1, -1], [-1, 8, -1], [-1, -1, -1]])
     filter = torch.reshape(laplacian_filter, [1, 1, 3, 3])
-    filter = filter.cuda()
+    filter = filter.to(img.device)  # 使用设备无关的方法
     lap_edge = F.conv2d(img, filter, stride=1, padding=1)
     return lap_edge
 
+
 def gradient_x(img):
     sobel = torch.Tensor([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]])
-    filter = torch.reshape(sobel,[1,1,3,3])
-    filter = filter.cuda()
+    filter = torch.reshape(sobel, [1, 1, 3, 3])
+    filter = filter.to(img.device)  # 使用设备无关的方法
     gx = F.conv2d(img, filter, stride=1, padding=1)
     return gx
 
 
 def gradient_y(img):
     sobel = torch.Tensor([[-1, -2, -1], [0, 0, 0], [1, 2, 1]])
-    filter = torch.reshape(sobel, [1, 1,3,3])
-    filter = filter.cuda()
+    filter = torch.reshape(sobel, [1, 1, 3, 3])
+    filter = filter.to(img.device)  # 使用设备无关的方法
     gy = F.conv2d(img, filter, stride=1, padding=1)
     return gy
+
 
 def charbonnier_penalty(s):
     cp_s = torch.pow(torch.pow(s, 2) + 0.001**2, 0.5)
     return cp_s
+
 
 def get_saliency_smoothness(pred, gt, size_average=True):
     alpha = 10
@@ -47,20 +52,21 @@ def get_saliency_smoothness(pred, gt, size_average=True):
     lap_sal = torch.abs(laplacian_edge(pred))
     lap_gt = torch.abs(laplacian_edge(gt))
     weight_lap = torch.exp(lap_gt * (-alpha))
-    weighted_lap = charbonnier_penalty(lap_sal*weight_lap)
+    weighted_lap = charbonnier_penalty(lap_sal * weight_lap)
 
-    smooth_loss = s1*torch.mean(cps_xy) + s2*torch.mean(weighted_lap)
-    #total_map=s1*cps_xy+s2*weighted_lap
+    smooth_loss = s1 * torch.mean(cps_xy) + s2 * torch.mean(weighted_lap)
+    # total_map=s1*cps_xy+s2*weighted_lap
     # sobel_map=(sal_x**2+sal_y**2)**(1/2)
     # sobel_map=charbonnier_penalty(sal_x)+charbonnier_penalty(sal_y)
     # lap_map=lap_sal
     # total=sobel_map+lap_map
-    #,cps_xy,total_map
+    # ,cps_xy,total_map
 
     return smooth_loss
 
+
 class smoothness_loss(torch.nn.Module):
-    def __init__(self, size_average = True):
+    def __init__(self, size_average=True):
         super(smoothness_loss, self).__init__()
         self.size_average = size_average
 
