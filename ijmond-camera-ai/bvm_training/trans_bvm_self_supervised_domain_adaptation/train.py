@@ -548,7 +548,7 @@ for epoch in range(1, opt.epoch + 1):
             gen_loss_gsnn = (1 - opt.vae_loss_weight) * gen_loss_gsnn + loss_lsc_prior
 
             ### 总损失 ###############################################
-            total_loss = gen_loss_cvae + gen_loss_gsnn + reg_loss + domain_loss + opt.contrastive_loss_weight * cont_loss
+            total_loss = gen_loss_cvae + gen_loss_gsnn + reg_loss + domain_loss + opt.contrastive_loss_weight * cont_loss # type: torch.Tensor
             total_loss.backward()
 
             # Gradient clipping
