@@ -148,7 +148,7 @@ def get_loader(
     return train_loader
 
 
-def get_train_val_loaders(
+def  get_train_val_loaders(
     image_root,
     gt_root,
     trans_map_root,

@@ -4,7 +4,6 @@
 #SBATCH --job-name=train_bvm_semi_supervised
 #SBATCH --partition=gpu_mig
 #SBATCH --gres=gpu:1
-#SBATCH --nodelist=gcn3  # 如果想指定gcn3
 #SBATCH --time=06:00:00
 #SBATCH --mem=24G
 #SBATCH --cpus-per-task=6

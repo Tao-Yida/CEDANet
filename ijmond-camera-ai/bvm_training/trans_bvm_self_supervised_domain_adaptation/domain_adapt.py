@@ -6,6 +6,16 @@ import numpy as np
 
 # Gradient Reversal Layer
 def grad_reverse(x, lambda_=1.0):
+    """
+    Applies a gradient reversal layer to the input tensor.
+    Args:
+        x (torch.Tensor): Input tensor to apply gradient reversal.
+        lambda_ (float): Scaling factor for the gradient reversal.
+    Returns:
+        torch.Tensor: The input tensor with reversed gradients during backpropagation.
+    This layer is used in domain adaptation tasks to encourage the model to learn domain-invariant features.
+    by reversing the gradient during backpropagation, effectively penalizing the model for distinguishing between domains
+    """
     return GradientReversalLayer.apply(x, lambda_)
 
 
@@ -29,7 +39,17 @@ class GradientReversalLayer(torch.autograd.Function):
 
 # Domain Discriminator, category-aware
 class DomainDiscriminator(nn.Module):
+    """
+    Domain Discriminator for domain adaptation.
+    This discriminator learns to distinguish between different domains while being aware of the category-specific features in the input.
+    """
+
     def __init__(self, in_channels, num_domains=2):
+        """
+        Args:
+            in_channels (int): Number of input channels (feature map depth).
+            num_domains (int): Number of domains to discriminate (default is 2).
+        """
         super().__init__()
         self.conv1 = nn.Conv2d(in_channels, in_channels // 2, 3, padding=1)
         self.conv2 = nn.Conv2d(in_channels // 2, in_channels // 4, 3, padding=1)
@@ -38,11 +58,18 @@ class DomainDiscriminator(nn.Module):
         self.pool = nn.AdaptiveAvgPool2d(1)
 
     def forward(self, feature_map, category_mask=None, grl_lambda=1.0):
+        """
+        Args:
+            feature_map (torch.Tensor): Input feature map of shape (B, C, H, W).
+            category_mask (torch.Tensor, optional): Binary mask of shape (B, 1, H, W)
+                indicating regions of interest (e.g., smoke vs background).
+            grl_lambda (float): Gradient reversal strength for domain adaptation.
+        """
         # feature_map: B x C x H x W
         # category_mask: B x 1 x H x W, binary mask indicating category regions (e.g., smoke vs background)
-        x = grad_reverse(feature_map, grl_lambda)
+        x = grad_reverse(feature_map, grl_lambda)  # Returns the input with reversed gradients, shape: B x C x H x W
         if category_mask is not None:
-            # apply mask to focus on category-specific features
+            # apply mask to focus on category-specific features: only keep features where category_mask is 1
             x = x * category_mask
         x = self.relu(self.conv1(x))
         x = self.relu(self.conv2(x))
@@ -61,6 +88,13 @@ class DomainAdaptiveGenerator(nn.Module):
     """领域自适应的生成器，集成了原有的Generator和域判别器"""
 
     def __init__(self, base_generator, feat_channels=32, num_domains=2, domain_loss_weight=0.1):
+        """
+        Args:
+            base_generator: 原有的生成器模型（Generator）
+            feat_channels: 特征图的通道数，用于域判别器
+            num_domains: 域判别器的域数量（通常为2，表示源域和目标域）
+            domain_loss_weight: 域判别损失的权重，用于平衡生成器和域判别器的损失
+        """
         super().__init__()
         # 基础生成模型（原有的Generator）
         self.base_generator = base_generator
@@ -76,7 +110,17 @@ class DomainAdaptiveGenerator(nn.Module):
         self.feat_channels = feat_channels
 
     def extract_features(self, x):
-        """从输入图像中提取特征图，用于域判别"""
+        """
+        从输入图像中提取特征图，用于域判别
+        Args:
+            x: 输入图像，形状为 (B, C, H, W)
+        Returns:
+            features: 提取的特征图，形状为 (B, feat_channels, H', W')
+        这里的特征图是从sal_encoder的ResNet backbone中提取的中间特征，
+        用于后续的域判别任务。
+        通过使用基础生成器的编码器部分，我们可以获得输入图像的潜在表示，
+        然后将其与sal_encoder的特征提取过程结合起来
+        """
         # 使用sal_encoder的ResNet backbone提取中间特征
         # 获取x_encoder的潜在表示
         with torch.no_grad():
@@ -88,18 +132,25 @@ class DomainAdaptiveGenerator(nn.Module):
 
         return features
 
-    def _extract_sal_features(self, x, z):
-        """从sal_encoder中提取中间特征"""
+    def _extract_sal_features(self, x: torch.Tensor, z):
+        """
+        从sal_encoder中提取中间特征
+        Args:
+            x: 输入图像，形状为 (B, C, H, W)
+            z: 从x_encoder中提取的潜在表示，形状为 (B, latent_dim)
+        Returns:
+            features: 提取的特征图，形状为 (B, feat_channels, H', W')
+        """
         # 按照sal_encoder的forward方法提取中间特征
-        sal_encoder = self.base_generator.sal_encoder
+        sal_encoder = self.base_generator.sal_encoder # 获取sal_encoder实例，类型为Saliency_feat_encoder
 
         # 重建sal_encoder前向传播的前半部分
         z = torch.unsqueeze(z, 2)
-        z = sal_encoder.tile(z, 2, x.shape[sal_encoder.spatial_axes[0]])
+        z = sal_encoder.tile(z, 2, x.shape[sal_encoder.spatial_axes[0]]) # spatial_axes[0]是高度轴
         z = torch.unsqueeze(z, 3)
-        z = sal_encoder.tile(z, 3, x.shape[sal_encoder.spatial_axes[1]])
+        z = sal_encoder.tile(z, 3, x.shape[sal_encoder.spatial_axes[1]]) # spatial_axes[1]是宽度轴
         x_input = torch.cat((x, z), 1)
-        x_input = sal_encoder.conv_depth1(x_input)
+        x_input = sal_encoder.conv_depth1(x_input) # 经过一个卷积层和一个批归一化层
 
         # 通过ResNet backbone
         x = sal_encoder.resnet.conv1(x_input)

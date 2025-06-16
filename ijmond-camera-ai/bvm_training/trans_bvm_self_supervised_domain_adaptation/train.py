@@ -96,7 +96,7 @@ def argparser():
     parser.add_argument("--val_split", type=float, default=0.2, help="fraction of labeled dataset used for validation (0.0-1.0)")
     parser.add_argument("--patience", type=int, default=15, help="early stopping patience")  # 早停耐心值
     parser.add_argument("--min_delta", type=float, default=0.001, help="minimum improvement for early stopping")  # 早停最小改善值
-    parser.add_argument("--enable_validation", action="store_true", default=False, help="enable validation on labeled data subset")  # 启用校验
+    parser.add_argument("--enable_validation", action="store_true", default=True, help="enable validation on labeled data subset")  # 启用校验
 
     # ================== 数据增强和可重现性参数 ==================
     parser.add_argument(
@@ -548,7 +548,7 @@ for epoch in range(1, opt.epoch + 1):
             gen_loss_gsnn = (1 - opt.vae_loss_weight) * gen_loss_gsnn + loss_lsc_prior
 
             ### 总损失 ###############################################
-            total_loss = gen_loss_cvae + gen_loss_gsnn + reg_loss + domain_loss + opt.contrastive_loss_weight * cont_loss # type: torch.Tensor
+            total_loss = gen_loss_cvae + gen_loss_gsnn + reg_loss + domain_loss + opt.contrastive_loss_weight * cont_loss  # type: torch.Tensor
             total_loss.backward()
 
             # Gradient clipping
