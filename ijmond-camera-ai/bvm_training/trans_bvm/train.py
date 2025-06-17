@@ -20,44 +20,139 @@ from lscloss import *
 # Define computation device (GPU/CPU)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-parser = argparse.ArgumentParser()
-parser.add_argument("--epoch", type=int, default=50, help="epoch number")  # 训练轮数
-parser.add_argument("--lr_gen", type=float, default=2.5e-5, help="learning rate for generator")  # 生成器学习率
-parser.add_argument("--lr_des", type=float, default=2.5e-5, help="learning rate for descriptor")  # 描述器学习率
-parser.add_argument("--batchsize", type=int, default=7, help="number of samples per batch")  # 批量大小
-parser.add_argument(
-    "--trainsize", type=int, default=352, help="input image resolution (trainsize x trainsize)"
-)  # 输入图像分辨率，训练时的图像大小，别随便调！！
-parser.add_argument("--clip", type=float, default=0.5, help="gradient clipping margin")  # 梯度裁剪边际，用于防止梯度爆炸
-parser.add_argument("--decay_rate", type=float, default=0.9, help="decay rate of learning rate")  # 学习率衰减率，用于调整学习率
-parser.add_argument("--decay_epoch", type=int, default=20, help="every n epochs decay learning rate")  # 学习率衰减周期
-parser.add_argument("--beta", type=float, default=0.5, help="beta of Adam for generator")  # Adam优化器的beta参数
-parser.add_argument("--gen_reduced_channel", type=int, default=32, help="reduced channel in generator")  # 生成器中减少的通道数
-parser.add_argument("--des_reduced_channel", type=int, default=64, help="reduced channel in descriptor")  # 描述器中减少的通道数
-parser.add_argument(
-    "--langevin_step_num_des", type=int, default=10, help="number of langevin steps for ebm"
-)  # EBM的langevin步骤数，EBM是能量基模型，langevin步骤是指在生成过程中使用的迭代步骤数
-parser.add_argument("-langevin_step_size_des", type=float, default=0.026, help="step size of EBM langevin")  # EBM langevin的步长
-parser.add_argument(
-    "--energy_form", default="identity", help="tanh | sigmoid | identity | softplus"
-)  # 能量函数的形式，tanh：双曲正切函数，sigmoid：S型函数，identity：恒等函数，softplus：平滑的ReLU函数
-parser.add_argument("--latent_dim", type=int, default=3, help="latent dim")  # 潜在维度，用于生成器和描述器的潜在空间
-parser.add_argument("--feat_channel", type=int, default=32, help="reduced channel of saliency feat")  # 重要性特征的通道数
-parser.add_argument("--sm_weight", type=float, default=0.1, help="weight for smoothness loss")  # 平滑性损失的权重
-parser.add_argument("--reg_weight", type=float, default=1e-4, help="weight for regularization term")  # 正则化项的权重
-parser.add_argument("--lat_weight", type=float, default=10.0, help="weight for latent loss")  # 潜在损失的权重
-parser.add_argument("--vae_loss_weight", type=float, default=0.4, help="weight for vae loss")  # VAE损失的权重，VAE是变分自编码器，用于生成模型
-parser.add_argument("--dataset_path", type=str, default="data/ijmond_data/train", help="dataset path")  # 训练数据集路径
-parser.add_argument("--pretrained_weights", type=str, default=None, help="pretrained weights. it can be none")  # 预训练权重路径，可以为None
-parser.add_argument("--save_model_path", type=str, default="models/full-supervision", help="dataset path")  # 模型保存路径
-# 校验相关参数
-parser.add_argument("--val_split", type=float, default=0.2, help="fraction of dataset used for validation (0.0-1.0)")
-parser.add_argument("--patience", type=int, default=15, help="early stopping patience")  # 早停耐心值
-parser.add_argument("--min_delta", type=float, default=0.001, help="minimum improvement for early stopping")  # 早停最小改善值
 
-# 数据增强和可重现性参数
-parser.add_argument("--aug", action="store_true", default=False, help="enable data augmentation for training")  # 启用数据增强
-parser.add_argument("--freeze", action="store_true", default=False, help="freeze all randomness for full reproducibility")  # 冻结所有随机性
+def create_argparser():
+    parser = argparse.ArgumentParser(description="Fully Supervised Training Script")
+
+    # ================================== 基础训练配置 ==================================
+    parser.add_argument("--epoch", type=int, default=50, help="number of training epochs")
+    parser.add_argument("--batchsize", type=int, default=7, help="batch size for training")
+    parser.add_argument("--trainsize", type=int, default=352, help="input image resolution (trainsize x trainsize)")
+
+    # ================================== 优化器配置 ==================================
+    parser.add_argument("--lr_gen", type=float, default=2.5e-5, help="learning rate for generator")
+    parser.add_argument("--lr_des", type=float, default=2.5e-5, help="learning rate for descriptor")
+    parser.add_argument("--beta", type=float, default=0.5, help="beta parameter for Adam optimizer")
+    parser.add_argument("--clip", type=float, default=0.5, help="gradient clipping threshold")
+    parser.add_argument("--decay_rate", type=float, default=0.9, help="learning rate decay factor for ReduceLROnPlateau")
+    parser.add_argument("--decay_epoch", type=int, default=6, help="patience epochs for ReduceLROnPlateau scheduler")
+
+    # ================================== 模型架构配置 ==================================
+    parser.add_argument("--gen_reduced_channel", type=int, default=32, help="reduced channel count in generator")
+    parser.add_argument("--des_reduced_channel", type=int, default=64, help="reduced channel count in descriptor")
+    parser.add_argument("--feat_channel", type=int, default=32, help="feature channel count for saliency features")
+    parser.add_argument("--latent_dim", type=int, default=3, help="latent space dimension")
+
+    # ================================== EBM模型配置 ==================================
+    parser.add_argument("--langevin_step_num_des", type=int, default=10, help="number of Langevin steps for EBM")
+    parser.add_argument("--langevin_step_size_des", type=float, default=0.026, help="step size for EBM Langevin sampling")
+    parser.add_argument(
+        "--energy_form", type=str, default="identity", choices=["tanh", "sigmoid", "identity", "softplus"], help="energy function form"
+    )
+
+    # ================================== 损失函数权重配置 ==================================
+    parser.add_argument("--sm_weight", type=float, default=0.1, help="weight for smoothness loss")
+    parser.add_argument("--reg_weight", type=float, default=1e-4, help="weight for L2 regularization")
+    parser.add_argument("--lat_weight", type=float, default=10.0, help="weight for latent loss")
+    parser.add_argument("--vae_loss_weight", type=float, default=0.4, help="weight for VAE loss component")
+
+    # ================================== 数据集路径配置 ==================================
+    parser.add_argument("--dataset_path", type=str, default="data/ijmond_data/train", help="training dataset path")
+    parser.add_argument("--pretrained_weights", type=str, default=None, help="path to pretrained model weights")
+    parser.add_argument("--save_model_path", type=str, default="models/full-supervision", help="directory to save trained models")
+
+    # ================================== 验证和早停配置 ==================================
+    parser.add_argument("--val_split", type=float, default=0.2, help="fraction of dataset used for validation (0.0-1.0)")
+    parser.add_argument("--patience", type=int, default=15, help="early stopping patience (epochs)")
+    parser.add_argument("--min_delta", type=float, default=0.001, help="minimum improvement threshold for early stopping")
+
+    # ================================== 数据增强和可重现性配置 ==================================
+    parser.add_argument("--aug", action="store_true", default=False, help="enable data augmentation for training")
+    parser.add_argument("--freeze", action="store_true", default=False, help="freeze randomness for reproducibility")
+    parser.add_argument("--random_seed", type=int, default=42, help="random seed for reproducible results")
+
+    return parser
+
+
+def print_training_configuration(opt, device, dataset_name, model_name, original_save_path):
+    """
+    打印训练配置信息
+    """
+    print("=" * 80)
+    print("FULLY SUPERVISED TRAINING CONFIGURATION")
+    print("=" * 80)
+
+    # ================================== 基础配置 ==================================
+    print("📋 BASIC TRAINING SETTINGS")
+    print("-" * 40)
+    print(f"  Training Epochs: {opt.epoch}")
+    print(f"  Batch Size: {opt.batchsize}")
+    print(f"  Training Image Size: {opt.trainsize}x{opt.trainsize}")
+    print(f"  Device: {device}")
+    print(f"  Dataset Name: {dataset_name}")
+    print(f"  Model Name: {model_name}")
+
+    # ================================== 优化器配置 ==================================
+    print("\n⚙️  OPTIMIZER SETTINGS")
+    print("-" * 40)
+    print(f"  Generator Learning Rate: {opt.lr_gen}")
+    print(f"  Descriptor Learning Rate: {opt.lr_des}")
+    print(f"  Adam Beta: {opt.beta}")
+    print(f"  Gradient Clipping: {opt.clip}")
+    print(f"  LR Decay Factor: {opt.decay_rate}")
+    print(f"  LR Patience (epochs): {opt.decay_epoch}")
+
+    # ================================== 模型架构配置 ==================================
+    print("\n🏗️  MODEL ARCHITECTURE")
+    print("-" * 40)
+    print(f"  Generator Reduced Channels: {opt.gen_reduced_channel}")
+    print(f"  Descriptor Reduced Channels: {opt.des_reduced_channel}")
+    print(f"  Feature Channels: {opt.feat_channel}")
+    print(f"  Latent Dimension: {opt.latent_dim}")
+
+    # ================================== EBM配置 ==================================
+    print("\n⚡ ENERGY-BASED MODEL SETTINGS")
+    print("-" * 40)
+    print(f"  Langevin Steps: {opt.langevin_step_num_des}")
+    print(f"  Langevin Step Size: {opt.langevin_step_size_des}")
+    print(f"  Energy Function Form: {opt.energy_form}")
+
+    # ================================== 损失函数权重 ==================================
+    print("\n📊 LOSS FUNCTION WEIGHTS")
+    print("-" * 40)
+    print(f"  Smoothness Loss: {opt.sm_weight}")
+    print(f"  L2 Regularization: {opt.reg_weight}")
+    print(f"  Latent Loss: {opt.lat_weight}")
+    print(f"  VAE Loss: {opt.vae_loss_weight}")
+
+    # ================================== 数据集配置 ==================================
+    print("\n📁 DATASET CONFIGURATION")
+    print("-" * 40)
+    print(f"  Dataset Path: {opt.dataset_path}")
+    print(f"  Pretrained Weights: {opt.pretrained_weights or 'None'}")
+    print(f"  Original Save Path: {original_save_path}")
+    print(f"  Final Save Path: {opt.save_model_path}")
+
+    # ================================== 验证和早停配置 ==================================
+    print("\n✅ VALIDATION & EARLY STOPPING")
+    print("-" * 40)
+    print(f"  Validation Split: {opt.val_split}")
+    print(f"  Early Stopping Patience: {opt.patience}")
+    print(f"  Min Delta for Improvement: {opt.min_delta}")
+
+    # ================================== 数据增强配置 ==================================
+    print("\n🔀 DATA AUGMENTATION & REPRODUCIBILITY")
+    print("-" * 40)
+    print(f"  Data Augmentation: {opt.aug}")
+    print(f"  Freeze Randomness: {opt.freeze}")
+    print(f"  Random Seed: {opt.random_seed}")
+    if opt.freeze and opt.aug:
+        print("  ⚠️  NOTE: Data augmentation disabled due to freeze mode")
+
+    print("=" * 80)
+
+
+parser = create_argparser()
 parser.add_argument("--random_seed", type=int, default=42, help="random seed for reproducibility")  # 随机种子
 
 # aug	freeze	效果	适用场景
@@ -76,43 +171,8 @@ model_name = generate_model_name(dataset_name, opt.pretrained_weights)
 original_save_path = opt.save_model_path
 opt.save_model_path = os.path.join(original_save_path, model_name)
 
-print("\n========== Training Configuration ==========")
-print("Training Epochs: {}".format(opt.epoch))
-print("Learning Rates:")
-print("  - Generator: {}".format(opt.lr_gen))
-print("  - Descriptor: {}".format(opt.lr_des))
-print("\nOptimization Settings:")
-print("  - Batch Size: {}".format(opt.batchsize))
-print("  - Training Size: {}".format(opt.trainsize))
-print("  - Gradient Clip: {}".format(opt.clip))
-print("  - Adam Beta: {}".format(opt.beta))
-print("\nLearning Rate Schedule:")
-print("  - Decay Rate: {}".format(opt.decay_rate))
-print("  - Decay Epoch: {}".format(opt.decay_epoch))
-print("\nModel Architecture:")
-print("  - Generator Reduced Channel: {}".format(opt.gen_reduced_channel))
-print("  - Descriptor Reduced Channel: {}".format(opt.des_reduced_channel))
-print("  - Feature Channel: {}".format(opt.feat_channel))
-print("  - Latent Dimension: {}".format(opt.latent_dim))
-print("\nLoss Weights:")
-print("  - Smoothness Weight: {}".format(opt.sm_weight))
-print("  - Regularization Weight: {}".format(opt.reg_weight))
-print("  - Latent Loss Weight: {}".format(opt.lat_weight))
-print("  - VAE Loss Weight: {}".format(opt.vae_loss_weight))
-print("\nPaths:")
-print("  - Dataset Path: {}".format(opt.dataset_path))
-print("  - Dataset Name: {}".format(dataset_name))
-print("  - Model Name: {}".format(model_name))
-print("  - Original Save Path: {}".format(original_save_path))
-print("  - Final Save Path: {}".format(opt.save_model_path))
-print("  - Pretrained Weights: {}".format(opt.pretrained_weights))
-print("\nValidation Settings:")
-print("  - Validation Split: {}".format(opt.val_split))
-print("  - Early Stopping Patience: {}".format(opt.patience))
-print("  - Min Delta: {}".format(opt.min_delta))
-print("\nEBM Settings:")
-print("  - Langevin Steps: {}".format(opt.langevin_step_num_des))
-print("  - Langevin Step Size: {}".format(opt.langevin_step_size_des))
+# 打印训练配置
+print_training_configuration(opt, device, dataset_name, model_name, original_save_path)
 print("  - Energy Form: {}".format(opt.energy_form))
 print("\nData Augmentation & Reproducibility:")
 print("  - Data Augmentation: {}".format("Enabled" if opt.aug else "Disabled"))
@@ -164,7 +224,20 @@ early_stopping = EarlyStopping(patience=opt.patience, min_delta=opt.min_delta, r
 best_val_iou = 0.0
 best_epoch = 0
 
-scheduler = lr_scheduler.StepLR(generator_optimizer, step_size=10, gamma=0.5)
+# 学习率调度器 - 使用ReduceLROnPlateau调度器，根据损失自适应调整学习率
+scheduler = lr_scheduler.ReduceLROnPlateau(
+    generator_optimizer,
+    mode="min",  # 监控损失，当损失不再下降时减少学习率
+    factor=opt.decay_rate,  # 学习率衰减因子
+    patience=opt.decay_epoch,  # 等待多少个epoch后如果没有改善就减少学习率
+    min_lr=1e-7,  # 最小学习率
+)
+print(f"Learning Rate Scheduler configured:")
+print(f"  - Type: ReduceLROnPlateau (adaptive based on validation loss)")
+print(f"  - Patience (epochs to wait): {opt.decay_epoch}")
+print(f"  - Decay Factor: {opt.decay_rate}")
+print(f"  - Minimum LR: 1e-7")
+
 bce_loss = torch.nn.BCELoss()
 mse_loss = torch.nn.MSELoss(reduction="mean")  # 新版PyTorch使用reduction参数
 size_rates = [1]  # multi-scale training，尺度因子，这里设置为1表示不进行缩放
@@ -390,7 +463,10 @@ for epoch in range(1, (opt.epoch + 1)):
             if rate == 1:
                 loss_record.update(gen_loss.data, opt.batchsize)
 
-        if i % 10 == 0 or i == total_step:
+        # 打印训练信息 - 基于百分比打印（25%, 50%, 75%, 100%）
+        progress_points = [int(total_step * 0.25), int(total_step * 0.5), int(total_step * 0.75), total_step]
+        if i in progress_points:
+            progress_pct = (i / total_step) * 100
             # 计算像素级混淆矩阵指标
             with torch.no_grad():
                 # 二值化预测，阈值0.5
@@ -405,15 +481,10 @@ for epoch in range(1, (opt.epoch + 1)):
                 fn = ((pred_flat == 0) & (gt_flat == 1)).sum().item()
             # 打印总损失及混淆矩阵
             print(
-                "{} Epoch [{:03d}/{:03d}], Step [{:04d}/{:04d}], Gen Loss: {:.4f}, TP: {}, FP: {}, TN: {}, FN: {}".format(
-                    datetime.now(), epoch, opt.epoch, i, total_step, loss_record.show(), tp, fp, tn, fn
+                "{} Epoch [{:03d}/{:03d}], Step [{:04d}/{:04d}] ({:.0f}%), Gen Loss: {:.4f}, TP: {}, FP: {}, TN: {}, FN: {}".format(
+                    datetime.now(), epoch, opt.epoch, i, total_step, progress_pct, loss_record.show(), tp, fp, tn, fn
                 )
             )
-
-    # 在训练循环结束后调用scheduler.step()
-    scheduler.step()
-    current_lr = scheduler.get_last_lr()[0]
-    print(f"Epoch {epoch} completed. Current learning rate: {current_lr}")
 
     # 校验阶段
     print("Starting validation...")
@@ -425,6 +496,16 @@ for epoch in range(1, (opt.epoch + 1)):
     print(f"  Precision: {val_metrics['precision']:.4f}")
     print(f"  Recall: {val_metrics['recall']:.4f}")
     print(f"  Accuracy: {val_metrics['accuracy']:.4f}")
+
+    # 在验证后调用scheduler.step() - ReduceLROnPlateau需要传入监控的指标
+    old_lr = generator_optimizer.param_groups[0]["lr"]
+    scheduler.step(val_loss)  # 使用验证损失更新学习率
+    current_lr = generator_optimizer.param_groups[0]["lr"]
+
+    if old_lr != current_lr:
+        print(f"Epoch {epoch} completed. Learning rate changed: {old_lr:.6f} -> {current_lr:.6f}")
+    else:
+        print(f"Epoch {epoch} completed. Learning rate: {current_lr:.6f}")
 
     # 检查是否是最佳模型 - 使用IoU作为主要指标
     current_iou = val_metrics["iou"]
