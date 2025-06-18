@@ -47,6 +47,7 @@ import glob
 sys.path.append(str(Path(__file__).parent.parent))
 from trans_bvm.model.ResNet_models import Generator
 from transmission_map import find_transmission_map
+from smoothness import gradient_x, gradient_y, laplacian_edge
 
 
 def arg_parse():
@@ -61,7 +62,7 @@ def arg_parse():
     parser.add_argument("--feat_channel", type=int, default=32, help="特征通道数")
     parser.add_argument("--videos_path", type=str, default="../../data/ijmond_camera/videos", help="视频文件路径")
     parser.add_argument("--output_path", type=str, default="../../data/ijmond_camera/pseudo_labels", help="伪标签输出路径")
-    parser.add_argument("--pretrained_weights", type=str, default="../../models/self-supervision/Model_50_gen.pth", help="预训练权重路径")
+    parser.add_argument("--pretrained_weights", type=str, default="../../models/finetune/Model_50_gen_no_pretrained_weights.pth", help="预训练权重路径")
     parser.add_argument("--sampling_rate", type=int, default=1, help="帧采样率")
     parser.add_argument("--context_frames", type=int, default=2, help="高置信度帧前后的上下文帧数")
     parser.add_argument("--threshold", type=float, default=0.5, help="伪标签置信度阈值")
@@ -193,9 +194,47 @@ def predict_frames(model, image_paths, testsize, device):
     return predictions
 
 
+def calculate_mask_quality(pred_tensor):
+    """
+    计算预测mask的质量分数
+    Args:
+        pred_tensor: 预测结果张量 (torch.Tensor)
+    Returns:
+        float: 质量分数，越低表示质量越好（平滑性越好）
+    """
+    # 确保输入是4D张量 (batch_size, channels, height, width)
+    if len(pred_tensor.shape) == 2:
+        pred_tensor = pred_tensor.unsqueeze(0).unsqueeze(0)
+    elif len(pred_tensor.shape) == 3:
+        pred_tensor = pred_tensor.unsqueeze(0)
+
+    # 计算梯度幅度
+    grad_x = gradient_x(pred_tensor)
+    grad_y = gradient_y(pred_tensor)
+    gradient_magnitude = torch.sqrt(grad_x**2 + grad_y**2 + 1e-8)
+
+    # 计算拉普拉斯边缘
+    lap_edge = torch.abs(laplacian_edge(pred_tensor))
+
+    # 计算质量指标（值越小越好）
+    # 1. 梯度变化的平均值（边缘平滑性）
+    gradient_score = gradient_magnitude.mean().item()
+
+    # 2. 拉普拉斯响应的平均值（整体平滑性）
+    laplacian_score = lap_edge.mean().item()
+
+    # 3. 预测值的标准差（一致性）
+    consistency_score = pred_tensor.std().item()
+
+    # 综合质量分数（加权平均）
+    quality_score = gradient_score * 0.4 + laplacian_score * 0.4 + consistency_score * 0.2
+
+    return quality_score
+
+
 def select_high_confidence_frames(predictions, frame_infos, context_frames=2, threshold=0.5):
     """
-    选择高置信度帧及其上下文帧
+    选择高置信度帧及其上下文帧 - 改进版本
     Args:
         predictions: 预测结果字典
         frame_infos: 帧信息字典
@@ -207,19 +246,54 @@ def select_high_confidence_frames(predictions, frame_infos, context_frames=2, th
     # 按照置信度排序
     sorted_preds = sorted(predictions.items(), key=lambda x: x[1][1], reverse=True)
 
-    # 只选择置信度最高的帧（每个视频只选一个最高置信度帧）
-    if sorted_preds:
-        highest_confidence_frame = sorted_preds[0][0]
-    else:
+    if not sorted_preds:
         print("警告: 没有可用的帧")
         return []
 
-    # 为最高置信度帧添加上下文帧
+    # 选择置信度前三的帧进行质量评估
+    top_candidates = sorted_preds[: min(3, len(sorted_preds))]
+
+    print(f"评估置信度前 {len(top_candidates)} 帧的质量...")
+
+    best_frame = None
+    best_score = float("inf")
+    best_confidence = 0.0
+    best_quality = 0.0
+
+    for frame_path, (pred_numpy, confidence) in top_candidates:
+        # 将numpy数组转换为torch张量进行质量评估
+        pred_tensor = torch.from_numpy(pred_numpy).float()
+
+        # 计算mask质量分数
+        quality_score = calculate_mask_quality(pred_tensor)
+
+        # 综合评分：置信度越高越好，质量分数越低越好
+        # 归一化置信度到0-1，质量分数通常在0-1范围
+        normalized_confidence = confidence
+        combined_score = quality_score - normalized_confidence * 0.5  # 置信度权重为0.5
+
+        print(f"  帧 {os.path.basename(frame_path)}: 置信度={confidence:.3f}, 质量分数={quality_score:.3f}, 综合分数={combined_score:.3f}")
+
+        if combined_score < best_score:
+            best_score = combined_score
+            best_frame = frame_path
+            best_confidence = confidence
+            best_quality = quality_score
+
+    if best_frame is None:
+        print("警告: 无法选择最佳帧，使用置信度最高的帧")
+        best_frame = sorted_preds[0][0]
+        best_confidence = sorted_preds[0][1][1]
+        best_quality = 0.0
+
+    print(f"选择最佳帧: {os.path.basename(best_frame)} (置信度={best_confidence:.3f}, 质量分数={best_quality:.3f})")
+
+    # 为最佳帧添加上下文帧
     selected_frames = set()
-    frame_id = frame_infos[highest_confidence_frame]
+    frame_id = frame_infos[best_frame]
 
     # 添加中心帧
-    selected_frames.add(highest_confidence_frame)
+    selected_frames.add(best_frame)
 
     # 添加上下文帧
     for i in range(1, context_frames + 1):
@@ -235,7 +309,7 @@ def select_high_confidence_frames(predictions, frame_infos, context_frames=2, th
         if next_frame_paths:
             selected_frames.add(next_frame_paths[0])
 
-    print(f"选择了置信度最高的帧 (ID: {frame_id}) 及其前后各 {context_frames} 帧，总共 {len(selected_frames)} 帧")
+    print(f"选择了最佳帧 (ID: {frame_id}) 及其前后各 {context_frames} 帧，总共 {len(selected_frames)} 帧")
     return list(selected_frames)
 
 

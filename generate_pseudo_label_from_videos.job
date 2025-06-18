@@ -46,4 +46,4 @@ mkdir -p data/ijmond_camera/pl
 mkdir -p data/ijmond_camera/trans
 
 # 执行伪标签生成脚本
-python ijmond-camera-ai/bvm_training/trans_bvm_self_supervised_semi/inference.py --videos_path "data/ijmond_camera/videos" --output_path "data/ijmond_camera" --pretrained_weights "models/finetune/Model_50_gen_no_pretrained_weights.pth" --context_frames 2 --threshold 0.6
+python ijmond-camera-ai/bvm_training/trans_bvm_self_supervised_semi/inference.py --videos_path "data/ijmond_camera/videos" --output_path "data/ijmond_camera" --pretrained_weights "models/finetune/Model_50_gen_no_pretrained_weights.pth" --context_frames 2 --threshold 0.7
