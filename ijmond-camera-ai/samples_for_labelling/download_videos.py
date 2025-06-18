@@ -115,7 +115,7 @@ def get_video_url(v):
 def filter_by_label_criteria(data_dict, criteria="all"):
     """
     Filter videos based on label criteria.
-    
+
     Parameters
     ----------
     data_dict : list
@@ -127,22 +127,22 @@ def filter_by_label_criteria(data_dict, criteria="all"):
         - "positive_only": Only positive samples (various confidence levels)
         - "negative_only": Only negative samples (various confidence levels)
         - "gold_standard": Only gold standard samples (47, 32)
-    
+
     Returns
     -------
     list
         Filtered list of video dictionaries.
     """
     filtered_videos = []
-    
+
     for v in data_dict:
         # Always exclude poor quality videos
         if should_exclude_video(v):
             continue
-            
+
         ls = v.get("label_state", -1)
         lsa = v.get("label_state_admin", -1)
-        
+
         if criteria == "all":
             filtered_videos.append(v)
         elif criteria == "high_confidence":
@@ -154,14 +154,14 @@ def filter_by_label_criteria(data_dict, criteria="all"):
             if lsa in [47, 23] or ls in [47, 23, 19, 5]:
                 filtered_videos.append(v)
         elif criteria == "negative_only":
-            # All negative samples  
+            # All negative samples
             if lsa in [32, 16] or ls in [32, 16, 20, 4]:
                 filtered_videos.append(v)
         elif criteria == "gold_standard":
             # Only gold standard samples
             if lsa in [47, 32]:
                 filtered_videos.append(v)
-    
+
     return filtered_videos
 
 
@@ -174,16 +174,16 @@ def main(argv):
             print(f"Invalid criteria: {criteria}")
             print("Valid options: all, high_confidence, positive_only, negative_only, gold_standard")
             return
-    
+
     # Specify the path to the JSON file
-    json_file_path = "metadata_ijmond_jan_22_2024.json"
+    json_file_path = "ijmond-camera-ai/samples_for_labelling/metadata_ijmond_jan_22_2024.json"
 
     # Specify the path that we want to store the videos and create it
-    download_path = "data/videos/"
+    download_path = "data/ijmond_camera/videos/"
     check_and_create_dir(download_path)
 
     # Specify the path for labels file
-    labels_file_path = "data/video_labels.csv"
+    labels_file_path = "data/ijmond_camera/video_labels.csv"
     check_and_create_dir(labels_file_path)
 
     # Open the file and load its contents into a dictionary
@@ -196,14 +196,14 @@ def main(argv):
     # Apply filtering criteria
     filtered_videos = filter_by_label_criteria(data_dict, criteria)
     excluded_count = len(data_dict) - len(filtered_videos)
-    
+
     print(f"Videos after filtering: {len(filtered_videos)}")
     print(f"Excluded videos: {excluded_count}")
-    
+
     # Count poor quality exclusions separately
     poor_quality_count = sum(1 for v in data_dict if should_exclude_video(v))
     criteria_excluded = excluded_count - poor_quality_count
-    
+
     print(f"  - Poor quality exclusions: {poor_quality_count}")
     print(f"  - Criteria-based exclusions: {criteria_excluded}")
 
