@@ -7,7 +7,7 @@ import torch.nn.functional as F
 def laplacian_edge(img):
     laplacian_filter = torch.Tensor([[-1, -1, -1], [-1, 8, -1], [-1, -1, -1]])
     filter = torch.reshape(laplacian_filter, [1, 1, 3, 3])
-    filter = filter.to(img.device)  # 使用设备无关的方法
+    filter = filter.to(img.device)
     lap_edge = F.conv2d(img, filter, stride=1, padding=1)
     return lap_edge
 
@@ -15,7 +15,7 @@ def laplacian_edge(img):
 def gradient_x(img):
     sobel = torch.Tensor([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]])
     filter = torch.reshape(sobel, [1, 1, 3, 3])
-    filter = filter.to(img.device)  # 使用设备无关的方法
+    filter = filter.to(img.device)
     gx = F.conv2d(img, filter, stride=1, padding=1)
     return gx
 
@@ -23,7 +23,7 @@ def gradient_x(img):
 def gradient_y(img):
     sobel = torch.Tensor([[-1, -2, -1], [0, 0, 0], [1, 2, 1]])
     filter = torch.reshape(sobel, [1, 1, 3, 3])
-    filter = filter.to(img.device)  # 使用设备无关的方法
+    filter = filter.to(img.device)
     gy = F.conv2d(img, filter, stride=1, padding=1)
     return gy
 

@@ -1,0 +1,49 @@
+#!/bin/bash
+
+# ----------- SLURM 指令 ------------
+#SBATCH --job-name=pseudo_label_gen
+#SBATCH --partition=gpu_mig
+#SBATCH --gres=gpu:1
+#SBATCH --time=04:00:00
+#SBATCH --mem=16G
+#SBATCH --cpus-per-task=4
+#SBATCH --output=logs_out/pseudo_label_gen_%j.out
+#SBATCH --error=logs_err/pseudo_label_gen_%j.err
+
+# ============================================================================
+# 伪标签生成脚本参数说明（与 inference.py 保持同步）
+# ============================================================================
+
+# --------------- 基础参数 ---------------
+# --testsize:         测试图像大小 (默认: 352)
+# --latent_dim:       潜在空间维度 (默认: 3)
+# --feat_channel:     特征通道数 (默认: 32)
+
+# --------------- 路径参数 ---------------
+# --videos_path:      视频文件路径 (默认: data/ijmond_camera/videos)
+# --output_path:      输出路径 (默认: data/ijmond_camera)
+# --pretrained_weights: 预训练权重路径 (默认: models/self-supervision/Model_50_gen.pth)
+
+# --------------- 视频处理参数 ---------------
+# --sampling_rate:    帧采样率 (默认: 1)
+# --context_frames:   高置信度帧前后的上下文帧数 (默认: 2)
+# --threshold:        伪标签置信度阈值 (默认: 0.5)
+
+# ============================================================================
+
+# 创建日志目录
+mkdir -p logs_out logs_err
+
+# 加载执行环境
+module purge
+module load 2024
+source ~/anaconda3/etc/profile.d/conda.sh
+source activate dl2024 || { echo "Failed to activate Conda env"; exit 1; }
+
+# 创建输出目录结构
+mkdir -p data/ijmond_camera/img
+mkdir -p data/ijmond_camera/pl
+mkdir -p data/ijmond_camera/trans
+
+# 执行伪标签生成脚本
+python ijmond-camera-ai/bvm_training/trans_bvm_self_supervised_semi/inference.py --videos_path "data/ijmond_camera/videos" --output_path "data/ijmond_camera" --pretrained_weights "models/finetune/Model_50_gen_no_pretrained_weights.pth" --context_frames 2 --threshold 0.6

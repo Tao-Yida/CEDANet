@@ -153,7 +153,6 @@ def print_training_configuration(opt, device, dataset_name, model_name, original
 
 
 parser = create_argparser()
-parser.add_argument("--random_seed", type=int, default=42, help="random seed for reproducibility")  # 随机种子
 
 # aug	freeze	效果	适用场景
 # ❌	❌	基础训练，无增强	快速测试
