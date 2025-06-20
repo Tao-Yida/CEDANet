@@ -84,11 +84,11 @@ def argparser():
     # ================================== 验证和早停配置 ==================================
     parser.add_argument("--val_split", type=float, default=0.2, help="fraction of source data used for validation (0.0-1.0)")
     parser.add_argument("--patience", type=int, default=15, help="early stopping patience (epochs)")
-    parser.add_argument("--min_delta", type=float, default=0.001, help="minimum improvement threshold for early stopping")
+    parser.add_argument("--min_delta", type=float, default=0.0005, help="minimum improvement threshold for early stopping")
     parser.add_argument("--enable_validation", action="store_true", default=True, help="enable validation on source data subset")
 
     # ================================== 数据增强和可重现性配置 ==================================
-    parser.add_argument("--aug", action="store_true", default=False, help="enable data augmentation for target domain data")
+    parser.add_argument("--aug", action="store_true", default=True, help="enable data augmentation for both source and target domain data")
     parser.add_argument("--freeze", action="store_true", default=False, help="freeze randomness for reproducibility")
     parser.add_argument("--random_seed", type=int, default=42, help="random seed for reproducible results")
 
@@ -174,7 +174,7 @@ def load_labeled_data_with_validation(dataset_path, opt, freeze=False):
         batchsize=opt.batchsize,
         trainsize=opt.trainsize,
         val_split=opt.val_split,
-        aug=False,  # 标注数据不使用数据增强以保持稳定性
+        aug=opt.aug,  # 启用源域数据增强以提高泛化能力
         freeze=freeze,
         random_seed=opt.random_seed,
     )
@@ -261,7 +261,7 @@ def print_training_configuration(opt, device, model_name):
     # ================================== 数据增强配置 ==================================
     print("\n🔀 DATA AUGMENTATION & REPRODUCIBILITY")
     print("-" * 40)
-    print(f"  Data Augmentation: {opt.aug}")
+    print(f"  Data Augmentation (Both Domains): {opt.aug}")
     print(f"  Freeze Randomness: {opt.freeze}")
     print(f"  Random Seed: {opt.random_seed}")
     if opt.freeze and opt.aug:
@@ -308,7 +308,7 @@ if opt.enable_validation:
     validation_enabled = True
 else:
     # 非校验模式：使用所有源域数据进行训练
-    source_train_loader, source_train_step = load_data(opt.source_dataset_path, opt, aug=False, freeze=opt.freeze)
+    source_train_loader, source_train_step = load_data(opt.source_dataset_path, opt, aug=opt.aug, freeze=opt.freeze)
     val_loader = None
     print(f"源域训练集: {source_train_step} batches")
 

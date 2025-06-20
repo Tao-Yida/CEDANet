@@ -143,12 +143,14 @@ def get_loader(
     _print_augmentation_status(aug, freeze)
 
     # 创建数据加载器
-    train_loader = data.DataLoader(dataset, batch_size=batchsize, shuffle=actual_shuffle, num_workers=num_workers, pin_memory=pin_memory)
+    train_loader = data.DataLoader(
+        dataset, batch_size=batchsize, shuffle=actual_shuffle, num_workers=num_workers, pin_memory=pin_memory, drop_last=True
+    )
 
     return train_loader
 
 
-def  get_train_val_loaders(
+def get_train_val_loaders(
     image_root,
     gt_root,
     trans_map_root,
@@ -199,8 +201,10 @@ def  get_train_val_loaders(
     print(f"Validation set size: {len(val_dataset)}")
 
     # 创建数据加载器
-    train_loader = data.DataLoader(train_dataset, batch_size=batchsize, shuffle=actual_shuffle, num_workers=num_workers, pin_memory=pin_memory)
-    val_loader = data.DataLoader(val_dataset, batch_size=batchsize, shuffle=False, num_workers=num_workers, pin_memory=pin_memory)
+    train_loader = data.DataLoader(
+        train_dataset, batch_size=batchsize, shuffle=actual_shuffle, num_workers=num_workers, pin_memory=pin_memory, drop_last=True
+    )
+    val_loader = data.DataLoader(val_dataset, batch_size=batchsize, shuffle=False, num_workers=num_workers, pin_memory=pin_memory, drop_last=True)
 
     return train_loader, val_loader
 
