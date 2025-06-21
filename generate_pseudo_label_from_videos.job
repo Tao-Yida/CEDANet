@@ -29,6 +29,13 @@
 # --context_frames:   高置信度帧前后的上下文帧数 (默认: 2)
 # --threshold:        伪标签置信度阈值 (默认: 0.5)
 
+# --------------- 约束参数 ---------------
+# --constraint_type:  约束类型 (默认: none)
+#                     - none: 无约束，纯模型预测
+#                     - citizen: 使用市民标签约束 (label_state列)
+#                     - expert: 使用专家标签约束 (label_state_admin列)
+# --video_labels_csv: 视频标签CSV文件路径 (默认: data/ijmond_camera/video_labels.csv)
+
 # ============================================================================
 
 # 创建日志目录
@@ -41,9 +48,67 @@ source ~/anaconda3/etc/profile.d/conda.sh
 source activate dl2024 || { echo "Failed to activate Conda env"; exit 1; }
 
 # 创建输出目录结构
-mkdir -p data/ijmond_camera/img
-mkdir -p data/ijmond_camera/pl
-mkdir -p data/ijmond_camera/trans
+mkdir -p data/ijmond_camera/ijmond_900_trained
+# mkdir -p data/ijmond_camera/thesis_model
 
-# 执行伪标签生成脚本
-python ijmond-camera-ai/bvm_training/trans_bvm_self_supervised_semi/inference.py --videos_path "data/ijmond_camera/videos" --output_path "data/ijmond_camera" --pretrained_weights "models/finetune/Model_50_gen_no_pretrained_weights.pth" --context_frames 2 --threshold 0.7
+# ============================================================================
+# 伪标签生成 - 支持多种约束类型和模型
+# ============================================================================
+#
+# 输出目录结构：
+# data/ijmond_camera/
+# ├── ijmond_900_trained/         # 基础微调模型输出
+# │   ├── non_constraint/
+# │   ├── citizen_constraint/
+# │   └── expert_constraint/
+# └── thesis_model/           # 论文模型输出
+#     └── non_constraint/
+#
+# 注意：约束类型会自动在模型输出路径下创建对应子目录
+# ============================================================================
+
+echo "开始生成伪标签..."
+
+# 1. 无约束生成（基础模型）
+echo "执行无约束伪标签生成..."
+python ijmond-camera-ai/bvm_training/trans_bvm_self_supervised_thesis/inference.py \
+--videos_path "data/ijmond_camera/videos" \
+--output_path "data/ijmond_camera/ijmond_900_trained" \
+--pretrained_weights "models/finetune/Model_50_gen_no_pretrained_weights.pth" \
+--context_frames 2 \
+--threshold 0.7 \
+--constraint_type none
+
+# 2. 市民标签约束生成（基础模型）
+echo "执行市民标签约束伪标签生成..."
+python ijmond-camera-ai/bvm_training/trans_bvm_self_supervised_thesis/inference.py \
+--videos_path "data/ijmond_camera/videos" \
+--output_path "data/ijmond_camera/ijmond_900_trained" \
+--pretrained_weights "models/finetune/Model_50_gen_no_pretrained_weights.pth" \
+--context_frames 2 \
+--threshold 0.7 \
+--constraint_type citizen \
+--video_labels_csv "data/ijmond_camera/video_labels.csv"
+
+# 3. 专家标签约束生成（基础模型）
+echo "执行专家标签约束伪标签生成..."
+python ijmond-camera-ai/bvm_training/trans_bvm_self_supervised_thesis/inference.py \
+--videos_path "data/ijmond_camera/videos" \
+--output_path "data/ijmond_camera/ijmond_900_trained" \
+--pretrained_weights "models/finetune/Model_50_gen_no_pretrained_weights.pth" \
+--context_frames 2 \
+--threshold 0.7 \
+--constraint_type expert \
+--video_labels_csv "data/ijmond_camera/video_labels.csv"
+
+# 4. 可选：论文模型无约束生成（如需要，取消注释）
+# echo "执行无约束伪标签生成（论文模型）..."
+# python ijmond-camera-ai/bvm_training/trans_bvm_self_supervised_thesis/inference.py \
+# --videos_path "data/ijmond_camera/videos" \
+# --output_path "data/ijmond_camera/thesis_model" \
+# --pretrained_weights "models/thesis/best_model.pth" \
+# --context_frames 2 \
+# --threshold 0.7 \
+# --constraint_type none
+
+echo "所有伪标签生成任务完成！"

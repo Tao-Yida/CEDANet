@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import numpy as np
 
 
 # Gradient Reversal Layer
@@ -142,15 +141,15 @@ class DomainAdaptiveGenerator(nn.Module):
             features: 提取的特征图，形状为 (B, feat_channels, H', W')
         """
         # 按照sal_encoder的forward方法提取中间特征
-        sal_encoder = self.base_generator.sal_encoder # 获取sal_encoder实例，类型为Saliency_feat_encoder
+        sal_encoder = self.base_generator.sal_encoder  # 获取sal_encoder实例，类型为Saliency_feat_encoder
 
         # 重建sal_encoder前向传播的前半部分
         z = torch.unsqueeze(z, 2)
-        z = sal_encoder.tile(z, 2, x.shape[sal_encoder.spatial_axes[0]]) # spatial_axes[0]是高度轴
+        z = sal_encoder.tile(z, 2, x.shape[sal_encoder.spatial_axes[0]])  # spatial_axes[0]是高度轴
         z = torch.unsqueeze(z, 3)
-        z = sal_encoder.tile(z, 3, x.shape[sal_encoder.spatial_axes[1]]) # spatial_axes[1]是宽度轴
+        z = sal_encoder.tile(z, 3, x.shape[sal_encoder.spatial_axes[1]])  # spatial_axes[1]是宽度轴
         x_input = torch.cat((x, z), 1)
-        x_input = sal_encoder.conv_depth1(x_input) # 经过一个卷积层和一个批归一化层
+        x_input = sal_encoder.conv_depth1(x_input)  # 经过一个卷积层和一个批归一化层
 
         # 通过ResNet backbone
         x = sal_encoder.resnet.conv1(x_input)
@@ -217,23 +216,36 @@ class DomainAdaptiveGenerator(nn.Module):
 
 
 def compute_domain_loss(d_smoke_src, d_bg_src, d_smoke_tgt, d_bg_tgt, batch_size):
-    """计算域判别损失"""
+    """计算域判别损失 - 使用Wasserstein距离，统一处理不区分正负"""
     device = d_smoke_src.device
 
-    # 域标签：源域=0，目标域=1
-    label_src = torch.zeros(batch_size, dtype=torch.long, device=device)
-    label_tgt = torch.ones(batch_size, dtype=torch.long, device=device)
+    # Wasserstein距离损失计算 - 类似于交叉熵的统一形式
+    # 通过域标签来区分优化目标，而不是通过损失函数的符号
 
-    # 交叉熵损失
-    criterion = nn.CrossEntropyLoss()
+    def wasserstein_loss(d_output, domain_label):
+        """
+        统一的Wasserstein损失计算
+        Args:
+            d_output: 域判别器输出 (batch_size, 2)
+            domain_label: 域标签 (1 for source, -1 for target)
+        """
+        # 计算域判别分数 (源域分数 - 目标域分数)
+        domain_score = d_output[:, 0] - d_output[:, 1]
 
-    # 源域损失
-    loss_d_smoke_src = criterion(d_smoke_src, label_src)
-    loss_d_bg_src = criterion(d_bg_src, label_src)
+        # 统一的损失形式：-E[domain_label * domain_score]
+        # 当domain_label=1 (源域)时：-E[domain_score] → 希望domain_score为正
+        # 当domain_label=-1 (目标域)时：-E[-domain_score] = E[domain_score] → 希望domain_score为负
+        return -torch.mean(domain_label * domain_score)
 
-    # 目标域损失
-    loss_d_smoke_tgt = criterion(d_smoke_tgt, label_tgt)
-    loss_d_bg_tgt = criterion(d_bg_tgt, label_tgt)
+    # 域标签定义
+    source_label = 1.0  # 源域标签
+    target_label = -1.0  # 目标域标签
+
+    # 统一的损失计算 - 都返回正值损失
+    loss_d_smoke_src = wasserstein_loss(d_smoke_src, source_label)
+    loss_d_bg_src = wasserstein_loss(d_bg_src, source_label)
+    loss_d_smoke_tgt = wasserstein_loss(d_smoke_tgt, target_label)
+    loss_d_bg_tgt = wasserstein_loss(d_bg_tgt, target_label)
 
     # 总域损失
     domain_loss = (loss_d_smoke_src + loss_d_bg_src + loss_d_smoke_tgt + loss_d_bg_tgt) * 0.25
@@ -250,20 +262,28 @@ def compute_domain_loss(d_smoke_src, d_bg_src, d_smoke_tgt, d_bg_tgt, batch_size
 def compute_domain_accuracy(d_smoke_src, d_bg_src, d_smoke_tgt, d_bg_tgt):
     """
     计算域判别准确率，用于监控域适应训练效果
+    针对Wasserstein损失进行了调整
     理想情况下，准确率应该接近50%（域混淆成功）
     """
-    # 源域标签：0
-    # 目标域标签：1
+    # 对于Wasserstein损失，我们使用域分数来判断分类结果
+    # domain_score = output[:, 0] - output[:, 1]
+    # 正值表示源域，负值表示目标域
+
+    def get_predictions(d_output):
+        """根据Wasserstein分数获取域预测"""
+        domain_score = d_output[:, 0] - d_output[:, 1]
+        # 正分数预测为源域(0)，负分数预测为目标域(1)
+        return (domain_score < 0).long()  # 0 for source, 1 for target
 
     # 获取预测结果
-    pred_smoke_src = torch.argmax(d_smoke_src, dim=1)
-    pred_bg_src = torch.argmax(d_bg_src, dim=1)
-    pred_smoke_tgt = torch.argmax(d_smoke_tgt, dim=1)
-    pred_bg_tgt = torch.argmax(d_bg_tgt, dim=1)
+    pred_smoke_src = get_predictions(d_smoke_src)
+    pred_bg_src = get_predictions(d_bg_src)
+    pred_smoke_tgt = get_predictions(d_smoke_tgt)
+    pred_bg_tgt = get_predictions(d_bg_tgt)
 
     # 真实标签
-    label_src = torch.zeros_like(pred_smoke_src)
-    label_tgt = torch.ones_like(pred_smoke_tgt)
+    label_src = torch.zeros_like(pred_smoke_src)  # 源域标签: 0
+    label_tgt = torch.ones_like(pred_smoke_tgt)  # 目标域标签: 1
 
     # 计算准确率
     acc_smoke_src = (pred_smoke_src == label_src).float().mean()
