@@ -216,6 +216,42 @@ class DomainAdaptiveGenerator(nn.Module):
             return self.base_generator(x, y, training=False)
 
 
+class BatchTruncatedGCE(nn.Module):
+    """
+    只在单个 batch 内做截断的 GCE 损失，不需要全局索引。
+    Lq(p,y) = (1 - p_y^q) / q
+    loss_i = max(Lq(p_i,y_i) - Lq(k), 0)
+    最后对 batch 内所有样本求平均。
+    """
+
+    def __init__(self, q=0.7, k=0.5):
+        """
+        Args:
+            q: GCE 损失的指数参数，通常在 (0, 1) 之间
+            k: 截断阈值，通常在 (0, 1) 之间
+        """
+        super().__init__()
+        self.q = q
+        self.k = k
+        self.Lq_k = (1 - k**q) / q  # 截断阈值
+
+    def forward(self, logits, targets):
+        """
+        Args:
+            logits: 模型输出的 logits，形状为 [B, C]，其中 B 是批大小，C 是类别数
+            targets: 真实标签，形状为 [B]，每个元素是类别索引
+        Returns:
+            loss: 计算得到的 GCE 损失，形状为 [B]
+        """
+        # logits: [B, C], targets: [B]
+        p = F.softmax(logits, dim=1)  # [B, C]
+        p_true = p.gather(1, targets.unsqueeze(1)).squeeze(1)  # [B]
+        Lq = (1 - p_true.pow(self.q)) / self.q  # [B]
+        # 截断：只保留 Lq > Lq_k 的部分
+        loss = (Lq - self.Lq_k).clamp(min=0)  # [B]
+        return loss.mean()
+
+
 def compute_domain_loss(d_smoke_src, d_bg_src, d_smoke_tgt, d_bg_tgt, batch_size):
     """计算域判别损失"""
     device = d_smoke_src.device
@@ -225,7 +261,8 @@ def compute_domain_loss(d_smoke_src, d_bg_src, d_smoke_tgt, d_bg_tgt, batch_size
     label_tgt = torch.ones(batch_size, dtype=torch.long, device=device)
 
     # 交叉熵损失
-    criterion = nn.CrossEntropyLoss()
+    # criterion = nn.CrossEntropyLoss()
+    criterion = BatchTruncatedGCE(q=0.7, k=0.5)
 
     # 源域损失
     loss_d_smoke_src = criterion(d_smoke_src, label_src)
