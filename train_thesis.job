@@ -106,9 +106,8 @@ python ijmond-camera-ai/bvm_training/trans_bvm_self_supervised_thesis/train.py \
 --lr_gen 2.5e-5 \
 --domain_loss_weight 0.1 \
 --lambda_grl_max 1.0 \
-# --source_dataset_path "data/SMOKE5K_Dataset/SMOKE5K/train" \
 --source_dataset_path "data/SMOKE5K_Dataset/SMOKE5K/weak_supervision" \
---target_dataset_path "data/ijmond_camera" \
+--target_dataset_path "data/ijmond_camera/ijmond_900_trained/citizen_constraint" \
 --save_model_path "models/thesis/trained-on-ijmond-data" \
 --contrastive_loss_weight 0.1 \
 --no_samples 500
