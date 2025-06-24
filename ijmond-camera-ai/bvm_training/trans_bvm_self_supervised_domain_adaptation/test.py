@@ -200,7 +200,14 @@ for dataset in test_datasets:
         f1_score = 2 * precision * recall / (precision + recall + 1e-8)
         specificity = sum_TN / (sum_TN + sum_FP + 1e-8)
         accuracy = (sum_TP + sum_TN) / (sum_TP + sum_TN + sum_FP + sum_FN + 1e-8)
-        miou = sum_TP / (sum_TP + sum_FP + sum_FN + 1e-8)  # IoU for positive class
+
+        # IoU 计算
+        iou_positive = sum_TP / (sum_TP + sum_FP + sum_FN + 1e-8)  # 烟雾类 IoU
+        iou_negative = sum_TN / (sum_TN + sum_FP + sum_FN + 1e-8)  # 背景类 IoU
+        miou = (iou_positive + iou_negative) / 2  # 真正的 mIoU：两个类别 IoU 的平均
+
+        # Dice 系数（与 F1-Score 等价）
+        dice = 2 * sum_TP / (2 * sum_TP + sum_FP + sum_FN + 1e-8)
 
         # 打印结果
         print(f"\n=== Domain Adaptation Evaluation Results for {opt.test_dataset} dataset ===")
@@ -210,7 +217,10 @@ for dataset in test_datasets:
         print(f"F1-Score: {f1_score:.4f}")
         print(f"Specificity: {specificity:.4f}")
         print(f"Accuracy: {accuracy:.4f}")
+        print(f"IoU (Smoke): {iou_positive:.4f}")
+        print(f"IoU (Background): {iou_negative:.4f}")
         print(f"mIoU: {miou:.4f}")
+        print(f"Dice Coefficient: {dice:.4f}")
 
         # 混淆矩阵
         confusion_matrix = f"""
@@ -226,6 +236,9 @@ Actual N    {sum_FP:8d} {sum_TN:8d}
         metrics_file = os.path.join(save_path, "evaluation_metrics.txt")
         with open(metrics_file, "w") as f:
             f.write(f"Domain Adaptation Evaluation Results for {opt.test_dataset} dataset\n")
+            f.write(f"Test Dataset: {opt.test_dataset}\n")
+            f.write(f"Dataset Path: {dataset_path}\n")
+            f.write(f"GT Path: {gt_root}\n")
             f.write(f"Model: {opt.model_path}\n")
             f.write(f"Method: domain_adaptation\n")
             f.write(f"Test size: {opt.testsize}\n")
@@ -239,7 +252,10 @@ Actual N    {sum_FP:8d} {sum_TN:8d}
             f.write(f"F1-Score: {f1_score:.6f}\n")
             f.write(f"Specificity: {specificity:.6f}\n")
             f.write(f"Accuracy: {accuracy:.6f}\n")
-            f.write(f"mIoU: {miou:.6f}\n\n")
+            f.write(f"IoU (Smoke): {iou_positive:.6f}\n")
+            f.write(f"IoU (Background): {iou_negative:.6f}\n")
+            f.write(f"mIoU: {miou:.6f}\n")
+            f.write(f"Dice Coefficient: {dice:.6f}\n\n")
 
             f.write("Confusion Matrix:\n")
             f.write("                Predicted\n")

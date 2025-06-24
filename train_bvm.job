@@ -72,4 +72,4 @@ source ~/anaconda3/etc/profile.d/conda.sh
 source activate dl2024 || { echo "Failed to activate Conda env"; exit 1; }
 
 # 执行训练脚本
-python ijmond-camera-ai/bvm_training/trans_bvm/train.py --epoch 50 --dataset_path "data/SMOKE5K_Dataset/SMOKE5K/train" --save_model_path "models/full-supervision/SMOKE5K-syn" --aug
+python ijmond-camera-ai/bvm_training/trans_bvm/train.py --epoch 300 --dataset_path "data/ijmond_data/test" --save_model_path "models/full-supervision/ijmond-limited-test" --random_seed 15 --aug --patience 40 --min_delta 0.0002

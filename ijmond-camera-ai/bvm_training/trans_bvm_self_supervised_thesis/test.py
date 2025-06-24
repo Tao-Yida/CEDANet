@@ -13,7 +13,7 @@ import cv2
 parser = argparse.ArgumentParser()
 parser.add_argument("--testsize", type=int, default=352, help="testing size")
 parser.add_argument("--langevin_step_num_des", type=int, default=10, help="number of langevin steps for ebm")
-parser.add_argument("-langevin_step_size_des", type=float, default=0.026, help="step size of EBM langevin")
+parser.add_argument("--langevin_step_size_des", type=float, default=0.026, help="step size of EBM langevin")
 parser.add_argument("--energy_form", default="identity", help="tanh | sigmoid | identity | softplus")
 parser.add_argument("--latent_dim", type=int, default=3, help="latent dim")
 parser.add_argument("--feat_channel", type=int, default=32, help="reduced channel of saliency feat")
@@ -21,6 +21,7 @@ parser.add_argument("--model_path", type=str, default="./models/domain_adapt/Mod
 parser.add_argument("--test_dataset", type=str, default="ijmond", choices=["ijmond", "smoke5k"], help="test dataset: ijmond | smoke5k")
 parser.add_argument("--num_domains", type=int, default=2, help="number of domains (source=0, target=1)")
 parser.add_argument("--domain_loss_weight", type=float, default=0.1, help="domain loss weight used during training")
+parser.add_argument("--use_ldconv", action="store_true", default=False, help="use LDConv in domain discriminators")
 opt = parser.parse_args()
 
 # 根据测试数据集设置数据路径
@@ -36,7 +37,11 @@ print(f"Using device: {device}")
 # 构建域适应模型
 base_generator = Generator(channel=opt.feat_channel, latent_dim=opt.latent_dim, num_filters=16)
 model = create_domain_adaptive_model(
-    base_generator=base_generator, feat_channels=opt.feat_channel, num_domains=opt.num_domains, domain_loss_weight=opt.domain_loss_weight
+    base_generator=base_generator,
+    feat_channels=opt.feat_channel,
+    num_domains=opt.num_domains,
+    domain_loss_weight=opt.domain_loss_weight,
+    use_ldconv=opt.use_ldconv,
 )
 
 # 鲁棒的模型加载
@@ -59,12 +64,29 @@ try:
         print(f"Successfully loaded generator: {len(filtered_dict)}/{len(generator_dict)} parameters")
 
         # 如果有域适应器权重，也尝试加载
-        if "domain_adapter_state_dict" in checkpoint:
+        if "domain_disc_smoke.weight" in checkpoint or "domain_disc_bg.weight" in checkpoint:
             try:
-                model.load_state_dict(checkpoint, strict=False)
+                # 尝试加载完整的域适应模型权重
+                filtered_model_dict = {}
+                model_state_dict = model.state_dict()
+                for k, v in checkpoint.items():
+                    if k in model_state_dict and checkpoint[k].shape == model_state_dict[k].shape:
+                        filtered_model_dict[k] = v
+                model.load_state_dict(filtered_model_dict, strict=False)
                 print("Successfully loaded complete domain adaptive model")
-            except:
-                print("Warning: Could not load domain adapter weights, using only generator")
+            except Exception as e:
+                print(f"Warning: Could not load domain adapter weights: {e}, using only generator")
+    elif isinstance(checkpoint, dict) and "base_generator.sal_encoder.resnet.conv1.weight" in checkpoint:
+        # 检查点直接包含base_generator的完整权重
+        base_generator_dict = base_generator.state_dict()
+        filtered_dict = {}
+        for k, v in checkpoint.items():
+            # 移除 "base_generator." 前缀（如果存在）
+            clean_key = k.replace("base_generator.", "") if k.startswith("base_generator.") else k
+            if clean_key in base_generator_dict and checkpoint[k].shape == base_generator_dict[clean_key].shape:
+                filtered_dict[clean_key] = v
+        base_generator.load_state_dict(filtered_dict, strict=False)
+        print(f"Successfully loaded base generator weights: {len(filtered_dict)}/{len(checkpoint)} parameters")
     else:
         # 假设这是单纯的生成器权重
         base_generator_dict = base_generator.state_dict()
@@ -82,6 +104,26 @@ except Exception as e:
 
 model.to(device)
 model.eval()
+
+# 添加调试信息：检查模型结构
+print(f"Domain adaptive model components:")
+print(f"  - Base generator parameters: {sum(p.numel() for p in model.base_generator.parameters())}")
+print(f"  - Domain discriminator (smoke) parameters: {sum(p.numel() for p in model.domain_disc_smoke.parameters())}")
+print(f"  - Domain discriminator (bg) parameters: {sum(p.numel() for p in model.domain_disc_bg.parameters())}")
+print(f"  - Total model parameters: {sum(p.numel() for p in model.parameters())}")
+print(f"  - Model is on device: {next(model.parameters()).device}")
+
+# 测试模型推理
+print("Testing model inference...")
+test_input = torch.randn(1, 3, opt.testsize, opt.testsize).to(device)
+try:
+    with torch.no_grad():
+        test_output = model(test_input, training=False)
+    print(f"Model inference test successful. Output shape: {test_output.shape}")
+except Exception as e:
+    print(f"Model inference test failed: {e}")
+    print("Please check the model architecture compatibility")
+    exit(1)
 
 # 初始化累积指标
 sum_TP = 0
@@ -111,7 +153,7 @@ for dataset in test_datasets:
     model_dir = os.path.basename(os.path.dirname(opt.model_path))  # 父目录名
 
     # 构建保存路径，包含模型信息和域适应标识
-    save_path = os.path.join("./results", "domain_adapted", opt.test_dataset, model_dir, model_name, dataset)
+    save_path = os.path.join("./results", "thesis", opt.test_dataset, model_dir, model_name, dataset)
 
     if not os.path.exists(save_path):
         os.makedirs(save_path)
@@ -153,7 +195,7 @@ for dataset in test_datasets:
         with torch.no_grad():
             # 域适应模型的前向传播 - 推理模式下只返回最终的预测结果
             generator_pred = model(image, training=False)
-            # 在推理模式下，基础生成器只返回一个值：self.prob_pred
+            # 在推理模式下，域适应模型调用基础生成器，只返回self.prob_pred
 
         res = generator_pred
         res = F.interpolate(res, size=[WW, HH], mode="bilinear", align_corners=False)
@@ -200,7 +242,14 @@ for dataset in test_datasets:
         f1_score = 2 * precision * recall / (precision + recall + 1e-8)
         specificity = sum_TN / (sum_TN + sum_FP + 1e-8)
         accuracy = (sum_TP + sum_TN) / (sum_TP + sum_TN + sum_FP + sum_FN + 1e-8)
-        miou = sum_TP / (sum_TP + sum_FP + sum_FN + 1e-8)  # IoU for positive class
+
+        # IoU 计算
+        iou_positive = sum_TP / (sum_TP + sum_FP + sum_FN + 1e-8)  # 烟雾类 IoU
+        iou_negative = sum_TN / (sum_TN + sum_FP + sum_FN + 1e-8)  # 背景类 IoU
+        miou = (iou_positive + iou_negative) / 2  # 真正的 mIoU：两个类别 IoU 的平均
+
+        # Dice 系数（与 F1-Score 等价）
+        dice = 2 * sum_TP / (2 * sum_TP + sum_FP + sum_FN + 1e-8)
 
         # 打印结果
         print(f"\n=== Domain Adaptation Evaluation Results for {opt.test_dataset} dataset ===")
@@ -210,7 +259,10 @@ for dataset in test_datasets:
         print(f"F1-Score: {f1_score:.4f}")
         print(f"Specificity: {specificity:.4f}")
         print(f"Accuracy: {accuracy:.4f}")
+        print(f"IoU (Smoke): {iou_positive:.4f}")
+        print(f"IoU (Background): {iou_negative:.4f}")
         print(f"mIoU: {miou:.4f}")
+        print(f"Dice Coefficient: {dice:.4f}")
 
         # 混淆矩阵
         confusion_matrix = f"""
@@ -226,8 +278,11 @@ Actual N    {sum_FP:8d} {sum_TN:8d}
         metrics_file = os.path.join(save_path, "evaluation_metrics.txt")
         with open(metrics_file, "w") as f:
             f.write(f"Domain Adaptation Evaluation Results for {opt.test_dataset} dataset\n")
+            f.write(f"Test Dataset: {opt.test_dataset}\n")
+            f.write(f"Dataset Path: {dataset_path}\n")
+            f.write(f"GT Path: {gt_root}\n")
             f.write(f"Model: {opt.model_path}\n")
-            f.write(f"Method: domain_adaptation\n")
+            f.write(f"Method: domain_adaptation_thesis\n")
             f.write(f"Test size: {opt.testsize}\n")
             f.write(f"Number of domains: {opt.num_domains}\n")
             f.write(f"Domain loss weight: {opt.domain_loss_weight}\n")
@@ -239,7 +294,10 @@ Actual N    {sum_FP:8d} {sum_TN:8d}
             f.write(f"F1-Score: {f1_score:.6f}\n")
             f.write(f"Specificity: {specificity:.6f}\n")
             f.write(f"Accuracy: {accuracy:.6f}\n")
-            f.write(f"mIoU: {miou:.6f}\n\n")
+            f.write(f"IoU (Smoke): {iou_positive:.6f}\n")
+            f.write(f"IoU (Background): {iou_negative:.6f}\n")
+            f.write(f"mIoU: {miou:.6f}\n")
+            f.write(f"Dice Coefficient: {dice:.6f}\n\n")
 
             f.write("Confusion Matrix:\n")
             f.write("                Predicted\n")

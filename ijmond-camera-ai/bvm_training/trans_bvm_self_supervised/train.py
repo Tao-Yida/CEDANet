@@ -6,12 +6,8 @@ from datetime import datetime
 from torch.optim import lr_scheduler
 from model.ResNet_models import Generator
 from dataloader import get_loader, get_dataset_name_from_path, get_train_val_loaders
-from utils import adjust_lr, AvgMeter, EarlyStopping, validate_model, generate_model_name, generate_checkpoint_filename, generate_best_model_filename
-from scipy import misc
-import cv2
-import torchvision.transforms as transforms
+from utils import AvgMeter, EarlyStopping, validate_model, generate_model_name, generate_checkpoint_filename, generate_best_model_filename
 from utils import l2_regularisation
-import smoothness
 from lscloss import *
 from itertools import cycle
 from cont_loss import intra_inter_contrastive_loss
@@ -26,37 +22,26 @@ def argparser():
 
     # ================================== 基础训练配置 ==================================
     parser.add_argument("--epoch", type=int, default=50, help="number of training epochs")
-    parser.add_argument("--batchsize", type=int, default=6, help="batch size for training")
+    parser.add_argument("--batchsize", type=int, default=8, help="batch size for training")
     parser.add_argument("--trainsize", type=int, default=352, help="input image resolution (trainsize x trainsize)")
 
     # ================================== 优化器配置 ==================================
-    parser.add_argument("--lr_gen", type=float, default=2.5e-5, help="learning rate for generator")
-    parser.add_argument("--lr_des", type=float, default=2.5e-5, help="learning rate for descriptor")
+    parser.add_argument("--lr_gen", type=float, default=5e-5, help="learning rate for generator")
     parser.add_argument("--beta", type=float, default=0.5, help="beta parameter for Adam optimizer")
     parser.add_argument("--clip", type=float, default=0.5, help="gradient clipping threshold")
-    parser.add_argument("--decay_rate", type=float, default=0.9, help="learning rate decay factor for ReduceLROnPlateau")
-    parser.add_argument("--decay_epoch", type=int, default=6, help="patience epochs for ReduceLROnPlateau scheduler")
+    parser.add_argument("--decay_rate", type=float, default=0.8, help="learning rate decay factor for ReduceLROnPlateau")
+    parser.add_argument("--decay_epoch", type=int, default=12, help="patience epochs for ReduceLROnPlateau scheduler")
 
     # ================================== 模型架构配置 ==================================
-    parser.add_argument("--gen_reduced_channel", type=int, default=32, help="reduced channel count in generator")
-    parser.add_argument("--des_reduced_channel", type=int, default=64, help="reduced channel count in descriptor")
     parser.add_argument("--feat_channel", type=int, default=32, help="feature channel count for saliency features")
     parser.add_argument("--latent_dim", type=int, default=3, help="latent space dimension")
     parser.add_argument("--num_filters", type=int, default=16, help="number of filters for contrastive loss layer")
 
-    # ================================== EBM模型配置 ==================================
-    parser.add_argument("--langevin_step_num_des", type=int, default=10, help="number of Langevin steps for EBM")
-    parser.add_argument("--langevin_step_size_des", type=float, default=0.026, help="step size for EBM Langevin sampling")
-    parser.add_argument(
-        "--energy_form", type=str, default="identity", choices=["tanh", "sigmoid", "identity", "softplus"], help="energy function form"
-    )
-
     # ================================== 损失函数权重配置 ==================================
-    parser.add_argument("--sm_weight", type=float, default=0.1, help="weight for smoothness loss")
     parser.add_argument("--reg_weight", type=float, default=1e-4, help="weight for L2 regularization")
-    parser.add_argument("--lat_weight", type=float, default=10.0, help="weight for latent loss")
-    parser.add_argument("--vae_loss_weight", type=float, default=0.4, help="weight for VAE loss component")
-    parser.add_argument("--contrastive_loss_weight", type=float, default=0.1, help="weight for contrastive loss")
+    parser.add_argument("--lat_weight", type=float, default=2.0, help="weight for latent loss")
+    parser.add_argument("--vae_loss_weight", type=float, default=1.0, help="weight for VAE loss component")
+    parser.add_argument("--contrastive_loss_weight", type=float, default=0.2, help="weight for contrastive loss")
 
     # ================================== 半监督学习配置 ==================================
     parser.add_argument("--inter", action="store_true", default=False, help="use inter-image pixel matching (vs intra-image)")
@@ -68,17 +53,18 @@ def argparser():
         "--unlabeled_dataset_path", type=str, default="data/SMOKE5K_Dataset/SMOKE5K/weak_supervision", help="path to unlabeled dataset"
     )
     parser.add_argument("--pretrained_weights", type=str, default=None, help="path to pretrained model weights")
-    parser.add_argument("--save_model_path", type=str, default="models/self-supervision", help="directory to save trained models")
+    parser.add_argument("--save_model_path", type=str, default="models/semi-supervision", help="directory to save trained models")
 
     # ================================== 验证和早停配置 ==================================
     parser.add_argument("--val_split", type=float, default=0.2, help="fraction of labeled data used for validation (0.0-1.0)")
     parser.add_argument("--patience", type=int, default=15, help="early stopping patience (epochs)")
     parser.add_argument("--min_delta", type=float, default=0.001, help="minimum improvement threshold for early stopping")
-    parser.add_argument("--enable_validation", action="store_true", default=True, help="enable validation on labeled data subset")
+    parser.add_argument("--enable_validation", action="store_true", default=False, help="enable validation on labeled data subset")
 
     # ================================== 数据增强和可重现性配置 ==================================
-    parser.add_argument("--aug", action="store_true", default=False, help="enable data augmentation for unlabeled data")
-    parser.add_argument("--freeze", action="store_true", default=False, help="freeze randomness for reproducibility")
+    parser.add_argument("--aug", action="store_true", help="enable data augmentation for unlabeled data")
+    parser.add_argument("--no_aug", action="store_true", help="disable data augmentation for unlabeled data")
+    parser.add_argument("--freeze", action="store_true", help="freeze randomness for reproducibility")
     parser.add_argument("--random_seed", type=int, default=42, help="random seed for reproducible results")
 
     return parser.parse_args()
@@ -111,8 +97,10 @@ def structure_loss(pred, mask):
     return (weighted_bce_loss + weighted_IoU_loss).mean()
 
 
+# 以下为调试用的可视化函数，训练时通常不需要
+# 如需调试可以取消注释
+"""
 def visualize_prediction_init(pred):
-
     for kk in range(pred.shape[0]):
         pred_edge_kk = pred[kk, :, :, :]
         pred_edge_kk = pred_edge_kk.detach().cpu().numpy().squeeze()
@@ -124,7 +112,6 @@ def visualize_prediction_init(pred):
 
 
 def visualize_prediction_ref(pred):
-
     for kk in range(pred.shape[0]):
         pred_edge_kk = pred[kk, :, :, :]
         pred_edge_kk = pred_edge_kk.detach().cpu().numpy().squeeze()
@@ -136,7 +123,6 @@ def visualize_prediction_ref(pred):
 
 
 def visualize_gt(var_map):
-
     for kk in range(var_map.shape[0]):
         pred_edge_kk = var_map[kk, :, :, :]
         pred_edge_kk = pred_edge_kk.detach().cpu().numpy().squeeze()
@@ -188,6 +174,7 @@ def save_tensor_as_image(tensor, path):
     # # Save the image
     # img.save(path)
     # print(f'Image saved to {path}')
+"""
 
 
 ## linear annealing to avoid posterior collapse
@@ -257,6 +244,12 @@ def load_labeled_data_with_validation(dataset_path, opt, freeze=False):
 
 opt = argparser()
 
+# 处理数据增强的逻辑 - 默认启用增强，除非明确禁用
+if opt.no_aug:
+    opt.aug = False
+else:
+    opt.aug = True  # 默认启用数据增强
+
 # 获取数据集名称并生成模型名称
 labeled_dataset_name = get_dataset_name_from_path(opt.labeled_dataset_path)
 unlabeled_dataset_name = get_dataset_name_from_path(opt.unlabeled_dataset_path)
@@ -285,7 +278,6 @@ def print_training_configuration(opt, device, labeled_dataset_name, unlabeled_da
     print("\n⚙️  OPTIMIZER SETTINGS")
     print("-" * 40)
     print(f"  Generator Learning Rate: {opt.lr_gen}")
-    print(f"  Descriptor Learning Rate: {opt.lr_des}")
     print(f"  Adam Beta: {opt.beta}")
     print(f"  Gradient Clipping: {opt.clip}")
     print(f"  LR Decay Factor: {opt.decay_rate}")
@@ -294,23 +286,13 @@ def print_training_configuration(opt, device, labeled_dataset_name, unlabeled_da
     # ================================== 模型架构配置 ==================================
     print("\n🏗️  MODEL ARCHITECTURE")
     print("-" * 40)
-    print(f"  Generator Reduced Channels: {opt.gen_reduced_channel}")
-    print(f"  Descriptor Reduced Channels: {opt.des_reduced_channel}")
     print(f"  Feature Channels: {opt.feat_channel}")
     print(f"  Latent Dimension: {opt.latent_dim}")
     print(f"  Contrastive Layer Filters: {opt.num_filters}")
 
-    # ================================== EBM配置 ==================================
-    print("\n⚡ ENERGY-BASED MODEL SETTINGS")
-    print("-" * 40)
-    print(f"  Langevin Steps: {opt.langevin_step_num_des}")
-    print(f"  Langevin Step Size: {opt.langevin_step_size_des}")
-    print(f"  Energy Function Form: {opt.energy_form}")
-
     # ================================== 损失函数权重 ==================================
     print("\n📊 LOSS FUNCTION WEIGHTS")
     print("-" * 40)
-    print(f"  Smoothness Loss: {opt.sm_weight}")
     print(f"  L2 Regularization: {opt.reg_weight}")
     print(f"  Latent Loss: {opt.lat_weight}")
     print(f"  VAE Loss: {opt.vae_loss_weight}")
@@ -349,8 +331,12 @@ def print_training_configuration(opt, device, labeled_dataset_name, unlabeled_da
     print(f"  Random Seed: {opt.random_seed}")
     if opt.freeze:
         print("  ⚠️  WARNING: Freeze mode enabled - all randomness frozen for debugging")
-    if opt.freeze and opt.aug:
-        print("  ⚠️  NOTE: Data augmentation disabled due to freeze mode")
+        if opt.aug:
+            print("  ⚠️  NOTE: Data augmentation disabled due to freeze mode")
+    elif opt.aug:
+        print("  ✅ Data augmentation enabled for unlabeled data")
+    else:
+        print("  ❌ Data augmentation disabled")
 
     print("=" * 80)
 
@@ -364,10 +350,17 @@ print_training_configuration(opt, device, labeled_dataset_name, unlabeled_datase
 generator = Generator(channel=opt.feat_channel, latent_dim=opt.latent_dim, num_filters=opt.num_filters)
 if opt.pretrained_weights is not None:
     print(f"Load pretrained weights: {opt.pretrained_weights}")
-    generator.load_state_dict(torch.load(opt.pretrained_weights, map_location=device))
-generator.to(device)  # 使用统一的设备管理
+    try:
+        checkpoint = torch.load(opt.pretrained_weights, map_location=device)
+        generator.load_state_dict(checkpoint)
+        print("✅ Pretrained weights loaded successfully")
+    except Exception as e:
+        print(f"❌ Failed to load pretrained weights: {e}")
+        print("Continuing with random initialization...")
+
+generator.to(device)
 generator_params = generator.parameters()
-generator_optimizer = torch.optim.Adam(generator_params, opt.lr_gen, betas=(opt.beta, 0.999))  # 修复betas参数
+generator_optimizer = torch.optim.Adam(generator_params, opt.lr_gen, betas=(opt.beta, 0.999))
 
 # Load labeled data (with or without validation split)
 if opt.enable_validation:
@@ -420,7 +413,6 @@ print(f"  - Minimum LR: 1e-7")
 
 # Loss functions
 size_rates = [1]  # multi-scale training
-smooth_loss = smoothness.smoothness_loss(size_average=True)  # 平滑性损失函数，约束生成的图像平滑性
 loss_lsc = LocalSaliencyCoherence().to(device)  # 局部显著性一致性损失函数，在细粒度区域加强预测的一致性
 loss_lsc_kernels_desc_defaults = [{"weight": 0.1, "xy": 3, "trans": 0.1}]
 loss_lsc_radius = 2
@@ -544,7 +536,12 @@ for epoch in range(1, opt.epoch + 1):
             generator_optimizer.step()
 
             if rate == 1:
-                loss_record.update(gen_loss.data, opt.batchsize)  # 这里传入tensor而不是标量
+                loss_record.update(gen_loss.item(), opt.batchsize)
+
+            # 释放GPU内存
+            del gen_loss
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
 
         # 打印训练信息 - 基于百分比打印（25%, 50%, 75%, 100%）
         progress_points = [int(total_step * 0.25), int(total_step * 0.5), int(total_step * 0.75), total_step]

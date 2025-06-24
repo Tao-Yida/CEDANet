@@ -10,7 +10,6 @@ import torch
 import torch.nn.functional as F
 import numpy as np
 import os, argparse
-import smoothness
 from datetime import datetime
 from torch.optim import lr_scheduler
 from model.ResNet_models import Generator
@@ -55,7 +54,6 @@ def argparser():
     parser.add_argument("--num_filters", type=int, default=16, help="number of filters for contrastive loss layer")
 
     # ================================== 损失函数权重配置 ==================================
-    parser.add_argument("--sm_weight", type=float, default=0.1, help="weight for smoothness loss")
     parser.add_argument("--reg_weight", type=float, default=1e-4, help="weight for L2 regularization")
     parser.add_argument("--lat_weight", type=float, default=10.0, help="weight for latent loss")
     parser.add_argument("--vae_loss_weight", type=float, default=0.4, help="weight for VAE loss component")
@@ -221,7 +219,6 @@ def print_training_configuration(opt, device, model_name):
     # ================================== 损失函数权重 ==================================
     print("\n📊 LOSS FUNCTION WEIGHTS")
     print("-" * 40)
-    print(f"  Smoothness Loss: {opt.sm_weight}")
     print(f"  L2 Regularization: {opt.reg_weight}")
     print(f"  Latent Loss: {opt.lat_weight}")
     print(f"  VAE Loss: {opt.vae_loss_weight}")
@@ -368,7 +365,6 @@ print(f"  - Minimum LR: 1e-7")
 
 # 损失函数
 size_rates = [1]  # multi-scale training
-smooth_loss = smoothness.smoothness_loss(size_average=True).to(device)  # 平滑性损失函数
 loss_lsc = LocalSaliencyCoherence().to(device)  # 局部显著性一致性损失函数
 loss_lsc_kernels_desc_defaults = [{"weight": 0.1, "xy": 3, "trans": 0.1}]
 loss_lsc_radius = 2

@@ -10,7 +10,6 @@ import torch
 import torch.nn.functional as F
 import numpy as np
 import os, argparse
-import smoothness
 from datetime import datetime
 from torch.optim import lr_scheduler
 from model.ResNet_models import Generator
@@ -42,20 +41,19 @@ def argparser():
     parser.add_argument("--trainsize", type=int, default=352, help="input image resolution (trainsize x trainsize)")
 
     # ================================== 优化器配置 ==================================
-    parser.add_argument("--lr_gen", type=float, default=2.5e-4, help="learning rate for generator")
+    parser.add_argument("--lr_gen", type=float, default=8e-5, help="learning rate for generator")
     parser.add_argument("--beta", type=float, default=0.5, help="beta parameter for Adam optimizer")
     parser.add_argument("--clip", type=float, default=0.5, help="gradient clipping threshold")
-    parser.add_argument("--decay_rate", type=float, default=0.9, help="learning rate decay factor for ReduceLROnPlateau")
+    parser.add_argument("--decay_rate", type=float, default=0.8, help="learning rate decay factor for ReduceLROnPlateau")
     parser.add_argument("--decay_epoch", type=int, default=6, help="patience epochs for ReduceLROnPlateau scheduler")
 
     # ================================== 模型架构配置 ==================================
-    parser.add_argument("--gen_reduced_channel", type=int, default=32, help="reduced channel count in generator")
-    parser.add_argument("--feat_channel", type=int, default=32, help="feature channel count for saliency features")
-    parser.add_argument("--latent_dim", type=int, default=3, help="latent space dimension")
+    parser.add_argument("--gen_reduced_channel", type=int, default=48, help="reduced channel count in generator")
+    parser.add_argument("--feat_channel", type=int, default=64, help="feature channel count for saliency features")
+    parser.add_argument("--latent_dim", type=int, default=8, help="latent space dimension")
     parser.add_argument("--num_filters", type=int, default=16, help="number of filters for contrastive loss layer")
 
     # ================================== 损失函数权重配置 ==================================
-    parser.add_argument("--sm_weight", type=float, default=0.1, help="weight for smoothness loss")
     parser.add_argument("--reg_weight", type=float, default=1e-4, help="weight for L2 regularization")
     parser.add_argument("--lat_weight", type=float, default=10.0, help="weight for latent loss")
     parser.add_argument("--vae_loss_weight", type=float, default=0.4, help="weight for VAE loss component")
@@ -69,6 +67,7 @@ def argparser():
     parser.add_argument("--domain_loss_weight", type=float, default=0.1, help="weight for domain adaptation loss")
     parser.add_argument("--lambda_grl_max", type=float, default=1.0, help="maximum lambda for gradient reversal layer")
     parser.add_argument("--num_domains", type=int, default=2, help="number of domains (source=0, target=1)")
+    parser.add_argument("--use_ldconv", action="store_true", default=False, help="use LDConv in domain discriminators")
 
     # ================================== 伪标签学习配置 ==================================
     parser.add_argument("--pseudo_loss_weight", type=float, default=0.5, help="weight for pseudo label supervision loss")
@@ -221,7 +220,6 @@ def print_training_configuration(opt, device, model_name):
     # ================================== 损失函数权重 ==================================
     print("\n📊 LOSS FUNCTION WEIGHTS")
     print("-" * 40)
-    print(f"  Smoothness Loss: {opt.sm_weight}")
     print(f"  L2 Regularization: {opt.reg_weight}")
     print(f"  Latent Loss: {opt.lat_weight}")
     print(f"  VAE Loss: {opt.vae_loss_weight}")
@@ -234,6 +232,7 @@ def print_training_configuration(opt, device, model_name):
     print("-" * 40)
     print(f"  Number of Domains: {opt.num_domains}")
     print(f"  Gradient Reversal Lambda Max: {opt.lambda_grl_max}")
+    print(f"  Use LDConv in Discriminators: {opt.use_ldconv}")
     print(f"  Pseudo Label Weight: {opt.pseudo_loss_weight}")
 
     # ================================== 半监督学习配置 ==================================
@@ -333,7 +332,11 @@ base_generator = Generator(channel=opt.feat_channel, latent_dim=opt.latent_dim, 
 
 # 创建领域自适应模型
 model = create_domain_adaptive_model(
-    base_generator=base_generator, feat_channels=opt.feat_channel, num_domains=opt.num_domains, domain_loss_weight=opt.domain_loss_weight
+    base_generator=base_generator,
+    feat_channels=opt.feat_channel,
+    num_domains=opt.num_domains,
+    domain_loss_weight=opt.domain_loss_weight,
+    use_ldconv=opt.use_ldconv,
 )
 
 model.to(device)
@@ -368,7 +371,6 @@ print(f"  - Minimum LR: 1e-7")
 
 # 损失函数
 size_rates = [1]  # multi-scale training
-smooth_loss = smoothness.smoothness_loss(size_average=True).to(device)  # 平滑性损失函数
 loss_lsc = LocalSaliencyCoherence().to(device)  # 局部显著性一致性损失函数
 loss_lsc_kernels_desc_defaults = [{"weight": 0.1, "xy": 3, "trans": 0.1}]
 loss_lsc_radius = 2

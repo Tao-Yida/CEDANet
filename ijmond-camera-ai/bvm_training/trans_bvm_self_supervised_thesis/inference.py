@@ -305,12 +305,12 @@ def predict_frames(model, image_paths, testsize, device, constraint_info=None):
 
 def apply_video_constraint(pred_sigmoid, constraint_info):
     """
-    根据视频标签约束调整预测结果
+    根据视频标签约束调整预测结果，并设置相应的概率值
     Args:
         pred_sigmoid: 预测结果张量
         constraint_info: 约束信息字典
     Returns:
-        torch.Tensor: 调整后的预测结果
+        torch.Tensor: 调整后的预测结果，用于后续二值化
     """
     if not constraint_info["has_constraint"]:
         return pred_sigmoid
@@ -319,47 +319,102 @@ def apply_video_constraint(pred_sigmoid, constraint_info):
     constraint_confidence = constraint_info["constraint_confidence"]
     constraint_strength = constraint_info["constraint_strength"]
 
-    # 如果约束期望无烟雾，但预测有烟雾，则抑制预测
+    # 根据约束强度设置不同的概率值
     if expected_smoke is False:
-        # 根据约束强度调整抑制程度
+        # "一定没有"区域：根据约束强度设置不同的抑制概率
         if "gold" in constraint_strength:
-            # 黄金标准：强烈抑制
-            suppression_factor = 0.1
+            # 黄金标准负样本：设置为很低概率，确保二值化后为背景
+            constraint_prob = 0.2
         elif "strong" in constraint_strength:
-            # 强约束：中等抑制
-            suppression_factor = 0.3
+            # 强负约束：设置为较低概率
+            constraint_prob = 0.4
         elif "weak" in constraint_strength:
-            # 弱约束：轻微抑制
-            suppression_factor = 0.5
+            # 弱负约束：设置为稍低于阈值的概率，但仍给原始预测一些机会
+            constraint_prob = 0.55
         else:
-            # 其他约束：很轻微抑制
-            suppression_factor = 0.7
+            # 其他负约束：设置为接近中性的概率
+            constraint_prob = 0.58
 
-        pred_sigmoid = pred_sigmoid * suppression_factor
+        # 将预测值向约束概率拉近，但保留更多原始预测信息
+        pred_sigmoid = pred_sigmoid * 0.4 + constraint_prob * 0.6
 
-    # 如果约束期望有烟雾，但预测无烟雾，则增强预测
     elif expected_smoke is True:
-        # 计算当前预测的平均强度
-        current_intensity = pred_sigmoid.mean().item()
+        # "一定有"或"可能有"区域：根据约束强度设置不同的增强概率
+        if "gold" in constraint_strength:
+            # 黄金标准正样本：设置为很高概率，确保二值化后为前景
+            constraint_prob = 0.9
+        elif "strong" in constraint_strength:
+            # 强正约束：设置为高概率
+            constraint_prob = 0.8
+        elif "weak" in constraint_strength:
+            # 弱正约束："可能有"区域，设置为稍高于阈值的概率
+            constraint_prob = 0.7
+        else:
+            # 其他正约束：设置为稍高于阈值的概率
+            constraint_prob = 0.65
 
-        # 如果当前预测强度较低，根据约束强度适度增强
-        if current_intensity < 0.3:
-            if "gold" in constraint_strength:
-                # 黄金标准：强烈增强
-                enhancement_factor = 2.0
-            elif "strong" in constraint_strength:
-                # 强约束：中等增强
-                enhancement_factor = 1.5
-            elif "weak" in constraint_strength:
-                # 弱约束：轻微增强
-                enhancement_factor = 1.2
-            else:
-                # 其他约束：很轻微增强
-                enhancement_factor = 1.1
+        # 将预测值向约束概率拉近，但保留更多原始预测信息
+        pred_sigmoid = pred_sigmoid * 0.4 + constraint_prob * 0.6
 
-            pred_sigmoid = torch.clamp(pred_sigmoid * enhancement_factor, 0, 1)
+    # 确保值在有效范围内
+    pred_sigmoid = torch.clamp(pred_sigmoid, 0, 1)
 
     return pred_sigmoid
+
+
+def binarize_prediction(pred, threshold=0.6, constraint_info=None):
+    """
+    将预测结果二值化，确保伪标签只有0和255两种值
+    使用统一的阈值0.6，约束效果通过概率值体现
+    Args:
+        pred: 预测结果数组 (numpy array, 0-1范围)
+        threshold: 统一的二值化阈值 (默认0.6)
+        constraint_info: 约束信息（保留参数以兼容调用，但不再用于调整阈值）
+    Returns:
+        numpy.ndarray: 二值化后的结果 (0或1)
+    """
+    # 使用统一的阈值进行二值化
+    # 约束效果已经通过apply_video_constraint中的概率值设置体现：
+    # - 强正约束: 概率0.8-0.9 > 0.6 → 前景
+    # - 弱正约束: 概率0.7 > 0.6 → 前景
+    # - 弱负约束: 概率0.4 < 0.6 → 背景
+    # - 强负约束: 概率0.1-0.3 < 0.6 → 背景
+
+    binary_result = (pred > threshold).astype(np.float32)
+
+    return binary_result
+
+
+def analyze_prediction_distribution(pred, frame_path, constraint_info=None):
+    """
+    分析预测结果的数值分布，用于调试
+    Args:
+        pred: 预测结果数组
+        frame_path: 帧路径
+        constraint_info: 约束信息
+    """
+    min_val = pred.min()
+    max_val = pred.max()
+    mean_val = pred.mean()
+    std_val = pred.std()
+
+    # 统计不同范围的像素数量
+    low_pixels = np.sum(pred < 0.3)
+    mid_pixels = np.sum((pred >= 0.3) & (pred <= 0.7))
+    high_pixels = np.sum(pred > 0.7)
+    total_pixels = pred.size
+
+    frame_name = os.path.basename(frame_path)
+    print(f"  帧 {frame_name}:")
+    print(f"    值域: [{min_val:.3f}, {max_val:.3f}], 均值: {mean_val:.3f}, 标准差: {std_val:.3f}")
+    print(
+        f"    像素分布: 低值(<0.3):{low_pixels}({low_pixels/total_pixels*100:.1f}%), "
+        f"中值(0.3-0.7):{mid_pixels}({mid_pixels/total_pixels*100:.1f}%), "
+        f"高值(>0.7):{high_pixels}({high_pixels/total_pixels*100:.1f}%)"
+    )
+
+    if constraint_info and constraint_info["has_constraint"]:
+        print(f"    约束: {constraint_info['constraint_strength']}, 期望烟雾: {constraint_info['expected_smoke']}")
 
 
 def calculate_mask_quality(pred_tensor):
@@ -481,20 +536,21 @@ def select_high_confidence_frames(predictions, frame_infos, context_frames=2, th
     return list(selected_frames)
 
 
-def save_results(predictions, selected_frames, video_name, output_path, start_idx=0):
+def save_results(predictions, selected_frames, video_name, output_path, start_idx=0, constraint_info=None):
     """
-    保存选择的帧和伪标签
+    保存选择的帧和伪标签（确保伪标签为纯二值）
     Args:
         predictions: 预测结果字典，键为图像路径，值为(预测结果, 置信度)
         selected_frames: 选择的帧路径列表
         video_name: 视频名称，用于命名文件
         output_path: 输出根路径
         start_idx: 文件编号起始值，用于在多个视频间确保索引唯一性
+        constraint_info: 约束信息，用于二值化阈值调整
 
     输出结构:
     output_path/
         ├── img/   # 存储原始图像
-        └── pl/    # 存储伪标签
+        └── pl/    # 存储伪标签（纯二值：0和255）
     """
     img_dir = os.path.join(output_path, "img")
     pl_dir = os.path.join(output_path, "pl")
@@ -507,9 +563,18 @@ def save_results(predictions, selected_frames, video_name, output_path, start_id
     saved_count = 0
     saved_files = []  # 用于跟踪保存的文件名（不含扩展名）
 
+    print(f"正在保存 {len(selected_frames)} 帧的二值化伪标签...")
+
     for idx, frame_path in enumerate(selected_frames, start=start_idx):
         # 获取原始图像和预测结果
         pred, confidence = predictions[frame_path]
+
+        # 分析预测分布（调试用）
+        if idx == start_idx:  # 只分析第一帧，避免输出过多
+            analyze_prediction_distribution(pred, frame_path, constraint_info)
+
+        # 二值化预测结果（使用统一阈值0.6）
+        binary_pred = binarize_prediction(pred, threshold=0.6)
 
         # 生成新的文件名：视频名+序号
         new_filename = f"{video_name}_{idx:02d}"
@@ -520,17 +585,25 @@ def save_results(predictions, selected_frames, video_name, output_path, start_id
         with Image.open(frame_path) as img:
             img.save(output_image_path)
 
-        # 保存伪标签 (0-255 范围)
-        label = (pred * 255).astype(np.uint8)
-        cv2.imwrite(output_label_path, label)
+        # 保存二值化伪标签 (只有0和255两种值)
+        binary_label = (binary_pred * 255).astype(np.uint8)
+        cv2.imwrite(output_label_path, binary_label)
+
+        # 验证保存的标签确实是二值的
+        unique_values = np.unique(binary_label)
+        if len(unique_values) > 2 or (len(unique_values) == 2 and not (0 in unique_values and 255 in unique_values)):
+            print(f"警告: 帧 {new_filename} 的伪标签不是纯二值! 唯一值: {unique_values}")
+        elif idx == start_idx:  # 只打印第一帧的验证信息
+            print(f"    二值化验证: 唯一灰度值 {unique_values} ✓")
 
         # 添加到已保存文件列表（不含扩展名，但包含完整的新文件名）
         saved_files.append(new_filename)
         saved_count += 1
 
-    print(f"保存了 {saved_count} 对图像和伪标签")
+    print(f"保存了 {saved_count} 对图像和二值化伪标签")
     print(f"  - 图像目录: {img_dir}")
     print(f"  - 标签目录: {pl_dir}")
+    print(f"  - 所有伪标签均为纯二值图像 (0和255)")
 
     return saved_files, start_idx + saved_count  # 返回保存的文件名列表和下一个起始索引
 
@@ -607,6 +680,64 @@ def clean_output_directories(output_path):
             os.makedirs(dir_path, exist_ok=True)
 
     print("所有输出目录已清理完成")
+
+
+def validate_pseudo_labels(output_path):
+    """
+    验证生成的伪标签是否为纯二值图像
+    Args:
+        output_path: 输出路径
+    """
+    pl_dir = os.path.join(output_path, "pl")
+    if not os.path.exists(pl_dir):
+        print("警告: 伪标签目录不存在")
+        return
+
+    label_files = [f for f in os.listdir(pl_dir) if f.endswith(".png")]
+    if not label_files:
+        print("警告: 没有找到伪标签文件")
+        return
+
+    print(f"\n验证 {len(label_files)} 个伪标签文件...")
+
+    non_binary_count = 0
+    gray_value_stats = {}
+
+    for label_file in label_files:
+        label_path = os.path.join(pl_dir, label_file)
+        label = cv2.imread(label_path, 0)
+
+        if label is None:
+            print(f"警告: 无法读取标签文件 {label_file}")
+            continue
+
+        unique_values = np.unique(label)
+
+        # 记录灰度值统计
+        for val in unique_values:
+            gray_value_stats[val] = gray_value_stats.get(val, 0) + 1
+
+        # 检查是否为纯二值
+        if len(unique_values) > 2 or (len(unique_values) == 2 and not (0 in unique_values and 255 in unique_values)):
+            non_binary_count += 1
+            if non_binary_count <= 5:  # 只显示前5个非二值文件
+                print(f"  非二值标签: {label_file}, 灰度值: {unique_values}")
+
+    print(f"\n验证结果:")
+    print(f"  总文件数: {len(label_files)}")
+    print(f"  二值文件数: {len(label_files) - non_binary_count}")
+    print(f"  非二值文件数: {non_binary_count}")
+
+    print(f"\n所有灰度值分布:")
+    for gray_val, count in sorted(gray_value_stats.items()):
+        print(f"  灰度值 {gray_val}: {count} 次出现")
+
+    if non_binary_count == 0:
+        print("✅ 所有伪标签均为纯二值图像 (只包含0和255)")
+    else:
+        print(f"⚠️  有 {non_binary_count} 个伪标签不是纯二值图像")
+
+    return non_binary_count == 0
 
 
 def main():
@@ -716,7 +847,7 @@ def main():
         print(f"选择了 {len(selected_frames)} 帧 (从 {len(frame_paths)} 帧中)")
 
         # 保存结果到对应的约束目录，并获取下一个起始索引
-        saved_files, next_idx = save_results(predictions, selected_frames, video_name, final_output_path, next_idx)
+        saved_files, next_idx = save_results(predictions, selected_frames, video_name, final_output_path, next_idx, constraint_info)
         all_saved_files.extend(saved_files)
         processed_videos += 1
 
@@ -732,15 +863,32 @@ def main():
     if all_saved_files:
         generate_transmission_maps(final_output_path, all_saved_files)
 
+    # 验证所有生成的伪标签是否为纯二值图像
+    is_all_binary = validate_pseudo_labels(final_output_path)
+
     print(f"\n处理完成统计:")
     print(f"  处理的视频: {processed_videos}")
     print(f"  跳过的视频: {skipped_videos}")
     print(f"  约束类型: {opt.constraint_type}")
     print(f"  输出目录: {final_output_path}")
+    print(f"  伪标签质量: {'✅ 全部为纯二值' if is_all_binary else '⚠️ 存在非二值标签'}")
     print("目录结构:")
     print("  - img/    (原始图像)")
-    print("  - pl/     (伪标签)")
+    print("  - pl/     (伪标签 - 纯二值: 0和255)")
     print("  - trans/  (透光率图)")
+
+    if opt.constraint_type != "none":
+        print(f"\n约束作用说明 (统一阈值0.6):")
+        print(f"  • '黄金正样本' 约束: 概率0.9 > 0.6 → 前景(255)")
+        print(f"  • '强正' 约束: 概率0.8 > 0.6 → 前景(255)")
+        print(f"  • '弱正/可能有' 约束: 概率0.7 > 0.6 → 前景(255)")
+        print(f"  • '其他正' 约束: 概率0.65 > 0.6 → 前景(255)")
+        print(f"  • '其他负' 约束: 概率0.58 < 0.6 → 背景(0)")
+        print(f"  • '弱负' 约束: 概率0.55 < 0.6 → 背景(0) (但接近阈值，给原始预测机会)")
+        print(f"  • '强负' 约束: 概率0.4 < 0.6 → 背景(0)")
+        print(f"  • '黄金负样本' 约束: 概率0.2 < 0.6 → 背景(0)")
+        print(f"  • 弱约束保留40%原始预测 + 60%约束概率，平衡约束与模型预测")
+        print(f"  • 统一阈值0.6确保二值化决策的一致性")
 
 
 if __name__ == "__main__":

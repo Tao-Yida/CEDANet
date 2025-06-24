@@ -31,4 +31,4 @@ source activate dl2024 || { echo "Failed to activate Conda env"; exit 1; }
 # 执行半监督模型测试
 # --model_path: 半监督训练后的模型路径
 # --test_dataset: 测试数据集 (smoke5k)
-python ijmond-camera-ai/bvm_training/trans_bvm_self_supervised/test.py --model_path models/ss__no_samples_1000/Model_49_gen.pth --test_dataset smoke5k
+python ijmond-camera-ai/bvm_training/trans_bvm_self_supervised/test.py --model_path models/SS_500/SMOKE5K_Dataset_SMOKE5K_train_ssl_SMOKE5K_Dataset_SMOKE5K_weak_supervision/SMOKE5K_Dataset_SMOKE5K_train_ssl_SMOKE5K_Dataset_SMOKE5K_weak_supervision_epoch_030_from_scratch.pth --test_dataset smoke5k

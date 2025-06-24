@@ -4,7 +4,7 @@
 #SBATCH --job-name=train_bvm_semi_supervised
 #SBATCH --partition=gpu_mig
 #SBATCH --gres=gpu:1
-#SBATCH --time=06:00:00
+#SBATCH --time=24:00:00
 #SBATCH --mem=24G
 #SBATCH --cpus-per-task=6
 #SBATCH --output=logs_out/trans_bvm_semi_train_%j.out
@@ -16,36 +16,26 @@
 
 # --------------- 基础训练参数 ---------------
 # --epoch:                训练轮数 (默认: 50)
-# --batchsize:            每批次样本数量 (默认: 6)
+# --batchsize:            每批次样本数量 (默认: 8)
 # --trainsize:            输入图像分辨率 (默认: 352x352)
 
 # --------------- 优化器参数 ---------------
-# --lr_gen:               生成器学习率 (默认: 2.5e-5)
-# --lr_des:               描述器学习率 (默认: 2.5e-5)
+# --lr_gen:               生成器学习率 (默认: 5e-5)
 # --beta:                 Adam优化器beta参数 (默认: 0.5)
 # --clip:                 梯度裁剪边际，防止梯度爆炸 (默认: 0.5)
-# --decay_rate:           学习率衰减率 (默认: 0.9)
-# --decay_epoch:          学习率衰减周期 (默认: 20)
+# --decay_rate:           学习率衰减率 (默认: 0.8)
+# --decay_epoch:          学习率衰减周期/耐心值 (默认: 12)
 
 # --------------- 模型架构参数 ---------------
-# --gen_reduced_channel:  生成器中减少的通道数 (默认: 32)
-# --des_reduced_channel:  描述器中减少的通道数 (默认: 64)
 # --feat_channel:         重要性特征的通道数 (默认: 32)
 # --latent_dim:           潜在维度 (默认: 3)
 # --num_filters:          最终对比损失特定层的通道数 (默认: 16)
 
-# --------------- EBM相关参数 ---------------
-# --langevin_step_num_des:  EBM的langevin步骤数 (默认: 10)
-# --langevin_step_size_des: EBM langevin的步长 (默认: 0.026)
-# --energy_form:            能量函数的形式 (默认: identity)
-#                          选项: tanh | sigmoid | identity | softplus
-
 # --------------- 损失函数权重 ---------------
-# --sm_weight:            平滑性损失的权重 (默认: 0.1)
-# --reg_weight:           正则化项的权重 (默认: 1e-4)
-# --lat_weight:           潜在损失的权重 (默认: 10.0)
-# --vae_loss_weight:      VAE损失的权重 (默认: 0.4)
-# --contrastive_loss_weight: 对比损失的权重 (默认: 0.1)
+# --reg_weight:           L2正则化项的权重 (默认: 1e-4)
+# --lat_weight:           潜在损失的权重 (默认: 2.0)
+# --vae_loss_weight:      VAE损失的权重 (默认: 1.0)
+# --contrastive_loss_weight: 对比损失的权重 (默认: 0.2)
 
 # --------------- 半监督学习特有参数 ---------------
 # --inter:                是否进行跨图像像素匹配 (默认: False)
@@ -57,7 +47,7 @@
 # --labeled_dataset_path:   标注数据集路径 (默认: data/SMOKE5K_Dataset/SMOKE5K/train)
 # --unlabeled_dataset_path: 无标注数据集路径 (默认: data/SMOKE5K_Dataset/SMOKE5K/weak_supervision)
 # --pretrained_weights:     预训练权重路径 (默认: None)
-# --save_model_path:        模型保存路径 (默认: models/self-supervision)
+# --save_model_path:        模型保存路径 (默认: models/semi-supervision)
 
 # --------------- 校验和早停参数 ---------------
 # --val_split:            标注数据集中用于校验的比例 (默认: 0.2)
@@ -66,8 +56,10 @@
 # --enable_validation:    启用在标注数据子集上的校验 (默认: False)
 
 # --------------- 数据增强和可重现性参数 ---------------
-# --aug:                  启用无标注数据的数据增强 (默认: False)
+# --aug:                  启用无标注数据的数据增强 (默认启用，除非使用--no_aug禁用)
+# --no_aug:               显式禁用数据增强
 # --freeze:               冻结所有随机性以确保完全可重现 (默认: False)
+#                        注意：当使用--freeze时，数据增强会被自动禁用
 # --random_seed:          随机种子 (默认: 42)
 
 # ============================================================================
@@ -82,6 +74,31 @@ source ~/anaconda3/etc/profile.d/conda.sh
 source activate dl2024 || { echo "Failed to activate Conda env"; exit 1; }
 
 # 执行半监督训练脚本
-# python ijmond-camera-ai/bvm_training/trans_bvm_self_supervised/test.pyth "data/ijmond_data/test" --save_model_path "models/finetune"
-python ijmond-camera-ai/bvm_training/trans_bvm_self_supervised/train.py --contrastive_loss_weight 0.1 --labeled_dataset_path "data/SMOKE5K_Dataset/SMOKE5K/train" --unlabeled_dataset_path "data/SMOKE5K_Dataset/SMOKE5K/weak_supervision" --save_model_path "models/SS_500" --no_samples 500
-# python ijmond-camera-ai/bvm_training/trans_bvm_self_supervised/test.py
+#
+# 推荐配置：启用数据增强，正常训练模式
+python ijmond-camera-ai/bvm_training/trans_bvm_self_supervised/train.py \
+--contrastive_loss_weight 0.1 \
+--labeled_dataset_path "data/SMOKE5K_Dataset/SMOKE5K/train" \
+--unlabeled_dataset_path "data/ijmond_data/train" \
+--save_model_path "models/semi-supervision" \
+--no_samples 50 \
+--aug \
+--enable_validation \
+--val_split 0.2 \
+--patience 45 \
+--min_delta 0.0001 \
+--random_seed 123
+
+# 调试配置：冻结模式（数据增强会被自动禁用）
+# python ijmond-camera-ai/bvm_training/trans_bvm_self_supervised/train.py \
+#     --contrastive_loss_weight 0.1 \
+#     --labeled_dataset_path "data/SMOKE5K_Dataset/SMOKE5K/train" \
+#     --unlabeled_dataset_path "data/SMOKE5K_Dataset/SMOKE5K/weak_supervision" \
+#     --save_model_path "models/semi-supervision" \
+#     --no_samples 500 \
+#     --enable_validation \
+#     --val_split 0.2 \
+#     --patience 45 \
+#     --min_delta 0.0001 \
+#     --freeze \
+#     --random_seed 123

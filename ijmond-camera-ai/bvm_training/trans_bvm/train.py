@@ -1,20 +1,18 @@
 import torch
 import torch.nn.functional as F
-import warnings
 from torch import no_grad
 
 import numpy as np
 import os, argparse
 from datetime import datetime
 from torch.optim import lr_scheduler
-from model.ResNet_models import Generator, Descriptor
+from model.ResNet_models import Generator
 from dataloader import get_train_val_loaders, get_dataset_name_from_path
-from utils import adjust_lr, AvgMeter, EarlyStopping, validate_model, generate_model_name, generate_checkpoint_filename, generate_best_model_filename
+from utils import AvgMeter, EarlyStopping, validate_model, generate_model_name, generate_checkpoint_filename, generate_best_model_filename
 from scipy import misc
 import cv2
 import torchvision.transforms as transforms
 from utils import l2_regularisation
-import smoothness
 from lscloss import *
 
 # Define computation device (GPU/CPU)
@@ -26,32 +24,21 @@ def create_argparser():
 
     # ================================== 基础训练配置 ==================================
     parser.add_argument("--epoch", type=int, default=50, help="number of training epochs")
-    parser.add_argument("--batchsize", type=int, default=7, help="batch size for training")
+    parser.add_argument("--batchsize", type=int, default=10, help="batch size for training")
     parser.add_argument("--trainsize", type=int, default=352, help="input image resolution (trainsize x trainsize)")
 
     # ================================== 优化器配置 ==================================
-    parser.add_argument("--lr_gen", type=float, default=2.5e-5, help="learning rate for generator")
-    parser.add_argument("--lr_des", type=float, default=2.5e-5, help="learning rate for descriptor")
+    parser.add_argument("--lr_gen", type=float, default=5e-5, help="learning rate for generator")
     parser.add_argument("--beta", type=float, default=0.5, help="beta parameter for Adam optimizer")
-    parser.add_argument("--clip", type=float, default=0.5, help="gradient clipping threshold")
     parser.add_argument("--decay_rate", type=float, default=0.9, help="learning rate decay factor for ReduceLROnPlateau")
     parser.add_argument("--decay_epoch", type=int, default=6, help="patience epochs for ReduceLROnPlateau scheduler")
 
     # ================================== 模型架构配置 ==================================
     parser.add_argument("--gen_reduced_channel", type=int, default=32, help="reduced channel count in generator")
-    parser.add_argument("--des_reduced_channel", type=int, default=64, help="reduced channel count in descriptor")
     parser.add_argument("--feat_channel", type=int, default=32, help="feature channel count for saliency features")
     parser.add_argument("--latent_dim", type=int, default=3, help="latent space dimension")
 
-    # ================================== EBM模型配置 ==================================
-    parser.add_argument("--langevin_step_num_des", type=int, default=10, help="number of Langevin steps for EBM")
-    parser.add_argument("--langevin_step_size_des", type=float, default=0.026, help="step size for EBM Langevin sampling")
-    parser.add_argument(
-        "--energy_form", type=str, default="identity", choices=["tanh", "sigmoid", "identity", "softplus"], help="energy function form"
-    )
-
     # ================================== 损失函数权重配置 ==================================
-    parser.add_argument("--sm_weight", type=float, default=0.1, help="weight for smoothness loss")
     parser.add_argument("--reg_weight", type=float, default=1e-4, help="weight for L2 regularization")
     parser.add_argument("--lat_weight", type=float, default=10.0, help="weight for latent loss")
     parser.add_argument("--vae_loss_weight", type=float, default=0.4, help="weight for VAE loss component")
@@ -62,7 +49,7 @@ def create_argparser():
     parser.add_argument("--save_model_path", type=str, default="models/full-supervision", help="directory to save trained models")
 
     # ================================== 验证和早停配置 ==================================
-    parser.add_argument("--val_split", type=float, default=0.2, help="fraction of dataset used for validation (0.0-1.0)")
+    parser.add_argument("--val_split", type=float, default=0.1, help="fraction of dataset used for validation (0.0-1.0)")
     parser.add_argument("--patience", type=int, default=15, help="early stopping patience (epochs)")
     parser.add_argument("--min_delta", type=float, default=0.001, help="minimum improvement threshold for early stopping")
 
@@ -96,9 +83,7 @@ def print_training_configuration(opt, device, dataset_name, model_name, original
     print("\n⚙️  OPTIMIZER SETTINGS")
     print("-" * 40)
     print(f"  Generator Learning Rate: {opt.lr_gen}")
-    print(f"  Descriptor Learning Rate: {opt.lr_des}")
     print(f"  Adam Beta: {opt.beta}")
-    print(f"  Gradient Clipping: {opt.clip}")
     print(f"  LR Decay Factor: {opt.decay_rate}")
     print(f"  LR Patience (epochs): {opt.decay_epoch}")
 
@@ -106,21 +91,12 @@ def print_training_configuration(opt, device, dataset_name, model_name, original
     print("\n🏗️  MODEL ARCHITECTURE")
     print("-" * 40)
     print(f"  Generator Reduced Channels: {opt.gen_reduced_channel}")
-    print(f"  Descriptor Reduced Channels: {opt.des_reduced_channel}")
     print(f"  Feature Channels: {opt.feat_channel}")
     print(f"  Latent Dimension: {opt.latent_dim}")
-
-    # ================================== EBM配置 ==================================
-    print("\n⚡ ENERGY-BASED MODEL SETTINGS")
-    print("-" * 40)
-    print(f"  Langevin Steps: {opt.langevin_step_num_des}")
-    print(f"  Langevin Step Size: {opt.langevin_step_size_des}")
-    print(f"  Energy Function Form: {opt.energy_form}")
 
     # ================================== 损失函数权重 ==================================
     print("\n📊 LOSS FUNCTION WEIGHTS")
     print("-" * 40)
-    print(f"  Smoothness Loss: {opt.sm_weight}")
     print(f"  L2 Regularization: {opt.reg_weight}")
     print(f"  Latent Loss: {opt.lat_weight}")
     print(f"  VAE Loss: {opt.vae_loss_weight}")
@@ -172,7 +148,6 @@ opt.save_model_path = os.path.join(original_save_path, model_name)
 
 # 打印训练配置
 print_training_configuration(opt, device, dataset_name, model_name, original_save_path)
-print("  - Energy Form: {}".format(opt.energy_form))
 print("\nData Augmentation & Reproducibility:")
 print("  - Data Augmentation: {}".format("Enabled" if opt.aug else "Disabled"))
 print("  - Freeze Mode: {}".format("Enabled" if opt.freeze else "Disabled"))
@@ -237,14 +212,11 @@ print(f"  - Patience (epochs to wait): {opt.decay_epoch}")
 print(f"  - Decay Factor: {opt.decay_rate}")
 print(f"  - Minimum LR: 1e-7")
 
-bce_loss = torch.nn.BCELoss()
-mse_loss = torch.nn.MSELoss(reduction="mean")  # 新版PyTorch使用reduction参数
 size_rates = [1]  # multi-scale training，尺度因子，这里设置为1表示不进行缩放
-smooth_loss = smoothness.smoothness_loss(size_average=True)  # 平滑性损失函数，约束生成的图像平滑性
 lsc_loss = LocalSaliencyCoherence().to(device)  # 局部显著性一致性损失函数，在细粒度区域加强预测的一致性
 lsc_loss_kernels_desc_defaults = [{"weight": 0.1, "xy": 3, "trans": 0.1}]  # 用于计算核函数
 lsc_loss_radius = 2  # 邻域半径
-weight_lsc = 0.01  # 控制局部显著性一致性损失在总损失中的权重
+weight_lsc = 0.1  # 控制局部显著性一致性损失在总损失中的权重
 
 
 def structure_loss(pred, mask):
@@ -417,7 +389,6 @@ for epoch in range(1, (opt.epoch + 1)):
 
             ## l2 regularizer the inference model
             reg_loss = l2_regularisation(generator.xy_encoder) + l2_regularisation(generator.x_encoder) + l2_regularisation(generator.sal_encoder)
-            # smoothLoss_post = opt.sm_weight * smooth_loss(torch.sigmoid(pred_post), grays)
             reg_loss = opt.reg_weight * reg_loss  # 对正则化损失进行加权，控制正则化损失在总损失中的权重
             latent_loss = latent_loss
 
@@ -533,7 +504,7 @@ for epoch in range(1, (opt.epoch + 1)):
     save_path = opt.save_model_path
     if not os.path.exists(save_path):
         os.makedirs(save_path)
-    if epoch >= 0 and epoch % 10 == 0:
+    if epoch >= 0 and epoch % 5 == 0:
         checkpoint_filename = generate_checkpoint_filename(epoch, model_name, opt.pretrained_weights)
         checkpoint_path = os.path.join(save_path, checkpoint_filename)
         torch.save(generator.state_dict(), checkpoint_path)

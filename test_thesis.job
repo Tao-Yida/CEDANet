@@ -1,0 +1,35 @@
+#!/bin/bash
+
+# ----------- SLURM 指令（保留必要部分） ------------
+#SBATCH --job-name=test_bvm_thesis
+#SBATCH --partition=gpu_mig
+#SBATCH --gres=gpu:1
+#SBATCH --time=02:00:00
+#SBATCH --mem=16G
+#SBATCH --cpus-per-task=4
+#SBATCH --output=logs_out/trans_bvm_thesis_test_%j.out
+#SBATCH --error=logs_err/trans_bvm_thesis_test_%j.err
+
+# ============================================================================
+# BVM 论文版本域适应模型测试脚本
+# ============================================================================
+# 用途：测试论文版本域适应训练后的模型在目标域数据集上的表现
+# 模型：使用源域(SMOKE5K)到目标域(IJmond)的域适应模型（论文版本）
+# 评估：计算精确度、召回率、F1分数、mIoU等指标
+# 输出：保存预测结果图像和详细评估报告
+# ============================================================================
+
+# 创建日志目录
+mkdir -p logs_out logs_err
+
+# 加载执行环境
+module purge
+module load 2024
+source ~/anaconda3/etc/profile.d/conda.sh
+source activate dl2024 || { echo "Failed to activate Conda env"; exit 1; }
+
+# 执行论文版本域适应模型测试
+# --model_path: 论文版本域适应训练后的模型路径
+# --test_dataset: 目标域测试数据集 (ijmond)
+# python ijmond-camera-ai/bvm_training/trans_bvm_self_supervised_thesis/test.py --model_path models/thesis/trained-on-ijmond-data/SMOKE5K_Dataset_SMOKE5K_train_to_ijmond_camera_ijmond_900_trained_citizen_constraint_da/SMOKE5K_Dataset_SMOKE5K_train_to_ijmond_camera_ijmond_900_trained_citizen_constraint_da_best_model.pth --test_dataset ijmond
+python ijmond-camera-ai/bvm_training/trans_bvm_self_supervised_thesis/test.py --model_path models/thesis/trained-on-ijmond-data/SMOKE5K_Dataset_SMOKE5K_weak_supervision_to_ijmond_camera_ijmond_900_trained_expert_constraint_da/SMOKE5K_Dataset_SMOKE5K_weak_supervision_to_ijmond_camera_ijmond_900_trained_expert_constraint_da_best_model.pth --test_dataset smoke5k

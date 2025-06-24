@@ -84,10 +84,10 @@ class AvgMeter(object):
         a = len(self.losses)
         b = np.maximum(a - self.num, 0)
         c = self.losses[b:]
-        # print(c)
-        # d = torch.mean(torch.stack(c))
-        # print(d)
-        return torch.mean(torch.stack(c))
+        # 将 float 列表转换为张量再计算均值
+        if len(c) == 0:
+            return torch.tensor(0.0)
+        return torch.tensor(c).mean()
 
 
 class EarlyStopping:
