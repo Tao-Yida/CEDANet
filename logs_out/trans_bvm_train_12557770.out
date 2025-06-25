@@ -1,0 +1,1300 @@
+================================================================================
+FULLY SUPERVISED TRAINING CONFIGURATION
+================================================================================
+📋 BASIC TRAINING SETTINGS
+----------------------------------------
+  Training Epochs: 300
+  Batch Size: 10
+  Training Image Size: 352x352
+  Device: cuda
+  Dataset Name: ijmond_data_train
+  Model Name: ijmond_data_train
+
+⚙️  OPTIMIZER SETTINGS
+----------------------------------------
+  Generator Learning Rate: 5e-05
+  Adam Beta: 0.5
+  LR Decay Factor: 0.9
+  LR Patience (epochs): 6
+
+🏗️  MODEL ARCHITECTURE
+----------------------------------------
+  Generator Reduced Channels: 32
+  Feature Channels: 32
+  Latent Dimension: 3
+
+📊 LOSS FUNCTION WEIGHTS
+----------------------------------------
+  L2 Regularization: 0.0001
+  Latent Loss: 10.0
+  VAE Loss: 0.4
+
+📁 DATASET CONFIGURATION
+----------------------------------------
+  Dataset Path: data/ijmond_data/train
+  Pretrained Weights: None
+  Original Save Path: models/full-supervision/ijmond-limited-train
+  Final Save Path: models/full-supervision/ijmond-limited-train/ijmond_data_train
+
+✅ VALIDATION & EARLY STOPPING
+----------------------------------------
+  Validation Split: 0.1
+  Early Stopping Patience: 40
+  Min Delta for Improvement: 0.0002
+
+🔀 DATA AUGMENTATION & REPRODUCIBILITY
+----------------------------------------
+  Data Augmentation: True
+  Freeze Randomness: False
+  Random Seed: 15
+================================================================================
+
+Data Augmentation & Reproducibility:
+  - Data Augmentation: Enabled
+  - Freeze Mode: Disabled
+  - Random Seed: 15
+==========================================
+
+Total dataset size: 100
+Training set size: 90
+Validation set size: 10
+Training steps per epoch: 9
+Validation steps per epoch: 1
+Learning Rate Scheduler configured:
+  - Type: ReduceLROnPlateau (adaptive based on validation loss)
+  - Patience (epochs to wait): 6
+  - Decay Factor: 0.9
+  - Minimum LR: 1e-7
+Let's go!
+--------------------Epoch: 1/300--------------------
+2025-06-22 19:13:37.262442 Epoch [001/300], Step [0002/0009] (22%), Gen Loss: 2.4371, TP: 94, FP: 78183, TN: 1155671, FN: 3075
+2025-06-22 19:13:37.966625 Epoch [001/300], Step [0004/0009] (44%), Gen Loss: 2.2508, TP: 0, FP: 62, TN: 1234301, FN: 3019
+2025-06-22 19:13:38.670668 Epoch [001/300], Step [0006/0009] (67%), Gen Loss: 2.1666, TP: 0, FP: 0, TN: 1234585, FN: 2704
+2025-06-22 19:13:39.724106 Epoch [001/300], Step [0009/0009] (100%), Gen Loss: 2.1062, TP: 0, FP: 81, TN: 1232925, FN: 4018
+Starting validation...
+Validation Results - Loss: 1.1195
+  IoU: 0.0000
+  F1-Score: 0.0000
+  Precision: 0.0000
+  Recall: 0.0000
+  Accuracy: 0.9928
+Epoch 1 completed. Learning rate: 0.000050
+--------------------Epoch: 2/300--------------------
+2025-06-22 19:13:44.126369 Epoch [002/300], Step [0002/0009] (22%), Gen Loss: 2.0008, TP: 0, FP: 85, TN: 1232668, FN: 3970
+2025-06-22 19:13:44.832979 Epoch [002/300], Step [0004/0009] (44%), Gen Loss: 2.0009, TP: 0, FP: 904, TN: 1232990, FN: 3383
+2025-06-22 19:13:45.540139 Epoch [002/300], Step [0006/0009] (67%), Gen Loss: 2.0023, TP: 239, FP: 2404, TN: 1230353, FN: 4004
+2025-06-22 19:13:46.599712 Epoch [002/300], Step [0009/0009] (100%), Gen Loss: 1.9945, TP: 0, FP: 751, TN: 1234093, FN: 2404
+Starting validation...
+Validation Results - Loss: 1.0677
+  IoU: 0.0035
+  F1-Score: 0.0069
+  Precision: 0.0804
+  Recall: 0.0036
+  Accuracy: 0.9926
+Epoch 2 completed. Learning rate: 0.000050
+🎉 New best model saved! IoU: 0.0035, F1: 0.0069
+   Saved as: ijmond_data_train_best_model.pth
+--------------------Epoch: 3/300--------------------
+2025-06-22 19:13:51.447666 Epoch [003/300], Step [0002/0009] (22%), Gen Loss: 1.9784, TP: 70, FP: 1318, TN: 1231152, FN: 4671
+2025-06-22 19:13:52.155329 Epoch [003/300], Step [0004/0009] (44%), Gen Loss: 2.0044, TP: 263, FP: 2023, TN: 1230759, FN: 3752
+2025-06-22 19:13:52.862125 Epoch [003/300], Step [0006/0009] (67%), Gen Loss: 2.0471, TP: 246, FP: 2100, TN: 1228738, FN: 4973
+2025-06-22 19:13:53.921516 Epoch [003/300], Step [0009/0009] (100%), Gen Loss: 2.0593, TP: 1063, FP: 10765, TN: 1222000, FN: 3107
+Starting validation...
+Validation Results - Loss: 1.0540
+  IoU: 0.0273
+  F1-Score: 0.0532
+  Precision: 0.0449
+  Recall: 0.0652
+  Accuracy: 0.9833
+Epoch 3 completed. Learning rate: 0.000050
+🎉 New best model saved! IoU: 0.0273, F1: 0.0532
+   Saved as: ijmond_data_train_best_model.pth
+--------------------Epoch: 4/300--------------------
+2025-06-22 19:13:58.708743 Epoch [004/300], Step [0002/0009] (22%), Gen Loss: 2.1275, TP: 630, FP: 5974, TN: 1229258, FN: 1697
+2025-06-22 19:13:59.415981 Epoch [004/300], Step [0004/0009] (44%), Gen Loss: 2.1320, TP: 1223, FP: 1313, TN: 1227010, FN: 6006
+2025-06-22 19:14:00.122403 Epoch [004/300], Step [0006/0009] (67%), Gen Loss: 2.1700, TP: 1067, FP: 12460, TN: 1220643, FN: 2549
+2025-06-22 19:14:01.182286 Epoch [004/300], Step [0009/0009] (100%), Gen Loss: 2.1966, TP: 658, FP: 17488, TN: 1218495, FN: 934
+Starting validation...
+Validation Results - Loss: 1.0129
+  IoU: 0.0392
+  F1-Score: 0.0754
+  Precision: 0.0802
+  Recall: 0.0712
+  Accuracy: 0.9875
+Epoch 4 completed. Learning rate: 0.000050
+🎉 New best model saved! IoU: 0.0392, F1: 0.0754
+   Saved as: ijmond_data_train_best_model.pth
+--------------------Epoch: 5/300--------------------
+2025-06-22 19:14:05.957059 Epoch [005/300], Step [0002/0009] (22%), Gen Loss: 2.2009, TP: 764, FP: 5040, TN: 1228243, FN: 2753
+2025-06-22 19:14:06.664349 Epoch [005/300], Step [0004/0009] (44%), Gen Loss: 2.2568, TP: 888, FP: 5035, TN: 1229958, FN: 1684
+2025-06-22 19:14:07.371641 Epoch [005/300], Step [0006/0009] (67%), Gen Loss: 2.2756, TP: 1507, FP: 6771, TN: 1224536, FN: 3619
+2025-06-22 19:14:08.431729 Epoch [005/300], Step [0009/0009] (100%), Gen Loss: 2.2503, TP: 992, FP: 3707, TN: 1228648, FN: 3560
+Starting validation...
+Validation Results - Loss: 1.0353
+  IoU: 0.0252
+  F1-Score: 0.0491
+  Precision: 0.1133
+  Recall: 0.0314
+  Accuracy: 0.9913
+Epoch 5 completed. Learning rate: 0.000050
+Checkpoint saved: ijmond_data_train_epoch_005_from_scratch.pth
+--------------------Epoch: 6/300--------------------
+2025-06-22 19:14:13.159994 Epoch [006/300], Step [0002/0009] (22%), Gen Loss: 10.1441, TP: 1813, FP: 9387, TN: 1224526, FN: 1477
+2025-06-22 19:14:13.860766 Epoch [006/300], Step [0004/0009] (44%), Gen Loss: 6.1971, TP: 1770, FP: 2862, TN: 1223795, FN: 7665
+2025-06-22 19:14:14.561254 Epoch [006/300], Step [0006/0009] (67%), Gen Loss: 4.8698, TP: 1385, FP: 13404, TN: 1221127, FN: 1217
+2025-06-22 19:14:15.610852 Epoch [006/300], Step [0009/0009] (100%), Gen Loss: 4.0045, TP: 1388, FP: 7112, TN: 1225208, FN: 3061
+Starting validation...
+Validation Results - Loss: 0.9804
+  IoU: 0.0406
+  F1-Score: 0.0781
+  Precision: 0.1023
+  Recall: 0.0632
+  Accuracy: 0.9893
+Epoch 6 completed. Learning rate: 0.000050
+🎉 New best model saved! IoU: 0.0406, F1: 0.0781
+   Saved as: ijmond_data_train_best_model.pth
+--------------------Epoch: 7/300--------------------
+2025-06-22 19:14:20.198071 Epoch [007/300], Step [0002/0009] (22%), Gen Loss: 2.5303, TP: 3715, FP: 7963, TN: 1223818, FN: 1261
+2025-06-22 19:14:20.898578 Epoch [007/300], Step [0004/0009] (44%), Gen Loss: 2.4175, TP: 1512, FP: 8587, TN: 1226961, FN: 319
+2025-06-22 19:14:21.599549 Epoch [007/300], Step [0006/0009] (67%), Gen Loss: 2.3032, TP: 1628, FP: 2940, TN: 1230645, FN: 1820
+2025-06-22 19:14:22.649180 Epoch [007/300], Step [0009/0009] (100%), Gen Loss: 2.3133, TP: 959, FP: 12848, TN: 1222043, FN: 1389
+Starting validation...
+Validation Results - Loss: 1.1222
+  IoU: 0.0000
+  F1-Score: 0.0000
+  Precision: 0.0000
+  Recall: 0.0000
+  Accuracy: 0.9928
+Epoch 7 completed. Learning rate: 0.000050
+--------------------Epoch: 8/300--------------------
+2025-06-22 19:14:26.928770 Epoch [008/300], Step [0002/0009] (22%), Gen Loss: 2.1727, TP: 1593, FP: 3792, TN: 1229808, FN: 2006
+2025-06-22 19:14:27.629766 Epoch [008/300], Step [0004/0009] (44%), Gen Loss: 2.1798, TP: 2793, FP: 7548, TN: 1222226, FN: 3412
+2025-06-22 19:14:28.335241 Epoch [008/300], Step [0006/0009] (67%), Gen Loss: 2.2133, TP: 2050, FP: 6424, TN: 1227480, FN: 1089
+2025-06-22 19:14:29.392691 Epoch [008/300], Step [0009/0009] (100%), Gen Loss: 2.2197, TP: 3840, FP: 4230, TN: 1220247, FN: 7217
+Starting validation...
+Validation Results - Loss: 1.1321
+  IoU: 0.0000
+  F1-Score: 0.0000
+  Precision: 0.0000
+  Recall: 0.0000
+  Accuracy: 0.9928
+Epoch 8 completed. Learning rate: 0.000050
+--------------------Epoch: 9/300--------------------
+2025-06-22 19:14:33.851814 Epoch [009/300], Step [0002/0009] (22%), Gen Loss: 1.9318, TP: 2298, FP: 4884, TN: 1229885, FN: 302
+2025-06-22 19:14:34.556797 Epoch [009/300], Step [0004/0009] (44%), Gen Loss: 1.9670, TP: 1737, FP: 2115, TN: 1232366, FN: 1295
+2025-06-22 19:14:35.262777 Epoch [009/300], Step [0006/0009] (67%), Gen Loss: 2.0541, TP: 4289, FP: 10890, TN: 1219692, FN: 1910
+2025-06-22 19:14:36.318890 Epoch [009/300], Step [0009/0009] (100%), Gen Loss: 2.0612, TP: 762, FP: 3860, TN: 1231449, FN: 1377
+Starting validation...
+Validation Results - Loss: 1.1487
+  IoU: 0.0000
+  F1-Score: 0.0000
+  Precision: 0.0000
+  Recall: 0.0000
+  Accuracy: 0.9928
+Epoch 9 completed. Learning rate: 0.000050
+--------------------Epoch: 10/300--------------------
+2025-06-22 19:14:40.757828 Epoch [010/300], Step [0002/0009] (22%), Gen Loss: 2.0815, TP: 1682, FP: 4638, TN: 1229948, FN: 890
+2025-06-22 19:14:41.460308 Epoch [010/300], Step [0004/0009] (44%), Gen Loss: 2.0286, TP: 1746, FP: 6533, TN: 1228442, FN: 678
+2025-06-22 19:14:42.161435 Epoch [010/300], Step [0006/0009] (67%), Gen Loss: 2.0512, TP: 2772, FP: 3290, TN: 1228681, FN: 2159
+2025-06-22 19:14:43.210482 Epoch [010/300], Step [0009/0009] (100%), Gen Loss: 2.1071, TP: 1699, FP: 1524, TN: 1232923, FN: 1116
+Starting validation...
+Validation Results - Loss: 1.1269
+  IoU: 0.0002
+  F1-Score: 0.0004
+  Precision: 0.0588
+  Recall: 0.0002
+  Accuracy: 0.9928
+Epoch 10 completed. Learning rate: 0.000050
+Checkpoint saved: ijmond_data_train_epoch_010_from_scratch.pth
+--------------------Epoch: 11/300--------------------
+2025-06-22 19:14:47.785620 Epoch [011/300], Step [0002/0009] (22%), Gen Loss: 1.9414, TP: 2645, FP: 5200, TN: 1227670, FN: 1148
+2025-06-22 19:14:48.485680 Epoch [011/300], Step [0004/0009] (44%), Gen Loss: 1.8599, TP: 2860, FP: 5338, TN: 1228751, FN: 465
+2025-06-22 19:14:49.185771 Epoch [011/300], Step [0006/0009] (67%), Gen Loss: 1.8324, TP: 1727, FP: 2232, TN: 1231913, FN: 1162
+2025-06-22 19:14:50.238002 Epoch [011/300], Step [0009/0009] (100%), Gen Loss: 1.8493, TP: 4059, FP: 7683, TN: 1223462, FN: 1204
+Starting validation...
+Validation Results - Loss: 1.0422
+  IoU: 0.0374
+  F1-Score: 0.0720
+  Precision: 0.4682
+  Recall: 0.0390
+  Accuracy: 0.9928
+Epoch 11 completed. Learning rate: 0.000050
+--------------------Epoch: 12/300--------------------
+2025-06-22 19:14:54.537235 Epoch [012/300], Step [0002/0009] (22%), Gen Loss: 1.8387, TP: 4114, FP: 1581, TN: 1217254, FN: 11297
+2025-06-22 19:14:55.237763 Epoch [012/300], Step [0004/0009] (44%), Gen Loss: 2.0110, TP: 2167, FP: 6937, TN: 1227949, FN: 413
+2025-06-22 19:14:55.938498 Epoch [012/300], Step [0006/0009] (67%), Gen Loss: 1.9003, TP: 1784, FP: 1557, TN: 1232289, FN: 1384
+2025-06-22 19:14:56.989350 Epoch [012/300], Step [0009/0009] (100%), Gen Loss: 1.8174, TP: 2608, FP: 4787, TN: 1228942, FN: 793
+Starting validation...
+Validation Results - Loss: 1.1703
+  IoU: 0.0000
+  F1-Score: 0.0000
+  Precision: 0.0000
+  Recall: 0.0000
+  Accuracy: 0.9928
+Epoch 12 completed. Learning rate: 0.000050
+--------------------Epoch: 13/300--------------------
+2025-06-22 19:15:01.306187 Epoch [013/300], Step [0002/0009] (22%), Gen Loss: 1.8781, TP: 6273, FP: 5358, TN: 1217698, FN: 5547
+2025-06-22 19:15:02.010443 Epoch [013/300], Step [0004/0009] (44%), Gen Loss: 1.7267, TP: 3068, FP: 2207, TN: 1230737, FN: 850
+2025-06-22 19:15:02.713891 Epoch [013/300], Step [0006/0009] (67%), Gen Loss: 1.6879, TP: 2701, FP: 3163, TN: 1230624, FN: 651
+2025-06-22 19:15:03.770216 Epoch [013/300], Step [0009/0009] (100%), Gen Loss: 1.7326, TP: 1734, FP: 3813, TN: 1230160, FN: 1669
+Starting validation...
+Validation Results - Loss: 1.1690
+  IoU: 0.0000
+  F1-Score: 0.0000
+  Precision: 0.0000
+  Recall: 0.0000
+  Accuracy: 0.9928
+Epoch 13 completed. Learning rate changed: 0.000050 -> 0.000045
+--------------------Epoch: 14/300--------------------
+2025-06-22 19:15:08.076232 Epoch [014/300], Step [0002/0009] (22%), Gen Loss: 1.6209, TP: 1770, FP: 2904, TN: 1232263, FN: 313
+2025-06-22 19:15:08.779369 Epoch [014/300], Step [0004/0009] (44%), Gen Loss: 1.6320, TP: 2964, FP: 2336, TN: 1231362, FN: 460
+2025-06-22 19:15:09.484501 Epoch [014/300], Step [0006/0009] (67%), Gen Loss: 1.6662, TP: 3597, FP: 3049, TN: 1229513, FN: 729
+2025-06-22 19:15:10.537634 Epoch [014/300], Step [0009/0009] (100%), Gen Loss: 1.6603, TP: 4956, FP: 5797, TN: 1222637, FN: 2379
+Starting validation...
+Validation Results - Loss: 1.1155
+  IoU: 0.0171
+  F1-Score: 0.0336
+  Precision: 0.6169
+  Recall: 0.0173
+  Accuracy: 0.9929
+Epoch 14 completed. Learning rate: 0.000045
+--------------------Epoch: 15/300--------------------
+2025-06-22 19:15:14.887366 Epoch [015/300], Step [0002/0009] (22%), Gen Loss: 1.5831, TP: 6411, FP: 4805, TN: 1223924, FN: 1301
+2025-06-22 19:15:15.587870 Epoch [015/300], Step [0004/0009] (44%), Gen Loss: 1.5653, TP: 3272, FP: 2505, TN: 1228147, FN: 2513
+2025-06-22 19:15:16.287949 Epoch [015/300], Step [0006/0009] (67%), Gen Loss: 1.6277, TP: 3639, FP: 3919, TN: 1225481, FN: 2856
+2025-06-22 19:15:17.338608 Epoch [015/300], Step [0009/0009] (100%), Gen Loss: 1.6187, TP: 2307, FP: 1044, TN: 1232761, FN: 860
+Starting validation...
+Validation Results - Loss: 1.0069
+  IoU: 0.0823
+  F1-Score: 0.1520
+  Precision: 0.5886
+  Recall: 0.0873
+  Accuracy: 0.9930
+Epoch 15 completed. Learning rate: 0.000045
+🎉 New best model saved! IoU: 0.0823, F1: 0.1520
+   Saved as: ijmond_data_train_best_model.pth
+Checkpoint saved: ijmond_data_train_epoch_015_from_scratch.pth
+--------------------Epoch: 16/300--------------------
+2025-06-22 19:15:22.177064 Epoch [016/300], Step [0002/0009] (22%), Gen Loss: 1.5742, TP: 3594, FP: 4271, TN: 1228373, FN: 495
+2025-06-22 19:15:22.958324 Epoch [016/300], Step [0004/0009] (44%), Gen Loss: 1.6711, TP: 6277, FP: 3983, TN: 1223885, FN: 2056
+2025-06-22 19:15:23.665257 Epoch [016/300], Step [0006/0009] (67%), Gen Loss: 1.6279, TP: 4232, FP: 1552, TN: 1229408, FN: 1518
+2025-06-22 19:15:24.720430 Epoch [016/300], Step [0009/0009] (100%), Gen Loss: 1.6716, TP: 3340, FP: 4621, TN: 1228588, FN: 458
+Starting validation...
+Validation Results - Loss: 0.9829
+  IoU: 0.0311
+  F1-Score: 0.0603
+  Precision: 0.7063
+  Recall: 0.0315
+  Accuracy: 0.9930
+Epoch 16 completed. Learning rate: 0.000045
+--------------------Epoch: 17/300--------------------
+2025-06-22 19:15:29.065427 Epoch [017/300], Step [0002/0009] (22%), Gen Loss: 1.5309, TP: 2581, FP: 1621, TN: 1231297, FN: 1217
+2025-06-22 19:15:29.765658 Epoch [017/300], Step [0004/0009] (44%), Gen Loss: 1.7789, TP: 5062, FP: 3879, TN: 1227838, FN: 316
+2025-06-22 19:15:30.465950 Epoch [017/300], Step [0006/0009] (67%), Gen Loss: 1.6637, TP: 4360, FP: 2830, TN: 1226886, FN: 1829
+2025-06-22 19:15:31.515604 Epoch [017/300], Step [0009/0009] (100%), Gen Loss: 1.6718, TP: 1973, FP: 2123, TN: 1233124, FN: 248
+Starting validation...
+Validation Results - Loss: 1.1699
+  IoU: 0.0072
+  F1-Score: 0.0143
+  Precision: 0.9275
+  Recall: 0.0072
+  Accuracy: 0.9929
+Epoch 17 completed. Learning rate: 0.000045
+--------------------Epoch: 18/300--------------------
+2025-06-22 19:15:35.864946 Epoch [018/300], Step [0002/0009] (22%), Gen Loss: 1.4476, TP: 2591, FP: 1241, TN: 1232955, FN: 516
+2025-06-22 19:15:36.564914 Epoch [018/300], Step [0004/0009] (44%), Gen Loss: 1.7759, TP: 4483, FP: 3818, TN: 1226534, FN: 1929
+2025-06-22 19:15:37.265075 Epoch [018/300], Step [0006/0009] (67%), Gen Loss: 1.6825, TP: 1550, FP: 604, TN: 1234349, FN: 732
+2025-06-22 19:15:38.314853 Epoch [018/300], Step [0009/0009] (100%), Gen Loss: 1.6160, TP: 5363, FP: 1445, TN: 1225382, FN: 3990
+Starting validation...
+Validation Results - Loss: 1.1397
+  IoU: 0.0190
+  F1-Score: 0.0373
+  Precision: 0.8492
+  Recall: 0.0191
+  Accuracy: 0.9929
+Epoch 18 completed. Learning rate: 0.000045
+--------------------Epoch: 19/300--------------------
+2025-06-22 19:15:42.612437 Epoch [019/300], Step [0002/0009] (22%), Gen Loss: 1.5321, TP: 6095, FP: 1878, TN: 1224026, FN: 3012
+2025-06-22 19:15:43.313064 Epoch [019/300], Step [0004/0009] (44%), Gen Loss: 1.4823, TP: 2766, FP: 4540, TN: 1230069, FN: 54
+2025-06-22 19:15:44.013357 Epoch [019/300], Step [0006/0009] (67%), Gen Loss: 1.5680, TP: 1753, FP: 1394, TN: 1233017, FN: 930
+2025-06-22 19:15:45.062711 Epoch [019/300], Step [0009/0009] (100%), Gen Loss: 1.7919, TP: 3270, FP: 2050, TN: 1230192, FN: 1240
+Starting validation...
+Validation Results - Loss: 1.0210
+  IoU: 0.0610
+  F1-Score: 0.1149
+  Precision: 0.7642
+  Recall: 0.0621
+  Accuracy: 0.9931
+Epoch 19 completed. Learning rate: 0.000045
+--------------------Epoch: 20/300--------------------
+2025-06-22 19:15:49.402610 Epoch [020/300], Step [0002/0009] (22%), Gen Loss: 1.8719, TP: 5684, FP: 4711, TN: 1224840, FN: 1055
+2025-06-22 19:15:50.104189 Epoch [020/300], Step [0004/0009] (44%), Gen Loss: 1.8876, TP: 2015, FP: 1133, TN: 1233574, FN: 773
+2025-06-22 19:15:50.804965 Epoch [020/300], Step [0006/0009] (67%), Gen Loss: 1.8207, TP: 4941, FP: 3162, TN: 1228579, FN: 190
+2025-06-22 19:15:51.854043 Epoch [020/300], Step [0009/0009] (100%), Gen Loss: 1.8316, TP: 4943, FP: 2989, TN: 1228113, FN: 378
+Starting validation...
+Validation Results - Loss: 0.8313
+  IoU: 0.1299
+  F1-Score: 0.2300
+  Precision: 0.7405
+  Recall: 0.1361
+  Accuracy: 0.9935
+Epoch 20 completed. Learning rate: 0.000045
+🎉 New best model saved! IoU: 0.1299, F1: 0.2300
+   Saved as: ijmond_data_train_best_model.pth
+Checkpoint saved: ijmond_data_train_epoch_020_from_scratch.pth
+--------------------Epoch: 21/300--------------------
+2025-06-22 19:15:56.713988 Epoch [021/300], Step [0002/0009] (22%), Gen Loss: 1.6536, TP: 3402, FP: 3701, TN: 1228966, FN: 762
+2025-06-22 19:15:57.414213 Epoch [021/300], Step [0004/0009] (44%), Gen Loss: 1.9545, TP: 4555, FP: 2210, TN: 1228370, FN: 1081
+2025-06-22 19:15:58.114319 Epoch [021/300], Step [0006/0009] (67%), Gen Loss: 2.2463, TP: 2407, FP: 2406, TN: 1232460, FN: 67
+2025-06-22 19:15:59.166240 Epoch [021/300], Step [0009/0009] (100%), Gen Loss: 2.2337, TP: 5535, FP: 2894, TN: 1227593, FN: 186
+Starting validation...
+Validation Results - Loss: 0.8167
+  IoU: 0.1258
+  F1-Score: 0.2235
+  Precision: 0.8199
+  Recall: 0.1294
+  Accuracy: 0.9935
+Epoch 21 completed. Learning rate: 0.000045
+--------------------Epoch: 22/300--------------------
+2025-06-22 19:16:03.522536 Epoch [022/300], Step [0002/0009] (22%), Gen Loss: 1.5449, TP: 3182, FP: 1648, TN: 1231178, FN: 612
+2025-06-22 19:16:04.223438 Epoch [022/300], Step [0004/0009] (44%), Gen Loss: 1.4714, TP: 3150, FP: 3381, TN: 1230771, FN: 28
+2025-06-22 19:16:04.924532 Epoch [022/300], Step [0006/0009] (67%), Gen Loss: 1.5100, TP: 1766, FP: 1580, TN: 1233901, FN: 167
+2025-06-22 19:16:05.974462 Epoch [022/300], Step [0009/0009] (100%), Gen Loss: 1.6009, TP: 4647, FP: 3007, TN: 1228284, FN: 643
+Starting validation...
+Validation Results - Loss: 0.7949
+  IoU: 0.1648
+  F1-Score: 0.2829
+  Precision: 0.7219
+  Recall: 0.1760
+  Accuracy: 0.9936
+Epoch 22 completed. Learning rate: 0.000045
+🎉 New best model saved! IoU: 0.1648, F1: 0.2829
+   Saved as: ijmond_data_train_best_model.pth
+--------------------Epoch: 23/300--------------------
+2025-06-22 19:16:10.599261 Epoch [023/300], Step [0002/0009] (22%), Gen Loss: 1.5280, TP: 4596, FP: 2307, TN: 1229718, FN: 150
+2025-06-22 19:16:11.299452 Epoch [023/300], Step [0004/0009] (44%), Gen Loss: 1.5379, TP: 3909, FP: 1206, TN: 1231761, FN: 146
+2025-06-22 19:16:11.999846 Epoch [023/300], Step [0006/0009] (67%), Gen Loss: 1.7077, TP: 3196, FP: 2615, TN: 1230519, FN: 702
+2025-06-22 19:16:13.049386 Epoch [023/300], Step [0009/0009] (100%), Gen Loss: 1.5810, TP: 3493, FP: 1033, TN: 1231505, FN: 1093
+Starting validation...
+Validation Results - Loss: 1.1657
+  IoU: 0.0201
+  F1-Score: 0.0394
+  Precision: 0.6792
+  Recall: 0.0203
+  Accuracy: 0.9929
+Epoch 23 completed. Learning rate: 0.000045
+--------------------Epoch: 24/300--------------------
+2025-06-22 19:16:17.361221 Epoch [024/300], Step [0002/0009] (22%), Gen Loss: 1.4626, TP: 5304, FP: 1236, TN: 1227490, FN: 2028
+2025-06-22 19:16:18.061427 Epoch [024/300], Step [0004/0009] (44%), Gen Loss: 1.4861, TP: 2900, FP: 2047, TN: 1231886, FN: 144
+2025-06-22 19:16:18.761653 Epoch [024/300], Step [0006/0009] (67%), Gen Loss: 1.4620, TP: 8701, FP: 2958, TN: 1222413, FN: 1492
+2025-06-22 19:16:19.811625 Epoch [024/300], Step [0009/0009] (100%), Gen Loss: 1.4918, TP: 2464, FP: 2150, TN: 1232671, FN: 119
+Starting validation...
+Validation Results - Loss: 1.0817
+  IoU: 0.0347
+  F1-Score: 0.0671
+  Precision: 0.8829
+  Recall: 0.0349
+  Accuracy: 0.9930
+Epoch 24 completed. Learning rate: 0.000045
+--------------------Epoch: 25/300--------------------
+2025-06-22 19:16:24.103959 Epoch [025/300], Step [0002/0009] (22%), Gen Loss: 1.5711, TP: 2677, FP: 1483, TN: 1232877, FN: 206
+2025-06-22 19:16:24.804089 Epoch [025/300], Step [0004/0009] (44%), Gen Loss: 1.5437, TP: 7080, FP: 3620, TN: 1223379, FN: 1688
+2025-06-22 19:16:25.504328 Epoch [025/300], Step [0006/0009] (67%), Gen Loss: 1.4903, TP: 2904, FP: 523, TN: 1233563, FN: 350
+2025-06-22 19:16:26.553807 Epoch [025/300], Step [0009/0009] (100%), Gen Loss: 1.5772, TP: 3478, FP: 1581, TN: 1231203, FN: 751
+Starting validation...
+Validation Results - Loss: 0.8634
+  IoU: 0.1201
+  F1-Score: 0.2145
+  Precision: 0.8847
+  Recall: 0.1220
+  Accuracy: 0.9936
+Epoch 25 completed. Learning rate: 0.000045
+Checkpoint saved: ijmond_data_train_epoch_025_from_scratch.pth
+--------------------Epoch: 26/300--------------------
+2025-06-22 19:16:31.218145 Epoch [026/300], Step [0002/0009] (22%), Gen Loss: 1.9293, TP: 3464, FP: 1385, TN: 1231987, FN: 252
+2025-06-22 19:16:31.920416 Epoch [026/300], Step [0004/0009] (44%), Gen Loss: 2.0571, TP: 2677, FP: 1739, TN: 1232514, FN: 390
+2025-06-22 19:16:32.620842 Epoch [026/300], Step [0006/0009] (67%), Gen Loss: 1.9258, TP: 8658, FP: 2268, TN: 1222978, FN: 1738
+2025-06-22 19:16:33.670658 Epoch [026/300], Step [0009/0009] (100%), Gen Loss: 1.8846, TP: 2768, FP: 828, TN: 1232966, FN: 471
+Starting validation...
+Validation Results - Loss: 0.8793
+  IoU: 0.1437
+  F1-Score: 0.2512
+  Precision: 0.8498
+  Recall: 0.1474
+  Accuracy: 0.9937
+Epoch 26 completed. Learning rate: 0.000045
+--------------------Epoch: 27/300--------------------
+2025-06-22 19:16:37.978310 Epoch [027/300], Step [0002/0009] (22%), Gen Loss: 1.7730, TP: 4617, FP: 2183, TN: 1229422, FN: 531
+2025-06-22 19:16:38.678489 Epoch [027/300], Step [0004/0009] (44%), Gen Loss: 1.6027, TP: 4587, FP: 651, TN: 1229900, FN: 1529
+2025-06-22 19:16:39.378734 Epoch [027/300], Step [0006/0009] (67%), Gen Loss: 1.5592, TP: 2700, FP: 2249, TN: 1232097, FN: 134
+2025-06-22 19:16:40.428328 Epoch [027/300], Step [0009/0009] (100%), Gen Loss: 1.5646, TP: 3660, FP: 1069, TN: 1229283, FN: 2159
+Starting validation...
+Validation Results - Loss: 0.7760
+  IoU: 0.1593
+  F1-Score: 0.2748
+  Precision: 0.8066
+  Recall: 0.1656
+  Accuracy: 0.9937
+Epoch 27 completed. Learning rate: 0.000045
+--------------------Epoch: 28/300--------------------
+2025-06-22 19:16:44.716959 Epoch [028/300], Step [0002/0009] (22%), Gen Loss: 1.8841, TP: 2850, FP: 1568, TN: 1232659, FN: 72
+2025-06-22 19:16:45.416767 Epoch [028/300], Step [0004/0009] (44%), Gen Loss: 2.0577, TP: 2341, FP: 869, TN: 1233006, FN: 866
+2025-06-22 19:16:46.116774 Epoch [028/300], Step [0006/0009] (67%), Gen Loss: 2.0090, TP: 3835, FP: 2837, TN: 1230276, FN: 46
+2025-06-22 19:16:47.165991 Epoch [028/300], Step [0009/0009] (100%), Gen Loss: 1.9468, TP: 6165, FP: 2171, TN: 1225438, FN: 1825
+Starting validation...
+Validation Results - Loss: 0.7903
+  IoU: 0.1746
+  F1-Score: 0.2972
+  Precision: 0.8521
+  Recall: 0.1800
+  Accuracy: 0.9939
+Epoch 28 completed. Learning rate: 0.000045
+🎉 New best model saved! IoU: 0.1746, F1: 0.2972
+   Saved as: ijmond_data_train_best_model.pth
+--------------------Epoch: 29/300--------------------
+2025-06-22 19:16:51.801777 Epoch [029/300], Step [0002/0009] (22%), Gen Loss: 1.5016, TP: 3631, FP: 1768, TN: 1231488, FN: 147
+2025-06-22 19:16:52.502258 Epoch [029/300], Step [0004/0009] (44%), Gen Loss: 1.6379, TP: 3250, FP: 982, TN: 1232982, FN: 59
+2025-06-22 19:16:53.202546 Epoch [029/300], Step [0006/0009] (67%), Gen Loss: 1.6051, TP: 2540, FP: 1392, TN: 1232853, FN: 242
+2025-06-22 19:16:54.252041 Epoch [029/300], Step [0009/0009] (100%), Gen Loss: 1.7854, TP: 11255, FP: 3314, TN: 1219012, FN: 1290
+Starting validation...
+Validation Results - Loss: 0.7116
+  IoU: 0.2050
+  F1-Score: 0.3402
+  Precision: 0.7547
+  Recall: 0.2196
+  Accuracy: 0.9939
+Epoch 29 completed. Learning rate: 0.000045
+🎉 New best model saved! IoU: 0.2050, F1: 0.3402
+   Saved as: ijmond_data_train_best_model.pth
+--------------------Epoch: 30/300--------------------
+2025-06-22 19:16:58.831908 Epoch [030/300], Step [0002/0009] (22%), Gen Loss: 2.4217, TP: 12164, FP: 5995, TN: 1217099, FN: 309
+2025-06-22 19:16:59.532135 Epoch [030/300], Step [0004/0009] (44%), Gen Loss: 2.0216, TP: 3150, FP: 1040, TN: 1232967, FN: 127
+2025-06-22 19:17:00.232269 Epoch [030/300], Step [0006/0009] (67%), Gen Loss: 2.1279, TP: 3455, FP: 835, TN: 1233015, FN: 77
+2025-06-22 19:17:01.281388 Epoch [030/300], Step [0009/0009] (100%), Gen Loss: 1.9816, TP: 5721, FP: 1464, TN: 1228355, FN: 552
+Starting validation...
+Validation Results - Loss: 0.8137
+  IoU: 0.1369
+  F1-Score: 0.2408
+  Precision: 0.8520
+  Recall: 0.1402
+  Accuracy: 0.9937
+Epoch 30 completed. Learning rate: 0.000045
+Checkpoint saved: ijmond_data_train_epoch_030_from_scratch.pth
+--------------------Epoch: 31/300--------------------
+2025-06-22 19:17:05.824832 Epoch [031/300], Step [0002/0009] (22%), Gen Loss: 2.0397, TP: 10753, FP: 3524, TN: 1220922, FN: 662
+2025-06-22 19:17:06.524892 Epoch [031/300], Step [0004/0009] (44%), Gen Loss: 2.2705, TP: 1999, FP: 1169, TN: 1233899, FN: 318
+2025-06-22 19:17:07.225394 Epoch [031/300], Step [0006/0009] (67%), Gen Loss: 1.9900, TP: 2483, FP: 878, TN: 1233777, FN: 75
+2025-06-22 19:17:08.274779 Epoch [031/300], Step [0009/0009] (100%), Gen Loss: 1.7921, TP: 2881, FP: 1318, TN: 1232815, FN: 122
+Starting validation...
+Validation Results - Loss: 0.8162
+  IoU: 0.1175
+  F1-Score: 0.2104
+  Precision: 0.8459
+  Recall: 0.1201
+  Accuracy: 0.9935
+Epoch 31 completed. Learning rate: 0.000045
+--------------------Epoch: 32/300--------------------
+2025-06-22 19:17:12.616952 Epoch [032/300], Step [0002/0009] (22%), Gen Loss: 1.5095, TP: 6352, FP: 2096, TN: 1226730, FN: 645
+2025-06-22 19:17:13.317320 Epoch [032/300], Step [0004/0009] (44%), Gen Loss: 1.4857, TP: 2827, FP: 838, TN: 1233726, FN: 110
+2025-06-22 19:17:14.017329 Epoch [032/300], Step [0006/0009] (67%), Gen Loss: 1.6548, TP: 8760, FP: 2577, TN: 1224173, FN: 416
+2025-06-22 19:17:15.066645 Epoch [032/300], Step [0009/0009] (100%), Gen Loss: 1.6578, TP: 6872, FP: 1609, TN: 1227711, FN: 278
+Starting validation...
+Validation Results - Loss: 0.8076
+  IoU: 0.1565
+  F1-Score: 0.2707
+  Precision: 0.8239
+  Recall: 0.1620
+  Accuracy: 0.9937
+Epoch 32 completed. Learning rate: 0.000045
+--------------------Epoch: 33/300--------------------
+2025-06-22 19:17:19.412515 Epoch [033/300], Step [0002/0009] (22%), Gen Loss: 2.0522, TP: 6605, FP: 2371, TN: 1225764, FN: 1152
+2025-06-22 19:17:20.114080 Epoch [033/300], Step [0004/0009] (44%), Gen Loss: 1.8927, TP: 2706, FP: 1772, TN: 1232320, FN: 197
+2025-06-22 19:17:20.814851 Epoch [033/300], Step [0006/0009] (67%), Gen Loss: 1.8735, TP: 2903, FP: 751, TN: 1233185, FN: 327
+2025-06-22 19:17:21.865267 Epoch [033/300], Step [0009/0009] (100%), Gen Loss: 2.1444, TP: 2958, FP: 468, TN: 1233728, FN: 197
+Starting validation...
+Validation Results - Loss: 0.7612
+  IoU: 0.1664
+  F1-Score: 0.2853
+  Precision: 0.8661
+  Recall: 0.1708
+  Accuracy: 0.9939
+Epoch 33 completed. Learning rate: 0.000045
+--------------------Epoch: 34/300--------------------
+2025-06-22 19:17:26.197615 Epoch [034/300], Step [0002/0009] (22%), Gen Loss: 4.7922, TP: 5652, FP: 2545, TN: 1227979, FN: 141
+2025-06-22 19:17:26.897790 Epoch [034/300], Step [0004/0009] (44%), Gen Loss: 4.5768, TP: 6587, FP: 3159, TN: 1226625, FN: 117
+2025-06-22 19:17:27.598008 Epoch [034/300], Step [0006/0009] (67%), Gen Loss: 4.1404, TP: 9993, FP: 3195, TN: 1220891, FN: 1261
+2025-06-22 19:17:28.648294 Epoch [034/300], Step [0009/0009] (100%), Gen Loss: 3.4045, TP: 1856, FP: 505, TN: 1234980, FN: 102
+Starting validation...
+Validation Results - Loss: 0.8054
+  IoU: 0.1710
+  F1-Score: 0.2921
+  Precision: 0.8536
+  Recall: 0.1762
+  Accuracy: 0.9939
+Epoch 34 completed. Learning rate: 0.000045
+--------------------Epoch: 35/300--------------------
+2025-06-22 19:17:32.978013 Epoch [035/300], Step [0002/0009] (22%), Gen Loss: 2.3517, TP: 2709, FP: 1219, TN: 1233355, FN: 46
+2025-06-22 19:17:33.679088 Epoch [035/300], Step [0004/0009] (44%), Gen Loss: 2.4543, TP: 4385, FP: 1036, TN: 1231381, FN: 356
+2025-06-22 19:17:34.379300 Epoch [035/300], Step [0006/0009] (67%), Gen Loss: 2.3046, TP: 5363, FP: 1235, TN: 1228026, FN: 1569
+2025-06-22 19:17:35.428901 Epoch [035/300], Step [0009/0009] (100%), Gen Loss: 2.4592, TP: 1926, FP: 1217, TN: 1234191, FN: 69
+Starting validation...
+Validation Results - Loss: 0.7974
+  IoU: 0.1836
+  F1-Score: 0.3103
+  Precision: 0.8290
+  Recall: 0.1908
+  Accuracy: 0.9939
+Epoch 35 completed. Learning rate: 0.000045
+Checkpoint saved: ijmond_data_train_epoch_035_from_scratch.pth
+--------------------Epoch: 36/300--------------------
+2025-06-22 19:17:40.042723 Epoch [036/300], Step [0002/0009] (22%), Gen Loss: 2.5661, TP: 7654, FP: 1306, TN: 1226484, FN: 527
+2025-06-22 19:17:40.743278 Epoch [036/300], Step [0004/0009] (44%), Gen Loss: 2.3396, TP: 3646, FP: 964, TN: 1232286, FN: 97
+2025-06-22 19:17:41.443620 Epoch [036/300], Step [0006/0009] (67%), Gen Loss: 2.0280, TP: 4154, FP: 1546, TN: 1230690, FN: 347
+2025-06-22 19:17:42.493161 Epoch [036/300], Step [0009/0009] (100%), Gen Loss: 1.8018, TP: 1876, FP: 716, TN: 1235007, FN: 28
+Starting validation...
+Validation Results - Loss: 0.8469
+  IoU: 0.1472
+  F1-Score: 0.2566
+  Precision: 0.9014
+  Recall: 0.1496
+  Accuracy: 0.9938
+Epoch 36 completed. Learning rate changed: 0.000045 -> 0.000041
+--------------------Epoch: 37/300--------------------
+2025-06-22 19:17:46.861455 Epoch [037/300], Step [0002/0009] (22%), Gen Loss: 1.6383, TP: 2977, FP: 1252, TN: 1233145, FN: 10
+2025-06-22 19:17:47.562422 Epoch [037/300], Step [0004/0009] (44%), Gen Loss: 1.4356, TP: 5494, FP: 777, TN: 1230600, FN: 222
+2025-06-22 19:17:48.262824 Epoch [037/300], Step [0006/0009] (67%), Gen Loss: 1.4305, TP: 2262, FP: 1176, TN: 1233617, FN: 80
+2025-06-22 19:17:49.362176 Epoch [037/300], Step [0009/0009] (100%), Gen Loss: 1.4473, TP: 3461, FP: 1113, TN: 1231853, FN: 546
+Starting validation...
+Validation Results - Loss: 0.7221
+  IoU: 0.2025
+  F1-Score: 0.3368
+  Precision: 0.8559
+  Recall: 0.2097
+  Accuracy: 0.9941
+Epoch 37 completed. Learning rate: 0.000041
+--------------------Epoch: 38/300--------------------
+2025-06-22 19:17:53.698183 Epoch [038/300], Step [0002/0009] (22%), Gen Loss: 1.4374, TP: 6162, FP: 1123, TN: 1228149, FN: 435
+2025-06-22 19:17:54.398324 Epoch [038/300], Step [0004/0009] (44%), Gen Loss: 1.5168, TP: 3999, FP: 1696, TN: 1231305, FN: 85
+2025-06-22 19:17:55.099119 Epoch [038/300], Step [0006/0009] (67%), Gen Loss: 1.4579, TP: 3523, FP: 1702, TN: 1230784, FN: 436
+2025-06-22 19:17:56.148232 Epoch [038/300], Step [0009/0009] (100%), Gen Loss: 1.3938, TP: 3462, FP: 576, TN: 1233012, FN: 150
+Starting validation...
+Validation Results - Loss: 0.7714
+  IoU: 0.1801
+  F1-Score: 0.3052
+  Precision: 0.8723
+  Recall: 0.1850
+  Accuracy: 0.9940
+Epoch 38 completed. Learning rate: 0.000041
+--------------------Epoch: 39/300--------------------
+2025-06-22 19:18:00.460256 Epoch [039/300], Step [0002/0009] (22%), Gen Loss: 1.2308, TP: 3096, FP: 1014, TN: 1233003, FN: 93
+2025-06-22 19:18:01.160427 Epoch [039/300], Step [0004/0009] (44%), Gen Loss: 1.3586, TP: 4986, FP: 835, TN: 1230702, FN: 169
+2025-06-22 19:18:01.860677 Epoch [039/300], Step [0006/0009] (67%), Gen Loss: 1.3461, TP: 2985, FP: 1121, TN: 1232842, FN: 204
+2025-06-22 19:18:02.909914 Epoch [039/300], Step [0009/0009] (100%), Gen Loss: 1.3175, TP: 7536, FP: 1642, TN: 1225927, FN: 969
+Starting validation...
+Validation Results - Loss: 0.7456
+  IoU: 0.1942
+  F1-Score: 0.3252
+  Precision: 0.8203
+  Recall: 0.2028
+  Accuracy: 0.9940
+Epoch 39 completed. Learning rate: 0.000041
+--------------------Epoch: 40/300--------------------
+2025-06-22 19:18:07.262673 Epoch [040/300], Step [0002/0009] (22%), Gen Loss: 1.3722, TP: 3159, FP: 623, TN: 1233205, FN: 106
+2025-06-22 19:18:07.962897 Epoch [040/300], Step [0004/0009] (44%), Gen Loss: 1.3215, TP: 1989, FP: 803, TN: 1234757, FN: 39
+2025-06-22 19:18:08.663187 Epoch [040/300], Step [0006/0009] (67%), Gen Loss: 1.3432, TP: 9421, FP: 1416, TN: 1222438, FN: 1839
+2025-06-22 19:18:09.712703 Epoch [040/300], Step [0009/0009] (100%), Gen Loss: 1.2910, TP: 3501, FP: 512, TN: 1232776, FN: 205
+Starting validation...
+Validation Results - Loss: 0.7539
+  IoU: 0.1990
+  F1-Score: 0.3319
+  Precision: 0.7955
+  Recall: 0.2097
+  Accuracy: 0.9939
+Epoch 40 completed. Learning rate: 0.000041
+Checkpoint saved: ijmond_data_train_epoch_040_from_scratch.pth
+--------------------Epoch: 41/300--------------------
+2025-06-22 19:18:14.349151 Epoch [041/300], Step [0002/0009] (22%), Gen Loss: 1.2719, TP: 6471, FP: 1753, TN: 1227803, FN: 82
+2025-06-22 19:18:15.049562 Epoch [041/300], Step [0004/0009] (44%), Gen Loss: 1.3171, TP: 3519, FP: 739, TN: 1232178, FN: 222
+2025-06-22 19:18:15.750732 Epoch [041/300], Step [0006/0009] (67%), Gen Loss: 1.3840, TP: 1745, FP: 663, TN: 1235025, FN: 61
+2025-06-22 19:18:16.800083 Epoch [041/300], Step [0009/0009] (100%), Gen Loss: 1.4186, TP: 11288, FP: 4376, TN: 1218572, FN: 666
+Starting validation...
+Validation Results - Loss: 0.7122
+  IoU: 0.2159
+  F1-Score: 0.3551
+  Precision: 0.7763
+  Recall: 0.2302
+  Accuracy: 0.9940
+Epoch 41 completed. Learning rate: 0.000041
+🎉 New best model saved! IoU: 0.2159, F1: 0.3551
+   Saved as: ijmond_data_train_best_model.pth
+--------------------Epoch: 42/300--------------------
+2025-06-22 19:18:21.409086 Epoch [042/300], Step [0002/0009] (22%), Gen Loss: 1.3486, TP: 2566, FP: 1123, TN: 1233304, FN: 84
+2025-06-22 19:18:22.110938 Epoch [042/300], Step [0004/0009] (44%), Gen Loss: 1.3769, TP: 7527, FP: 930, TN: 1226852, FN: 1144
+2025-06-22 19:18:22.812922 Epoch [042/300], Step [0006/0009] (67%), Gen Loss: 1.3539, TP: 2753, FP: 475, TN: 1233921, FN: 48
+2025-06-22 19:18:23.865227 Epoch [042/300], Step [0009/0009] (100%), Gen Loss: 1.3682, TP: 2696, FP: 1400, TN: 1232931, FN: 37
+Starting validation...
+Validation Results - Loss: 0.7594
+  IoU: 0.2095
+  F1-Score: 0.3465
+  Precision: 0.8188
+  Recall: 0.2197
+  Accuracy: 0.9941
+Epoch 42 completed. Learning rate: 0.000041
+--------------------Epoch: 43/300--------------------
+2025-06-22 19:18:28.175993 Epoch [043/300], Step [0002/0009] (22%), Gen Loss: 1.3931, TP: 8921, FP: 1649, TN: 1225048, FN: 307
+2025-06-22 19:18:28.877450 Epoch [043/300], Step [0004/0009] (44%), Gen Loss: 1.3483, TP: 3082, FP: 566, TN: 1233861, FN: 153
+2025-06-22 19:18:29.578727 Epoch [043/300], Step [0006/0009] (67%), Gen Loss: 1.3100, TP: 2828, FP: 779, TN: 1233721, FN: 38
+2025-06-22 19:18:30.630271 Epoch [043/300], Step [0009/0009] (100%), Gen Loss: 1.3390, TP: 3041, FP: 2130, TN: 1231407, FN: 256
+Starting validation...
+Validation Results - Loss: 0.7347
+  IoU: 0.1998
+  F1-Score: 0.3330
+  Precision: 0.8515
+  Recall: 0.2070
+  Accuracy: 0.9941
+Epoch 43 completed. Learning rate changed: 0.000041 -> 0.000036
+--------------------Epoch: 44/300--------------------
+2025-06-22 19:18:34.970472 Epoch [044/300], Step [0002/0009] (22%), Gen Loss: 1.2549, TP: 2441, FP: 501, TN: 1234545, FN: 53
+2025-06-22 19:18:35.672817 Epoch [044/300], Step [0004/0009] (44%), Gen Loss: 1.2683, TP: 3373, FP: 817, TN: 1232939, FN: 99
+2025-06-22 19:18:36.375286 Epoch [044/300], Step [0006/0009] (67%), Gen Loss: 1.3559, TP: 10371, FP: 1166, TN: 1223672, FN: 617
+2025-06-22 19:18:37.430534 Epoch [044/300], Step [0009/0009] (100%), Gen Loss: 1.2881, TP: 6582, FP: 661, TN: 1228531, FN: 431
+Starting validation...
+Validation Results - Loss: 0.7845
+  IoU: 0.1941
+  F1-Score: 0.3251
+  Precision: 0.8045
+  Recall: 0.2037
+  Accuracy: 0.9939
+Epoch 44 completed. Learning rate: 0.000036
+--------------------Epoch: 45/300--------------------
+2025-06-22 19:18:41.803009 Epoch [045/300], Step [0002/0009] (22%), Gen Loss: 1.1682, TP: 2183, FP: 1228, TN: 1233742, FN: 38
+2025-06-22 19:18:42.504665 Epoch [045/300], Step [0004/0009] (44%), Gen Loss: 1.3443, TP: 4055, FP: 604, TN: 1232262, FN: 65
+2025-06-22 19:18:43.206327 Epoch [045/300], Step [0006/0009] (67%), Gen Loss: 1.3165, TP: 8504, FP: 1294, TN: 1225618, FN: 409
+2025-06-22 19:18:44.257718 Epoch [045/300], Step [0009/0009] (100%), Gen Loss: 1.2863, TP: 4117, FP: 499, TN: 1232530, FN: 69
+Starting validation...
+Validation Results - Loss: 0.8186
+  IoU: 0.1663
+  F1-Score: 0.2852
+  Precision: 0.9134
+  Recall: 0.1690
+  Accuracy: 0.9939
+Epoch 45 completed. Learning rate: 0.000036
+Checkpoint saved: ijmond_data_train_epoch_045_from_scratch.pth
+--------------------Epoch: 46/300--------------------
+2025-06-22 19:18:48.880357 Epoch [046/300], Step [0002/0009] (22%), Gen Loss: 1.2147, TP: 6959, FP: 2091, TN: 1225546, FN: 908
+2025-06-22 19:18:49.581676 Epoch [046/300], Step [0004/0009] (44%), Gen Loss: 1.3084, TP: 2665, FP: 518, TN: 1234132, FN: 74
+2025-06-22 19:18:50.283564 Epoch [046/300], Step [0006/0009] (67%), Gen Loss: 1.3113, TP: 2318, FP: 463, TN: 1234789, FN: 32
+2025-06-22 19:18:51.335039 Epoch [046/300], Step [0009/0009] (100%), Gen Loss: 1.2694, TP: 2661, FP: 1072, TN: 1233289, FN: 18
+Starting validation...
+Validation Results - Loss: 0.7813
+  IoU: 0.1757
+  F1-Score: 0.2989
+  Precision: 0.8696
+  Recall: 0.1805
+  Accuracy: 0.9939
+Epoch 46 completed. Learning rate: 0.000036
+--------------------Epoch: 47/300--------------------
+2025-06-22 19:18:55.696488 Epoch [047/300], Step [0002/0009] (22%), Gen Loss: 1.2164, TP: 3507, FP: 543, TN: 1232440, FN: 283
+2025-06-22 19:18:56.397929 Epoch [047/300], Step [0004/0009] (44%), Gen Loss: 1.2320, TP: 4257, FP: 1652, TN: 1230963, FN: 138
+2025-06-22 19:18:57.099240 Epoch [047/300], Step [0006/0009] (67%), Gen Loss: 1.2607, TP: 7093, FP: 1519, TN: 1227060, FN: 192
+2025-06-22 19:18:58.150989 Epoch [047/300], Step [0009/0009] (100%), Gen Loss: 1.2333, TP: 11149, FP: 1733, TN: 1222583, FN: 371
+Starting validation...
+Validation Results - Loss: 0.8068
+  IoU: 0.1981
+  F1-Score: 0.3307
+  Precision: 0.8046
+  Recall: 0.2081
+  Accuracy: 0.9940
+Epoch 47 completed. Learning rate: 0.000036
+--------------------Epoch: 48/300--------------------
+2025-06-22 19:19:02.504812 Epoch [048/300], Step [0002/0009] (22%), Gen Loss: 1.3479, TP: 6836, FP: 1420, TN: 1227478, FN: 280
+2025-06-22 19:19:03.206519 Epoch [048/300], Step [0004/0009] (44%), Gen Loss: 1.2791, TP: 5866, FP: 964, TN: 1229544, FN: 163
+2025-06-22 19:19:03.907824 Epoch [048/300], Step [0006/0009] (67%), Gen Loss: 1.2746, TP: 1794, FP: 582, TN: 1234969, FN: 57
+2025-06-22 19:19:04.959270 Epoch [048/300], Step [0009/0009] (100%), Gen Loss: 1.2507, TP: 2831, FP: 1713, TN: 1232777, FN: 13
+Starting validation...
+Validation Results - Loss: 0.7663
+  IoU: 0.1881
+  F1-Score: 0.3166
+  Precision: 0.8789
+  Recall: 0.1931
+  Accuracy: 0.9940
+Epoch 48 completed. Learning rate: 0.000036
+--------------------Epoch: 49/300--------------------
+2025-06-22 19:19:09.276754 Epoch [049/300], Step [0002/0009] (22%), Gen Loss: 1.2104, TP: 9212, FP: 1574, TN: 1224802, FN: 359
+2025-06-22 19:19:09.978702 Epoch [049/300], Step [0004/0009] (44%), Gen Loss: 1.3020, TP: 2943, FP: 1558, TN: 1232474, FN: 56
+2025-06-22 19:19:10.680730 Epoch [049/300], Step [0006/0009] (67%), Gen Loss: 1.2685, TP: 3183, FP: 765, TN: 1232401, FN: 560
+2025-06-22 19:19:11.732716 Epoch [049/300], Step [0009/0009] (100%), Gen Loss: 1.2525, TP: 2848, FP: 163, TN: 1234070, FN: 212
+Starting validation...
+Validation Results - Loss: 0.7640
+  IoU: 0.2104
+  F1-Score: 0.3477
+  Precision: 0.8311
+  Recall: 0.2198
+  Accuracy: 0.9941
+Epoch 49 completed. Learning rate: 0.000036
+--------------------Epoch: 50/300--------------------
+2025-06-22 19:19:16.034974 Epoch [050/300], Step [0002/0009] (22%), Gen Loss: 1.1309, TP: 5178, FP: 915, TN: 1230536, FN: 50
+2025-06-22 19:19:16.736570 Epoch [050/300], Step [0004/0009] (44%), Gen Loss: 1.2428, TP: 10780, FP: 1638, TN: 1222721, FN: 403
+2025-06-22 19:19:17.438593 Epoch [050/300], Step [0006/0009] (67%), Gen Loss: 1.2282, TP: 2039, FP: 790, TN: 1234601, FN: 35
+2025-06-22 19:19:18.491574 Epoch [050/300], Step [0009/0009] (100%), Gen Loss: 1.2239, TP: 3036, FP: 284, TN: 1233746, FN: 162
+Starting validation...
+Validation Results - Loss: 0.7375
+  IoU: 0.2283
+  F1-Score: 0.3718
+  Precision: 0.8073
+  Recall: 0.2415
+  Accuracy: 0.9941
+Epoch 50 completed. Learning rate changed: 0.000036 -> 0.000033
+🎉 New best model saved! IoU: 0.2283, F1: 0.3718
+   Saved as: ijmond_data_train_best_model.pth
+Checkpoint saved: ijmond_data_train_epoch_050_from_scratch.pth
+--------------------Epoch: 51/300--------------------
+2025-06-22 19:19:23.303263 Epoch [051/300], Step [0002/0009] (22%), Gen Loss: 1.3159, TP: 10982, FP: 2232, TN: 1220936, FN: 869
+2025-06-22 19:19:24.005823 Epoch [051/300], Step [0004/0009] (44%), Gen Loss: 1.2294, TP: 4179, FP: 586, TN: 1231645, FN: 212
+2025-06-22 19:19:24.707920 Epoch [051/300], Step [0006/0009] (67%), Gen Loss: 1.2276, TP: 5547, FP: 450, TN: 1230685, FN: 374
+2025-06-22 19:19:25.760320 Epoch [051/300], Step [0009/0009] (100%), Gen Loss: 1.2089, TP: 3319, FP: 484, TN: 1233091, FN: 117
+Starting validation...
+Validation Results - Loss: 0.7772
+  IoU: 0.1930
+  F1-Score: 0.3235
+  Precision: 0.7937
+  Recall: 0.2031
+  Accuracy: 0.9939
+Epoch 51 completed. Learning rate: 0.000033
+--------------------Epoch: 52/300--------------------
+2025-06-22 19:19:30.105277 Epoch [052/300], Step [0002/0009] (22%), Gen Loss: 1.2232, TP: 5919, FP: 1863, TN: 1227879, FN: 273
+2025-06-22 19:19:30.806868 Epoch [052/300], Step [0004/0009] (44%), Gen Loss: 1.3508, TP: 3966, FP: 571, TN: 1231998, FN: 199
+2025-06-22 19:19:31.508779 Epoch [052/300], Step [0006/0009] (67%), Gen Loss: 1.3299, TP: 4500, FP: 1396, TN: 1230593, FN: 98
+2025-06-22 19:19:32.560269 Epoch [052/300], Step [0009/0009] (100%), Gen Loss: 1.3014, TP: 2760, FP: 244, TN: 1234349, FN: 71
+Starting validation...
+Validation Results - Loss: 0.7740
+  IoU: 0.2045
+  F1-Score: 0.3395
+  Precision: 0.8102
+  Recall: 0.2148
+  Accuracy: 0.9940
+Epoch 52 completed. Learning rate: 0.000033
+--------------------Epoch: 53/300--------------------
+2025-06-22 19:19:36.930155 Epoch [053/300], Step [0002/0009] (22%), Gen Loss: 1.1461, TP: 2705, FP: 652, TN: 1233970, FN: 42
+2025-06-22 19:19:37.633336 Epoch [053/300], Step [0004/0009] (44%), Gen Loss: 1.1460, TP: 4504, FP: 348, TN: 1232114, FN: 71
+2025-06-22 19:19:38.335281 Epoch [053/300], Step [0006/0009] (67%), Gen Loss: 1.1904, TP: 4183, FP: 433, TN: 1232332, FN: 67
+2025-06-22 19:19:39.387345 Epoch [053/300], Step [0009/0009] (100%), Gen Loss: 1.1881, TP: 3510, FP: 828, TN: 1232390, FN: 87
+Starting validation...
+Validation Results - Loss: 0.7762
+  IoU: 0.2053
+  F1-Score: 0.3406
+  Precision: 0.8399
+  Recall: 0.2136
+  Accuracy: 0.9941
+Epoch 53 completed. Learning rate: 0.000033
+--------------------Epoch: 54/300--------------------
+2025-06-22 19:19:43.685338 Epoch [054/300], Step [0002/0009] (22%), Gen Loss: 1.1285, TP: 3549, FP: 425, TN: 1233084, FN: 66
+2025-06-22 19:19:44.387072 Epoch [054/300], Step [0004/0009] (44%), Gen Loss: 1.1475, TP: 5546, FP: 460, TN: 1230814, FN: 176
+2025-06-22 19:19:45.089025 Epoch [054/300], Step [0006/0009] (67%), Gen Loss: 1.1409, TP: 4348, FP: 680, TN: 1230715, FN: 507
+2025-06-22 19:19:46.141432 Epoch [054/300], Step [0009/0009] (100%), Gen Loss: 1.1712, TP: 3648, FP: 1000, TN: 1232299, FN: 30
+Starting validation...
+Validation Results - Loss: 0.8363
+  IoU: 0.1751
+  F1-Score: 0.2981
+  Precision: 0.8218
+  Recall: 0.1820
+  Accuracy: 0.9938
+Epoch 54 completed. Learning rate: 0.000033
+--------------------Epoch: 55/300--------------------
+2025-06-22 19:19:50.526925 Epoch [055/300], Step [0002/0009] (22%), Gen Loss: 1.1501, TP: 12983, FP: 935, TN: 1220315, FN: 783
+2025-06-22 19:19:51.228599 Epoch [055/300], Step [0004/0009] (44%), Gen Loss: 1.3218, TP: 3330, FP: 594, TN: 1233086, FN: 46
+2025-06-22 19:19:51.930459 Epoch [055/300], Step [0006/0009] (67%), Gen Loss: 1.3295, TP: 3985, FP: 1613, TN: 1230907, FN: 219
+2025-06-22 19:19:52.982075 Epoch [055/300], Step [0009/0009] (100%), Gen Loss: 1.3810, TP: 2389, FP: 622, TN: 1234276, FN: 19
+Starting validation...
+Validation Results - Loss: 0.7882
+  IoU: 0.1709
+  F1-Score: 0.2918
+  Precision: 0.8798
+  Recall: 0.1749
+  Accuracy: 0.9939
+Epoch 55 completed. Learning rate: 0.000033
+Checkpoint saved: ijmond_data_train_epoch_055_from_scratch.pth
+--------------------Epoch: 56/300--------------------
+2025-06-22 19:19:57.569482 Epoch [056/300], Step [0002/0009] (22%), Gen Loss: 1.6317, TP: 4777, FP: 465, TN: 1231546, FN: 238
+2025-06-22 19:19:58.271201 Epoch [056/300], Step [0004/0009] (44%), Gen Loss: 1.4816, TP: 5654, FP: 1181, TN: 1229816, FN: 80
+2025-06-22 19:19:58.972809 Epoch [056/300], Step [0006/0009] (67%), Gen Loss: 1.5222, TP: 2907, FP: 344, TN: 1233800, FN: 179
+2025-06-22 19:20:00.024504 Epoch [056/300], Step [0009/0009] (100%), Gen Loss: 1.4521, TP: 2568, FP: 384, TN: 1234180, FN: 72
+Starting validation...
+Validation Results - Loss: 0.8040
+  IoU: 0.1756
+  F1-Score: 0.2987
+  Precision: 0.8586
+  Recall: 0.1808
+  Accuracy: 0.9939
+Epoch 56 completed. Learning rate: 0.000033
+--------------------Epoch: 57/300--------------------
+2025-06-22 19:20:04.411435 Epoch [057/300], Step [0002/0009] (22%), Gen Loss: 1.3334, TP: 10595, FP: 1912, TN: 1222551, FN: 204
+2025-06-22 19:20:05.112968 Epoch [057/300], Step [0004/0009] (44%), Gen Loss: 1.2950, TP: 2526, FP: 585, TN: 1234328, FN: 53
+2025-06-22 19:20:05.815290 Epoch [057/300], Step [0006/0009] (67%), Gen Loss: 1.2748, TP: 2201, FP: 191, TN: 1234929, FN: 65
+2025-06-22 19:20:06.867287 Epoch [057/300], Step [0009/0009] (100%), Gen Loss: 1.2375, TP: 4710, FP: 829, TN: 1230871, FN: 137
+Starting validation...
+Validation Results - Loss: 0.8200
+  IoU: 0.1811
+  F1-Score: 0.3066
+  Precision: 0.8876
+  Recall: 0.1853
+  Accuracy: 0.9940
+Epoch 57 completed. Learning rate changed: 0.000033 -> 0.000030
+--------------------Epoch: 58/300--------------------
+2025-06-22 19:20:11.208731 Epoch [058/300], Step [0002/0009] (22%), Gen Loss: 1.1729, TP: 3174, FP: 472, TN: 1233770, FN: 26
+2025-06-22 19:20:11.910239 Epoch [058/300], Step [0004/0009] (44%), Gen Loss: 1.1653, TP: 4418, FP: 1025, TN: 1231502, FN: 52
+2025-06-22 19:20:12.611803 Epoch [058/300], Step [0006/0009] (67%), Gen Loss: 1.1756, TP: 2344, FP: 463, TN: 1234761, FN: 23
+2025-06-22 19:20:13.663100 Epoch [058/300], Step [0009/0009] (100%), Gen Loss: 1.1769, TP: 6305, FP: 1761, TN: 1227410, FN: 209
+Starting validation...
+Validation Results - Loss: 0.7920
+  IoU: 0.2040
+  F1-Score: 0.3388
+  Precision: 0.8534
+  Recall: 0.2114
+  Accuracy: 0.9941
+Epoch 58 completed. Learning rate: 0.000030
+--------------------Epoch: 59/300--------------------
+2025-06-22 19:20:18.007004 Epoch [059/300], Step [0002/0009] (22%), Gen Loss: 1.1535, TP: 4260, FP: 694, TN: 1232384, FN: 52
+2025-06-22 19:20:18.708600 Epoch [059/300], Step [0004/0009] (44%), Gen Loss: 1.1307, TP: 5696, FP: 676, TN: 1229871, FN: 257
+2025-06-22 19:20:19.456304 Epoch [059/300], Step [0006/0009] (67%), Gen Loss: 1.1354, TP: 7005, FP: 837, TN: 1227672, FN: 339
+2025-06-22 19:20:20.509271 Epoch [059/300], Step [0009/0009] (100%), Gen Loss: 1.1480, TP: 4244, FP: 519, TN: 1232030, FN: 76
+Starting validation...
+Validation Results - Loss: 0.8527
+  IoU: 0.1550
+  F1-Score: 0.2684
+  Precision: 0.8912
+  Recall: 0.1580
+  Accuracy: 0.9938
+Epoch 59 completed. Learning rate: 0.000030
+--------------------Epoch: 60/300--------------------
+2025-06-22 19:20:24.873758 Epoch [060/300], Step [0002/0009] (22%), Gen Loss: 1.1399, TP: 2818, FP: 473, TN: 1233286, FN: 316
+2025-06-22 19:20:25.575434 Epoch [060/300], Step [0004/0009] (44%), Gen Loss: 1.1346, TP: 4451, FP: 1139, TN: 1231296, FN: 52
+2025-06-22 19:20:26.277166 Epoch [060/300], Step [0006/0009] (67%), Gen Loss: 1.1361, TP: 4599, FP: 702, TN: 1231187, FN: 134
+2025-06-22 19:20:27.328906 Epoch [060/300], Step [0009/0009] (100%), Gen Loss: 1.1900, TP: 2207, FP: 946, TN: 1233955, FN: 35
+Starting validation...
+Validation Results - Loss: 0.8822
+  IoU: 0.1628
+  F1-Score: 0.2801
+  Precision: 0.8948
+  Recall: 0.1660
+  Accuracy: 0.9939
+Epoch 60 completed. Learning rate: 0.000030
+Checkpoint saved: ijmond_data_train_epoch_060_from_scratch.pth
+--------------------Epoch: 61/300--------------------
+2025-06-22 19:20:31.889617 Epoch [061/300], Step [0002/0009] (22%), Gen Loss: 1.3063, TP: 2395, FP: 627, TN: 1234247, FN: 17
+2025-06-22 19:20:32.591395 Epoch [061/300], Step [0004/0009] (44%), Gen Loss: 1.2503, TP: 1772, FP: 661, TN: 1235064, FN: 12
+2025-06-22 19:20:33.292968 Epoch [061/300], Step [0006/0009] (67%), Gen Loss: 1.2211, TP: 6220, FP: 677, TN: 1229547, FN: 150
+2025-06-22 19:20:34.345003 Epoch [061/300], Step [0009/0009] (100%), Gen Loss: 1.2468, TP: 11800, FP: 1687, TN: 1220301, FN: 957
+Starting validation...
+Validation Results - Loss: 0.7541
+  IoU: 0.2207
+  F1-Score: 0.3616
+  Precision: 0.8268
+  Recall: 0.2314
+  Accuracy: 0.9941
+Epoch 61 completed. Learning rate: 0.000030
+--------------------Epoch: 62/300--------------------
+2025-06-22 19:20:38.690243 Epoch [062/300], Step [0002/0009] (22%), Gen Loss: 1.4278, TP: 3856, FP: 655, TN: 1232419, FN: 46
+2025-06-22 19:20:39.392025 Epoch [062/300], Step [0004/0009] (44%), Gen Loss: 1.3578, TP: 2509, FP: 373, TN: 1234260, FN: 35
+2025-06-22 19:20:40.093991 Epoch [062/300], Step [0006/0009] (67%), Gen Loss: 1.4310, TP: 10415, FP: 1391, TN: 1222772, FN: 564
+2025-06-22 19:20:41.145794 Epoch [062/300], Step [0009/0009] (100%), Gen Loss: 1.3525, TP: 2564, FP: 508, TN: 1234095, FN: 37
+Starting validation...
+Validation Results - Loss: 0.8175
+  IoU: 0.1738
+  F1-Score: 0.2962
+  Precision: 0.8845
+  Recall: 0.1779
+  Accuracy: 0.9939
+Epoch 62 completed. Learning rate: 0.000030
+--------------------Epoch: 63/300--------------------
+2025-06-22 19:20:45.491128 Epoch [063/300], Step [0002/0009] (22%), Gen Loss: 1.2074, TP: 3469, FP: 898, TN: 1232697, FN: 28
+2025-06-22 19:20:46.193341 Epoch [063/300], Step [0004/0009] (44%), Gen Loss: 1.2260, TP: 3267, FP: 363, TN: 1233879, FN: 134
+2025-06-22 19:20:46.894910 Epoch [063/300], Step [0006/0009] (67%), Gen Loss: 1.2269, TP: 4426, FP: 970, TN: 1231358, FN: 34
+2025-06-22 19:20:47.946873 Epoch [063/300], Step [0009/0009] (100%), Gen Loss: 1.2338, TP: 6078, FP: 359, TN: 1229536, FN: 292
+Starting validation...
+Validation Results - Loss: 0.8216
+  IoU: 0.1880
+  F1-Score: 0.3166
+  Precision: 0.8382
+  Recall: 0.1951
+  Accuracy: 0.9940
+Epoch 63 completed. Learning rate: 0.000030
+--------------------Epoch: 64/300--------------------
+2025-06-22 19:20:52.247412 Epoch [064/300], Step [0002/0009] (22%), Gen Loss: 1.2551, TP: 8285, FP: 1643, TN: 1225491, FN: 222
+2025-06-22 19:20:52.949136 Epoch [064/300], Step [0004/0009] (44%), Gen Loss: 1.2377, TP: 6152, FP: 426, TN: 1230047, FN: 113
+2025-06-22 19:20:53.650814 Epoch [064/300], Step [0006/0009] (67%), Gen Loss: 1.2140, TP: 5815, FP: 661, TN: 1229771, FN: 117
+2025-06-22 19:20:54.702012 Epoch [064/300], Step [0009/0009] (100%), Gen Loss: 1.2074, TP: 4204, FP: 512, TN: 1231718, FN: 122
+Starting validation...
+Validation Results - Loss: 0.8181
+  IoU: 0.1770
+  F1-Score: 0.3007
+  Precision: 0.8825
+  Recall: 0.1813
+  Accuracy: 0.9940
+Epoch 64 completed. Learning rate changed: 0.000030 -> 0.000027
+--------------------Epoch: 65/300--------------------
+2025-06-22 19:20:59.061847 Epoch [065/300], Step [0002/0009] (22%), Gen Loss: 1.1695, TP: 4104, FP: 461, TN: 1232284, FN: 93
+2025-06-22 19:20:59.763964 Epoch [065/300], Step [0004/0009] (44%), Gen Loss: 1.4441, TP: 4918, FP: 500, TN: 1230336, FN: 611
+2025-06-22 19:21:00.465876 Epoch [065/300], Step [0006/0009] (67%), Gen Loss: 1.4534, TP: 11135, FP: 1708, TN: 1221712, FN: 503
+2025-06-22 19:21:01.517848 Epoch [065/300], Step [0009/0009] (100%), Gen Loss: 1.4886, TP: 2624, FP: 808, TN: 1233679, FN: 42
+Starting validation...
+Validation Results - Loss: 0.8209
+  IoU: 0.1691
+  F1-Score: 0.2893
+  Precision: 0.8652
+  Recall: 0.1737
+  Accuracy: 0.9939
+Epoch 65 completed. Learning rate: 0.000027
+Checkpoint saved: ijmond_data_train_epoch_065_from_scratch.pth
+--------------------Epoch: 66/300--------------------
+2025-06-22 19:21:06.125910 Epoch [066/300], Step [0002/0009] (22%), Gen Loss: 1.2524, TP: 1982, FP: 405, TN: 1235114, FN: 37
+2025-06-22 19:21:06.827618 Epoch [066/300], Step [0004/0009] (44%), Gen Loss: 1.3015, TP: 6230, FP: 1139, TN: 1228684, FN: 106
+2025-06-22 19:21:07.529159 Epoch [066/300], Step [0006/0009] (67%), Gen Loss: 1.2563, TP: 4663, FP: 928, TN: 1231207, FN: 84
+2025-06-22 19:21:08.580754 Epoch [066/300], Step [0009/0009] (100%), Gen Loss: 1.2354, TP: 5141, FP: 1177, TN: 1229605, FN: 255
+Starting validation...
+Validation Results - Loss: 0.8045
+  IoU: 0.2002
+  F1-Score: 0.3335
+  Precision: 0.8587
+  Recall: 0.2070
+  Accuracy: 0.9941
+Epoch 66 completed. Learning rate: 0.000027
+--------------------Epoch: 67/300--------------------
+2025-06-22 19:21:12.863183 Epoch [067/300], Step [0002/0009] (22%), Gen Loss: 1.2190, TP: 2943, FP: 430, TN: 1233800, FN: 38
+2025-06-22 19:21:13.564745 Epoch [067/300], Step [0004/0009] (44%), Gen Loss: 1.2223, TP: 5929, FP: 621, TN: 1229250, FN: 188
+2025-06-22 19:21:14.266753 Epoch [067/300], Step [0006/0009] (67%), Gen Loss: 1.1942, TP: 2448, FP: 438, TN: 1234596, FN: 31
+2025-06-22 19:21:15.318170 Epoch [067/300], Step [0009/0009] (100%), Gen Loss: 1.1742, TP: 2661, FP: 493, TN: 1234020, FN: 57
+Starting validation...
+Validation Results - Loss: 0.8190
+  IoU: 0.1973
+  F1-Score: 0.3296
+  Precision: 0.8792
+  Recall: 0.2028
+  Accuracy: 0.9941
+Epoch 67 completed. Learning rate: 0.000027
+--------------------Epoch: 68/300--------------------
+2025-06-22 19:21:19.659374 Epoch [068/300], Step [0002/0009] (22%), Gen Loss: 1.1753, TP: 8170, FP: 594, TN: 1226857, FN: 574
+2025-06-22 19:21:20.362111 Epoch [068/300], Step [0004/0009] (44%), Gen Loss: 1.1500, TP: 5489, FP: 682, TN: 1230648, FN: 57
+2025-06-22 19:21:21.063744 Epoch [068/300], Step [0006/0009] (67%), Gen Loss: 1.1409, TP: 3171, FP: 339, TN: 1233731, FN: 123
+2025-06-22 19:21:22.115596 Epoch [068/300], Step [0009/0009] (100%), Gen Loss: 1.1688, TP: 5994, FP: 972, TN: 1228534, FN: 338
+Starting validation...
+Validation Results - Loss: 0.8100
+  IoU: 0.1758
+  F1-Score: 0.2991
+  Precision: 0.8696
+  Recall: 0.1806
+  Accuracy: 0.9939
+Epoch 68 completed. Learning rate: 0.000027
+--------------------Epoch: 69/300--------------------
+2025-06-22 19:21:26.411927 Epoch [069/300], Step [0002/0009] (22%), Gen Loss: 1.1255, TP: 2539, FP: 454, TN: 1234429, FN: 24
+2025-06-22 19:21:27.114180 Epoch [069/300], Step [0004/0009] (44%), Gen Loss: 1.1795, TP: 2878, FP: 609, TN: 1233552, FN: 20
+2025-06-22 19:21:27.815679 Epoch [069/300], Step [0006/0009] (67%), Gen Loss: 1.1745, TP: 4855, FP: 761, TN: 1231064, FN: 61
+2025-06-22 19:21:28.867353 Epoch [069/300], Step [0009/0009] (100%), Gen Loss: 1.1579, TP: 9510, FP: 1485, TN: 1224891, FN: 48
+Starting validation...
+Validation Results - Loss: 0.8336
+  IoU: 0.1765
+  F1-Score: 0.3000
+  Precision: 0.8728
+  Recall: 0.1811
+  Accuracy: 0.9939
+Epoch 69 completed. Learning rate: 0.000027
+--------------------Epoch: 70/300--------------------
+2025-06-22 19:21:33.224629 Epoch [070/300], Step [0002/0009] (22%), Gen Loss: 1.0905, TP: 8200, FP: 538, TN: 1226819, FN: 530
+2025-06-22 19:21:33.926779 Epoch [070/300], Step [0004/0009] (44%), Gen Loss: 1.1284, TP: 3247, FP: 602, TN: 1233443, FN: 57
+2025-06-22 19:21:34.628240 Epoch [070/300], Step [0006/0009] (67%), Gen Loss: 1.1251, TP: 2596, FP: 460, TN: 1234049, FN: 36
+2025-06-22 19:21:35.680047 Epoch [070/300], Step [0009/0009] (100%), Gen Loss: 1.1513, TP: 6232, FP: 792, TN: 1229228, FN: 85
+Starting validation...
+Validation Results - Loss: 0.8218
+  IoU: 0.1652
+  F1-Score: 0.2835
+  Precision: 0.8450
+  Recall: 0.1703
+  Accuracy: 0.9938
+Epoch 70 completed. Learning rate: 0.000027
+Checkpoint saved: ijmond_data_train_epoch_070_from_scratch.pth
+--------------------Epoch: 71/300--------------------
+2025-06-22 19:21:40.301044 Epoch [071/300], Step [0002/0009] (22%), Gen Loss: 1.1869, TP: 5851, FP: 684, TN: 1229380, FN: 177
+2025-06-22 19:21:41.002736 Epoch [071/300], Step [0004/0009] (44%), Gen Loss: 1.1311, TP: 3867, FP: 261, TN: 1232362, FN: 380
+2025-06-22 19:21:41.704212 Epoch [071/300], Step [0006/0009] (67%), Gen Loss: 1.1259, TP: 2415, FP: 498, TN: 1234563, FN: 5
+2025-06-22 19:21:42.755782 Epoch [071/300], Step [0009/0009] (100%), Gen Loss: 1.1258, TP: 2982, FP: 421, TN: 1233843, FN: 63
+Starting validation...
+Validation Results - Loss: 0.8032
+  IoU: 0.2051
+  F1-Score: 0.3404
+  Precision: 0.8224
+  Recall: 0.2146
+  Accuracy: 0.9940
+Epoch 71 completed. Learning rate changed: 0.000027 -> 0.000024
+--------------------Epoch: 72/300--------------------
+2025-06-22 19:21:47.095815 Epoch [072/300], Step [0002/0009] (22%), Gen Loss: 1.1550, TP: 3030, FP: 847, TN: 1233105, FN: 59
+2025-06-22 19:21:47.797884 Epoch [072/300], Step [0004/0009] (44%), Gen Loss: 1.1599, TP: 2492, FP: 720, TN: 1233795, FN: 39
+2025-06-22 19:21:48.499708 Epoch [072/300], Step [0006/0009] (67%), Gen Loss: 1.1533, TP: 5871, FP: 352, TN: 1230247, FN: 167
+2025-06-22 19:21:49.551495 Epoch [072/300], Step [0009/0009] (100%), Gen Loss: 1.1417, TP: 6096, FP: 419, TN: 1230429, FN: 36
+Starting validation...
+Validation Results - Loss: 0.8295
+  IoU: 0.1723
+  F1-Score: 0.2940
+  Precision: 0.8545
+  Recall: 0.1775
+  Accuracy: 0.9939
+Epoch 72 completed. Learning rate: 0.000024
+--------------------Epoch: 73/300--------------------
+2025-06-22 19:21:53.920242 Epoch [073/300], Step [0002/0009] (22%), Gen Loss: 1.0989, TP: 12989, FP: 859, TN: 1219662, FN: 928
+2025-06-22 19:21:54.621795 Epoch [073/300], Step [0004/0009] (44%), Gen Loss: 1.0954, TP: 3184, FP: 464, TN: 1233329, FN: 30
+2025-06-22 19:21:55.323405 Epoch [073/300], Step [0006/0009] (67%), Gen Loss: 1.1283, TP: 3306, FP: 696, TN: 1233100, FN: 20
+2025-06-22 19:21:56.375021 Epoch [073/300], Step [0009/0009] (100%), Gen Loss: 1.1453, TP: 2974, FP: 653, TN: 1233254, FN: 39
+Starting validation...
+Validation Results - Loss: 0.8437
+  IoU: 0.1683
+  F1-Score: 0.2881
+  Precision: 0.8684
+  Recall: 0.1727
+  Accuracy: 0.9939
+Epoch 73 completed. Learning rate: 0.000024
+--------------------Epoch: 74/300--------------------
+2025-06-22 19:22:00.672014 Epoch [074/300], Step [0002/0009] (22%), Gen Loss: 1.1600, TP: 5817, FP: 659, TN: 1230196, FN: 103
+2025-06-22 19:22:01.373985 Epoch [074/300], Step [0004/0009] (44%), Gen Loss: 1.1652, TP: 3706, FP: 424, TN: 1232654, FN: 98
+2025-06-22 19:22:02.075570 Epoch [074/300], Step [0006/0009] (67%), Gen Loss: 1.1506, TP: 1993, FP: 523, TN: 1234748, FN: 29
+2025-06-22 19:22:03.126955 Epoch [074/300], Step [0009/0009] (100%), Gen Loss: 1.1301, TP: 5536, FP: 1524, TN: 1228955, FN: 214
+Starting validation...
+Validation Results - Loss: 0.8035
+  IoU: 0.2036
+  F1-Score: 0.3383
+  Precision: 0.8192
+  Recall: 0.2132
+  Accuracy: 0.9940
+Epoch 74 completed. Learning rate: 0.000024
+--------------------Epoch: 75/300--------------------
+2025-06-22 19:22:07.487294 Epoch [075/300], Step [0002/0009] (22%), Gen Loss: 1.2095, TP: 5300, FP: 591, TN: 1230516, FN: 44
+2025-06-22 19:22:08.188754 Epoch [075/300], Step [0004/0009] (44%), Gen Loss: 1.1656, TP: 2657, FP: 246, TN: 1234261, FN: 145
+2025-06-22 19:22:08.890207 Epoch [075/300], Step [0006/0009] (67%), Gen Loss: 1.1567, TP: 2150, FP: 680, TN: 1234397, FN: 9
+2025-06-22 19:22:09.941471 Epoch [075/300], Step [0009/0009] (100%), Gen Loss: 1.1478, TP: 2046, FP: 510, TN: 1234937, FN: 22
+Starting validation...
+Validation Results - Loss: 0.8486
+  IoU: 0.1803
+  F1-Score: 0.3055
+  Precision: 0.8867
+  Recall: 0.1845
+  Accuracy: 0.9940
+Epoch 75 completed. Learning rate: 0.000024
+Checkpoint saved: ijmond_data_train_epoch_075_from_scratch.pth
+--------------------Epoch: 76/300--------------------
+2025-06-22 19:22:14.518943 Epoch [076/300], Step [0002/0009] (22%), Gen Loss: 1.0870, TP: 4758, FP: 348, TN: 1231177, FN: 130
+2025-06-22 19:22:15.220321 Epoch [076/300], Step [0004/0009] (44%), Gen Loss: 1.1300, TP: 11772, FP: 1020, TN: 1222219, FN: 440
+2025-06-22 19:22:15.921942 Epoch [076/300], Step [0006/0009] (67%), Gen Loss: 1.1100, TP: 5508, FP: 616, TN: 1230488, FN: 53
+2025-06-22 19:22:16.973744 Epoch [076/300], Step [0009/0009] (100%), Gen Loss: 1.1136, TP: 4325, FP: 866, TN: 1231058, FN: 270
+Starting validation...
+Validation Results - Loss: 0.8378
+  IoU: 0.1782
+  F1-Score: 0.3025
+  Precision: 0.8504
+  Recall: 0.1840
+  Accuracy: 0.9939
+Epoch 76 completed. Learning rate: 0.000024
+--------------------Epoch: 77/300--------------------
+2025-06-22 19:22:21.301623 Epoch [077/300], Step [0002/0009] (22%), Gen Loss: 1.1481, TP: 3680, FP: 385, TN: 1233211, FN: 13
+2025-06-22 19:22:22.003750 Epoch [077/300], Step [0004/0009] (44%), Gen Loss: 1.1340, TP: 9062, FP: 982, TN: 1225824, FN: 89
+2025-06-22 19:22:22.705730 Epoch [077/300], Step [0006/0009] (67%), Gen Loss: 1.1310, TP: 5227, FP: 447, TN: 1231048, FN: 137
+2025-06-22 19:22:23.758640 Epoch [077/300], Step [0009/0009] (100%), Gen Loss: 1.1138, TP: 8189, FP: 631, TN: 1226845, FN: 250
+Starting validation...
+Validation Results - Loss: 0.8252
+  IoU: 0.1865
+  F1-Score: 0.3143
+  Precision: 0.8536
+  Recall: 0.1926
+  Accuracy: 0.9940
+Epoch 77 completed. Learning rate: 0.000024
+--------------------Epoch: 78/300--------------------
+2025-06-22 19:22:28.101473 Epoch [078/300], Step [0002/0009] (22%), Gen Loss: 1.0774, TP: 5418, FP: 1457, TN: 1229550, FN: 16
+2025-06-22 19:22:28.807148 Epoch [078/300], Step [0004/0009] (44%), Gen Loss: 1.0966, TP: 4268, FP: 401, TN: 1232053, FN: 161
+2025-06-22 19:22:29.512638 Epoch [078/300], Step [0006/0009] (67%), Gen Loss: 1.1036, TP: 4102, FP: 464, TN: 1232430, FN: 68
+2025-06-22 19:22:30.568476 Epoch [078/300], Step [0009/0009] (100%), Gen Loss: 1.0964, TP: 9121, FP: 766, TN: 1225730, FN: 256
+Starting validation...
+Validation Results - Loss: 0.8465
+  IoU: 0.1871
+  F1-Score: 0.3152
+  Precision: 0.8218
+  Recall: 0.1950
+  Accuracy: 0.9939
+Epoch 78 completed. Learning rate changed: 0.000024 -> 0.000022
+--------------------Epoch: 79/300--------------------
+2025-06-22 19:22:34.932114 Epoch [079/300], Step [0002/0009] (22%), Gen Loss: 1.0904, TP: 3956, FP: 690, TN: 1232018, FN: 65
+2025-06-22 19:22:35.635460 Epoch [079/300], Step [0004/0009] (44%), Gen Loss: 1.0753, TP: 7526, FP: 541, TN: 1227579, FN: 386
+2025-06-22 19:22:36.338656 Epoch [079/300], Step [0006/0009] (67%), Gen Loss: 1.0758, TP: 3253, FP: 601, TN: 1233119, FN: 37
+2025-06-22 19:22:37.391121 Epoch [079/300], Step [0009/0009] (100%), Gen Loss: 1.0889, TP: 2085, FP: 457, TN: 1234879, FN: 37
+Starting validation...
+Validation Results - Loss: 0.8044
+  IoU: 0.1984
+  F1-Score: 0.3311
+  Precision: 0.8273
+  Recall: 0.2070
+  Accuracy: 0.9940
+Epoch 79 completed. Learning rate: 0.000022
+--------------------Epoch: 80/300--------------------
+2025-06-22 19:22:41.760046 Epoch [080/300], Step [0002/0009] (22%), Gen Loss: 1.0794, TP: 2969, FP: 294, TN: 1234193, FN: 18
+2025-06-22 19:22:42.461718 Epoch [080/300], Step [0004/0009] (44%), Gen Loss: 1.0834, TP: 3718, FP: 479, TN: 1232648, FN: 74
+2025-06-22 19:22:43.163346 Epoch [080/300], Step [0006/0009] (67%), Gen Loss: 1.0968, TP: 5990, FP: 907, TN: 1228682, FN: 224
+2025-06-22 19:22:44.215614 Epoch [080/300], Step [0009/0009] (100%), Gen Loss: 1.1008, TP: 4396, FP: 340, TN: 1232396, FN: 44
+Starting validation...
+Validation Results - Loss: 0.8475
+  IoU: 0.1910
+  F1-Score: 0.3208
+  Precision: 0.8497
+  Recall: 0.1977
+  Accuracy: 0.9940
+Epoch 80 completed. Learning rate: 0.000022
+Checkpoint saved: ijmond_data_train_epoch_080_from_scratch.pth
+--------------------Epoch: 81/300--------------------
+2025-06-22 19:22:48.855297 Epoch [081/300], Step [0002/0009] (22%), Gen Loss: 1.0565, TP: 2596, FP: 664, TN: 1233748, FN: 16
+2025-06-22 19:22:49.557283 Epoch [081/300], Step [0004/0009] (44%), Gen Loss: 1.0978, TP: 5405, FP: 334, TN: 1230330, FN: 259
+2025-06-22 19:22:50.259868 Epoch [081/300], Step [0006/0009] (67%), Gen Loss: 1.0971, TP: 6329, FP: 1061, TN: 1228304, FN: 366
+2025-06-22 19:22:51.311762 Epoch [081/300], Step [0009/0009] (100%), Gen Loss: 1.0961, TP: 2861, FP: 343, TN: 1234086, FN: 15
+Starting validation...
+Validation Results - Loss: 0.8481
+  IoU: 0.1719
+  F1-Score: 0.2933
+  Precision: 0.8722
+  Recall: 0.1763
+  Accuracy: 0.9939
+Epoch 81 completed. Learning rate: 0.000022
+--------------------Epoch: 82/300--------------------
+2025-06-22 19:22:55.667990 Epoch [082/300], Step [0002/0009] (22%), Gen Loss: 1.0685, TP: 2882, FP: 282, TN: 1234063, FN: 23
+2025-06-22 19:22:56.369572 Epoch [082/300], Step [0004/0009] (44%), Gen Loss: 1.0601, TP: 5290, FP: 697, TN: 1230834, FN: 15
+2025-06-22 19:22:57.071114 Epoch [082/300], Step [0006/0009] (67%), Gen Loss: 1.0917, TP: 3300, FP: 470, TN: 1233152, FN: 69
+2025-06-22 19:22:58.123196 Epoch [082/300], Step [0009/0009] (100%), Gen Loss: 1.0993, TP: 2311, FP: 549, TN: 1234498, FN: 35
+Starting validation...
+Validation Results - Loss: 0.8181
+  IoU: 0.2017
+  F1-Score: 0.3356
+  Precision: 0.8690
+  Recall: 0.2080
+  Accuracy: 0.9941
+Epoch 82 completed. Learning rate: 0.000022
+--------------------Epoch: 83/300--------------------
+2025-06-22 19:23:02.470168 Epoch [083/300], Step [0002/0009] (22%), Gen Loss: 1.0807, TP: 4898, FP: 823, TN: 1230648, FN: 153
+2025-06-22 19:23:03.171825 Epoch [083/300], Step [0004/0009] (44%), Gen Loss: 1.0948, TP: 4272, FP: 481, TN: 1232064, FN: 32
+2025-06-22 19:23:03.873431 Epoch [083/300], Step [0006/0009] (67%), Gen Loss: 1.0915, TP: 5710, FP: 851, TN: 1229296, FN: 153
+2025-06-22 19:23:04.925550 Epoch [083/300], Step [0009/0009] (100%), Gen Loss: 1.1178, TP: 4223, FP: 462, TN: 1231894, FN: 295
+Starting validation...
+Validation Results - Loss: 0.8234
+  IoU: 0.1886
+  F1-Score: 0.3173
+  Precision: 0.8579
+  Recall: 0.1947
+  Accuracy: 0.9940
+Epoch 83 completed. Learning rate: 0.000022
+--------------------Epoch: 84/300--------------------
+2025-06-22 19:23:09.298444 Epoch [084/300], Step [0002/0009] (22%), Gen Loss: 1.1348, TP: 1663, FP: 574, TN: 1235207, FN: 6
+2025-06-22 19:23:10.000626 Epoch [084/300], Step [0004/0009] (44%), Gen Loss: 1.1020, TP: 8604, FP: 1180, TN: 1226103, FN: 149
+2025-06-22 19:23:10.803977 Epoch [084/300], Step [0006/0009] (67%), Gen Loss: 1.1029, TP: 4826, FP: 189, TN: 1231617, FN: 144
+2025-06-22 19:23:11.855626 Epoch [084/300], Step [0009/0009] (100%), Gen Loss: 1.1089, TP: 4151, FP: 512, TN: 1232179, FN: 21
+Starting validation...
+Validation Results - Loss: 0.8463
+  IoU: 0.1904
+  F1-Score: 0.3199
+  Precision: 0.7990
+  Recall: 0.2000
+  Accuracy: 0.9939
+Epoch 84 completed. Learning rate: 0.000022
+--------------------Epoch: 85/300--------------------
+2025-06-22 19:23:16.206604 Epoch [085/300], Step [0002/0009] (22%), Gen Loss: 1.0821, TP: 5145, FP: 989, TN: 1229836, FN: 131
+2025-06-22 19:23:16.908428 Epoch [085/300], Step [0004/0009] (44%), Gen Loss: 1.0970, TP: 4481, FP: 652, TN: 1231244, FN: 57
+2025-06-22 19:23:17.609968 Epoch [085/300], Step [0006/0009] (67%), Gen Loss: 1.1051, TP: 8950, FP: 412, TN: 1226489, FN: 291
+2025-06-22 19:23:18.661769 Epoch [085/300], Step [0009/0009] (100%), Gen Loss: 1.1082, TP: 4133, FP: 714, TN: 1232245, FN: 23
+Starting validation...
+Validation Results - Loss: 0.8457
+  IoU: 0.1817
+  F1-Score: 0.3075
+  Precision: 0.8597
+  Recall: 0.1872
+  Accuracy: 0.9939
+Epoch 85 completed. Learning rate changed: 0.000022 -> 0.000019
+Checkpoint saved: ijmond_data_train_epoch_085_from_scratch.pth
+--------------------Epoch: 86/300--------------------
+2025-06-22 19:23:23.322937 Epoch [086/300], Step [0002/0009] (22%), Gen Loss: 1.0810, TP: 3173, FP: 317, TN: 1233507, FN: 48
+2025-06-22 19:23:24.024630 Epoch [086/300], Step [0004/0009] (44%), Gen Loss: 1.1036, TP: 4078, FP: 882, TN: 1231822, FN: 75
+2025-06-22 19:23:24.726182 Epoch [086/300], Step [0006/0009] (67%), Gen Loss: 1.1008, TP: 6438, FP: 838, TN: 1228469, FN: 200
+2025-06-22 19:23:25.778300 Epoch [086/300], Step [0009/0009] (100%), Gen Loss: 1.1191, TP: 11343, FP: 976, TN: 1223168, FN: 233
+Starting validation...
+Validation Results - Loss: 0.8484
+  IoU: 0.1817
+  F1-Score: 0.3075
+  Precision: 0.8601
+  Recall: 0.1872
+  Accuracy: 0.9939
+Epoch 86 completed. Learning rate: 0.000019
+--------------------Epoch: 87/300--------------------
+2025-06-22 19:23:30.097967 Epoch [087/300], Step [0002/0009] (22%), Gen Loss: 1.1088, TP: 4102, FP: 370, TN: 1232456, FN: 44
+2025-06-22 19:23:30.799949 Epoch [087/300], Step [0004/0009] (44%), Gen Loss: 1.0854, TP: 7971, FP: 1354, TN: 1226007, FN: 220
+2025-06-22 19:23:31.501794 Epoch [087/300], Step [0006/0009] (67%), Gen Loss: 1.0859, TP: 3295, FP: 424, TN: 1233262, FN: 39
+2025-06-22 19:23:32.553350 Epoch [087/300], Step [0009/0009] (100%), Gen Loss: 1.0878, TP: 1300, FP: 172, TN: 1236349, FN: 27
+Starting validation...
+Validation Results - Loss: 0.8460
+  IoU: 0.1867
+  F1-Score: 0.3146
+  Precision: 0.8419
+  Recall: 0.1934
+  Accuracy: 0.9940
+Epoch 87 completed. Learning rate: 0.000019
+--------------------Epoch: 88/300--------------------
+2025-06-22 19:23:36.850319 Epoch [088/300], Step [0002/0009] (22%), Gen Loss: 1.1734, TP: 3114, FP: 393, TN: 1233848, FN: 9
+2025-06-22 19:23:37.551945 Epoch [088/300], Step [0004/0009] (44%), Gen Loss: 1.1264, TP: 3425, FP: 498, TN: 1232888, FN: 161
+2025-06-22 19:23:38.253446 Epoch [088/300], Step [0006/0009] (67%), Gen Loss: 1.1091, TP: 6613, FP: 271, TN: 1229647, FN: 127
+2025-06-22 19:23:39.305349 Epoch [088/300], Step [0009/0009] (100%), Gen Loss: 1.1060, TP: 1705, FP: 421, TN: 1235534, FN: 8
+Starting validation...
+Validation Results - Loss: 0.8354
+  IoU: 0.2015
+  F1-Score: 0.3353
+  Precision: 0.8407
+  Recall: 0.2095
+  Accuracy: 0.9940
+Epoch 88 completed. Learning rate: 0.000019
+--------------------Epoch: 89/300--------------------
+2025-06-22 19:23:43.663984 Epoch [089/300], Step [0002/0009] (22%), Gen Loss: 1.0821, TP: 3990, FP: 494, TN: 1232483, FN: 65
+2025-06-22 19:23:44.365250 Epoch [089/300], Step [0004/0009] (44%), Gen Loss: 1.1162, TP: 4911, FP: 610, TN: 1230883, FN: 76
+2025-06-22 19:23:45.066820 Epoch [089/300], Step [0006/0009] (67%), Gen Loss: 1.1263, TP: 11044, FP: 1266, TN: 1223050, FN: 114
+2025-06-22 19:23:46.118352 Epoch [089/300], Step [0009/0009] (100%), Gen Loss: 1.1297, TP: 6158, FP: 812, TN: 1229062, FN: 151
+Starting validation...
+Validation Results - Loss: 0.8497
+  IoU: 0.1949
+  F1-Score: 0.3263
+  Precision: 0.8539
+  Recall: 0.2017
+  Accuracy: 0.9940
+Epoch 89 completed. Learning rate: 0.000019
+--------------------Epoch: 90/300--------------------
+2025-06-22 19:23:50.419037 Epoch [090/300], Step [0002/0009] (22%), Gen Loss: 1.1452, TP: 6138, FP: 749, TN: 1229225, FN: 64
+2025-06-22 19:23:51.120893 Epoch [090/300], Step [0004/0009] (44%), Gen Loss: 1.1262, TP: 5520, FP: 764, TN: 1229501, FN: 225
+2025-06-22 19:23:51.822943 Epoch [090/300], Step [0006/0009] (67%), Gen Loss: 1.1143, TP: 999, FP: 233, TN: 1236760, FN: 7
+2025-06-22 19:23:52.874743 Epoch [090/300], Step [0009/0009] (100%), Gen Loss: 1.0965, TP: 8127, FP: 524, TN: 1227014, FN: 406
+Starting validation...
+Validation Results - Loss: 0.8509
+  IoU: 0.1786
+  F1-Score: 0.3031
+  Precision: 0.8554
+  Recall: 0.1842
+  Accuracy: 0.9939
+Epoch 90 completed. Learning rate: 0.000019
+Early stopping triggered at epoch 90
+Best IoU score: 0.2283 at epoch 50
+
+==================================================
+Training completed!
+Best validation IoU score: 0.2283 achieved at epoch 50
+Best model saved at: models/full-supervision/ijmond-limited-train/ijmond_data_train/ijmond_data_train_best_model.pth
+==================================================
+
+JOB STATISTICS
+==============
+Job ID: 12557770
+Cluster: snellius
+User/Group: ytao/ytao
+State: RUNNING
+Nodes: 1
+Cores per node: 9
+CPU Utilized: 00:00:00
+CPU Efficiency: 0.00% of 01:36:54 core-walltime
+Job Wall-clock time: 00:10:46
+Memory Utilized: 0.00 MB
+Memory Efficiency: 0.00% of 16.00 GB (16.00 GB/node)
+WARNING: Efficiency statistics can only be obtained after the job has ended as seff tool is based on the accounting database data.

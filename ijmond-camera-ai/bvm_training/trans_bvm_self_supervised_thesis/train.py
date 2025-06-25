@@ -37,34 +37,33 @@ def argparser():
 
     # ================================== 基础训练配置 ==================================
     parser.add_argument("--epoch", type=int, default=50, help="number of training epochs")
-    parser.add_argument("--batchsize", type=int, default=6, help="batch size for training")
+    parser.add_argument("--batchsize", type=int, default=8, help="batch size for training")
     parser.add_argument("--trainsize", type=int, default=352, help="input image resolution (trainsize x trainsize)")
 
     # ================================== 优化器配置 ==================================
-    parser.add_argument("--lr_gen", type=float, default=8e-5, help="learning rate for generator")
+    parser.add_argument("--lr_gen", type=float, default=5e-5, help="learning rate for generator")
     parser.add_argument("--beta", type=float, default=0.5, help="beta parameter for Adam optimizer")
     parser.add_argument("--clip", type=float, default=0.5, help="gradient clipping threshold")
     parser.add_argument("--decay_rate", type=float, default=0.8, help="learning rate decay factor for ReduceLROnPlateau")
-    parser.add_argument("--decay_epoch", type=int, default=6, help="patience epochs for ReduceLROnPlateau scheduler")
+    parser.add_argument("--decay_epoch", type=int, default=12, help="patience epochs for ReduceLROnPlateau scheduler")
 
     # ================================== 模型架构配置 ==================================
-    parser.add_argument("--gen_reduced_channel", type=int, default=48, help="reduced channel count in generator")
     parser.add_argument("--feat_channel", type=int, default=64, help="feature channel count for saliency features")
     parser.add_argument("--latent_dim", type=int, default=8, help="latent space dimension")
     parser.add_argument("--num_filters", type=int, default=16, help="number of filters for contrastive loss layer")
 
     # ================================== 损失函数权重配置 ==================================
     parser.add_argument("--reg_weight", type=float, default=1e-4, help="weight for L2 regularization")
-    parser.add_argument("--lat_weight", type=float, default=10.0, help="weight for latent loss")
-    parser.add_argument("--vae_loss_weight", type=float, default=0.4, help="weight for VAE loss component")
-    parser.add_argument("--contrastive_loss_weight", type=float, default=0.1, help="weight for contrastive loss")
+    parser.add_argument("--lat_weight", type=float, default=2.0, help="weight for latent loss")
+    parser.add_argument("--vae_loss_weight", type=float, default=0.6, help="weight for VAE loss component")
+    parser.add_argument("--contrastive_loss_weight", type=float, default=1, help="weight for contrastive loss")
 
     # ================================== 半监督学习配置 ==================================
     parser.add_argument("--inter", action="store_true", default=False, help="use inter-image pixel matching (vs intra-image)")
-    parser.add_argument("--no_samples", type=int, default=50, help="number of pixels for contrastive loss sampling")
+    parser.add_argument("--no_samples", type=int, default=500, help="number of pixels for contrastive loss sampling")
 
     # ================================== 领域自适应配置 ==================================
-    parser.add_argument("--domain_loss_weight", type=float, default=0.1, help="weight for domain adaptation loss")
+    parser.add_argument("--domain_loss_weight", type=float, default=0.5, help="weight for domain adaptation loss")
     parser.add_argument("--lambda_grl_max", type=float, default=1.0, help="maximum lambda for gradient reversal layer")
     parser.add_argument("--num_domains", type=int, default=2, help="number of domains (source=0, target=1)")
     parser.add_argument("--use_ldconv", action="store_true", default=False, help="use LDConv in domain discriminators")
@@ -81,10 +80,10 @@ def argparser():
     parser.add_argument("--save_model_path", type=str, default="models/domain_adapt", help="directory to save trained models")
 
     # ================================== 验证和早停配置 ==================================
-    parser.add_argument("--val_split", type=float, default=0.2, help="fraction of source data used for validation (0.0-1.0)")
+    parser.add_argument("--val_split", type=float, default=0.2, help="fraction of target data used for validation (0.0-1.0)")
     parser.add_argument("--patience", type=int, default=15, help="early stopping patience (epochs)")
     parser.add_argument("--min_delta", type=float, default=0.0005, help="minimum improvement threshold for early stopping")
-    parser.add_argument("--enable_validation", action="store_true", default=True, help="enable validation on source data subset")
+    parser.add_argument("--enable_validation", action="store_true", default=True, help="enable validation on target data subset")
 
     # ================================== 数据增强和可重现性配置 ==================================
     parser.add_argument("--aug", action="store_true", default=True, help="enable data augmentation for both source and target domain data")
@@ -214,7 +213,6 @@ def print_training_configuration(opt, device, model_name):
     print("-" * 40)
     print(f"  Feature Channels: {opt.feat_channel}")
     print(f"  Latent Dimension: {opt.latent_dim}")
-    print(f"  Generator Reduced Channels: {opt.gen_reduced_channel}")
     print(f"  Contrastive Layer Filters: {opt.num_filters}")
 
     # ================================== 损失函数权重 ==================================
@@ -253,9 +251,14 @@ def print_training_configuration(opt, device, model_name):
     print("\n✅ VALIDATION & EARLY STOPPING")
     print("-" * 40)
     print(f"  Enable Validation: {opt.enable_validation}")
-    print(f"  Validation Split: {opt.val_split}")
+    print(f"  Validation Domain: Target Domain")
+    print(f"  Validation Split: {opt.val_split} (of target data)")
     print(f"  Early Stopping Patience: {opt.patience}")
     print(f"  Min Delta for Improvement: {opt.min_delta}")
+    if opt.enable_validation:
+        print("  📊 Validation Strategy: Target domain split for training/validation")
+        print("     - Source domain: Full dataset for training")
+        print("     - Target domain: Split into training/validation sets")
 
     # ================================== 数据增强配置 ==================================
     print("\n🔀 DATA AUGMENTATION & REPRODUCIBILITY")
@@ -293,34 +296,36 @@ print_training_configuration(opt, device, model_name)
 # 数据加载器
 print("\n🔄 LOADING DATASETS...")
 
-# 加载源域数据 (with or without validation split)
-if opt.enable_validation:
-    # 启用校验模式：使用训练/验证分割
-    source_train_loader, val_loader, source_train_step, val_step = load_labeled_data_with_validation(opt.source_dataset_path, opt, freeze=opt.freeze)
-    print(f"源域训练集: {source_train_step} batches")
-    print(f"源域验证集: {val_step} batches")
+# 加载源域数据 (always use all source data for training in domain adaptation)
+source_train_loader, source_train_step = load_data(opt.source_dataset_path, opt, aug=opt.aug, freeze=opt.freeze)
+print(f"源域训练集: {source_train_step} batches (full dataset)")
 
-    # 初始化早停策略 - 基于验证指标
+# 加载目标域数据 (with or without validation split)
+if opt.enable_validation:
+    # 启用校验模式：目标域分割为训练/验证集
+    target_train_loader, val_loader, target_train_step, val_step = load_labeled_data_with_validation(opt.target_dataset_path, opt, freeze=opt.freeze)
+    print(f"目标域训练集: {target_train_step} batches")
+    print(f"目标域验证集: {val_step} batches")
+
+    # 初始化早停策略 - 统一基于训练损失
     early_stopping = EarlyStopping(patience=opt.patience, min_delta=opt.min_delta, restore_best_weights=True)
-    best_val_iou = 0.0
+    best_train_loss = float("inf")
     best_epoch = 0
     validation_enabled = True
 else:
-    # 非校验模式：使用所有源域数据进行训练
-    source_train_loader, source_train_step = load_data(opt.source_dataset_path, opt, aug=opt.aug, freeze=opt.freeze)
+    # 非校验模式：使用所有目标域数据进行训练
+    target_train_loader, target_train_step = load_data(opt.target_dataset_path, opt, aug=opt.aug, freeze=opt.freeze)
     val_loader = None
-    print(f"源域训练集: {source_train_step} batches")
+    print(f"目标域训练集: {target_train_step} batches (full dataset)")
 
-    # 初始化早停策略 - 基于训练损失
+    # 初始化早停策略 - 统一基于训练损失
     early_stopping = EarlyStopping(patience=opt.patience, min_delta=opt.min_delta, restore_best_weights=True)
-    best_val_loss = float("inf")
+    best_train_loss = float("inf")
     best_epoch = 0
     validation_enabled = False
 
-# 加载目标域数据
-target_train_loader, target_train_step = load_data(opt.target_dataset_path, opt, aug=opt.aug, freeze=opt.freeze)
+# 创建目标域数据的循环迭代器
 target_train_iter = cycle(target_train_loader)  # continuously iterate over the target dataset
-print(f"目标域训练集: {target_train_step} batches")
 
 # Use source data loader for main training loop
 train_loader = source_train_loader
@@ -645,60 +650,44 @@ for epoch in range(1, opt.epoch + 1):
     else:
         print(f"Epoch {epoch} completed. Learning rate: {current_lr:.6f}")
 
-    # 校验和早停逻辑
+    # 校验和早停逻辑 - 统一基于训练损失
+    current_train_loss = loss_record.avg
+
     if validation_enabled and val_loader is not None:
-        # 启用校验模式：在验证集上评估模型
-        print("Starting validation...")
+        # 启用校验模式：在目标域验证集上评估模型，但仅供参考
+        print("Starting validation on target domain...")
         val_loss, val_metrics = validate_model(model.base_generator, val_loader, device, structure_loss)
 
-        print(f"Validation Results - Loss: {val_loss:.4f}")
+        print(f"Target Domain Validation Results (Reference Only) - Loss: {val_loss:.4f}")
         print(f"  IoU: {val_metrics['iou']:.4f}")
         print(f"  F1-Score: {val_metrics['f1']:.4f}")
         print(f"  Precision: {val_metrics['precision']:.4f}")
         print(f"  Recall: {val_metrics['recall']:.4f}")
         print(f"  Accuracy: {val_metrics['accuracy']:.4f}")
 
-        # 使用验证损失更新学习率调度器
-        scheduler.step(val_loss)
+        # 使用训练损失更新学习率调度器（而非验证损失）
+        scheduler.step(current_train_loss)
         new_lr = optimizer.param_groups[0]["lr"]
         if new_lr != current_lr:
-            print(f"Learning rate adjusted after validation: {current_lr:.6f} -> {new_lr:.6f}")
+            print(f"Learning rate adjusted based on training loss: {current_lr:.6f} -> {new_lr:.6f}")
 
-        # 检查是否是最佳模型 - 使用IoU作为主要指标
-        current_iou = val_metrics["iou"]
-        if current_iou > best_val_iou:
-            best_val_iou = current_iou
-            best_epoch = epoch
-            # 保存最佳模型
-            best_model_filename = generate_best_model_filename(model_name, opt.pretrained_weights)
-            torch.save(model.base_generator.state_dict(), os.path.join(opt.save_model_path, best_model_filename))
-            print(f"New best model saved! Validation IoU: {current_iou:.4f}")
+    # 统一的模型保存和早停逻辑 - 基于训练损失
+    if current_train_loss < best_train_loss:
+        best_train_loss = current_train_loss
+        best_epoch = epoch
+        # 保存最佳模型
+        best_model_filename = generate_best_model_filename(model_name, opt.pretrained_weights)
+        torch.save(model.base_generator.state_dict(), os.path.join(opt.save_model_path, best_model_filename))
+        print(f"New best model saved! Training loss: {current_train_loss:.4f}")
+        if validation_enabled and val_loader is not None:
+            print(f"  Corresponding target validation IoU: {val_metrics['iou']:.4f} (reference)")
 
-        # 早停检查 - 使用IoU
-        early_stopping(current_iou, model.base_generator)
-        if early_stopping.early_stop:
-            print(f"Early stopping triggered at epoch {epoch}")
-            print(f"Best validation IoU: {best_val_iou:.4f} achieved at epoch {best_epoch}")
-            break
-    else:
-        # 非校验模式：使用训练损失进行早停判断
-        current_loss = loss_record.avg
-
-        # 检查是否是最佳模型
-        if current_loss < best_val_loss:
-            best_val_loss = current_loss
-            best_epoch = epoch
-            # 保存最佳模型
-            best_model_filename = generate_best_model_filename(model_name, opt.pretrained_weights)
-            torch.save(model.base_generator.state_dict(), os.path.join(opt.save_model_path, best_model_filename))
-            print(f"New best model saved! Training loss: {current_loss:.4f}")
-
-        # 早停检查 - 使用训练损失
-        early_stopping(current_loss, model.base_generator)
-        if early_stopping.early_stop:
-            print(f"Early stopping triggered at epoch {epoch}")
-            print(f"Best training loss: {best_val_loss:.4f} achieved at epoch {best_epoch}")
-            break
+    # 统一的早停检查 - 基于训练损失
+    early_stopping(current_train_loss, model.base_generator)
+    if early_stopping.early_stop:
+        print(f"Early stopping triggered at epoch {epoch}")
+        print(f"Best training loss: {best_train_loss:.4f} achieved at epoch {best_epoch}")
+        break
 
     # 定期保存检查点 - 使用动态文件名
     if epoch >= 0 and epoch % 10 == 0:
@@ -709,13 +698,10 @@ for epoch in range(1, opt.epoch + 1):
 # 训练结束后的总结
 print("\n" + "=" * 50)
 print("Two-Domain Adaptive Training with Pseudo Labels completed!")
-print(f"Source Domain: {source_dataset_name} (Ground Truth Labels)")
+print(f"Source Domain: {source_dataset_name} (Ground Truth Labels - Full Dataset)")
 print(f"Target Domain: {target_dataset_name} (Pseudo Labels)")
 print(f"Pseudo Label Weight: {opt.pseudo_loss_weight}")
-if validation_enabled:
-    print(f"Best validation IoU: {best_val_iou:.4f} achieved at epoch {best_epoch}")
-else:
-    print(f"Best training loss: {best_val_loss:.4f} achieved at epoch {best_epoch}")
+print(f"Best training loss: {best_train_loss:.4f} achieved at epoch {best_epoch}")
 best_model_filename = generate_best_model_filename(model_name, opt.pretrained_weights)
 print(f"Best model saved at: {os.path.join(opt.save_model_path, best_model_filename)}")
 print("=" * 50)

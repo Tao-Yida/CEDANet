@@ -72,10 +72,13 @@
 # --save_path:            模型保存路径 (默认: models/domain_adapt)
 
 # --------------- 校验和早停参数 ---------------
-# --val_split:            源域数据中用于校验的比例 (默认: 0.2)
+# --val_split:            目标域数据中用于校验的比例 (默认: 0.2)
+#                        【新策略】：验证集来自目标域，源域全部用于训练
 # --patience:             早停耐心值 (默认: 15)
 # --min_delta:            早停最小改善值 (默认: 0.001)
-# --enable_validation:    启用校验 (默认: False)
+# --enable_validation:    启用校验 (默认: True)
+#                        启用时：源域全用于训练，目标域分割为训练/验证
+#                        禁用时：源域和目标域全用于训练，基于训练损失早停
 
 # --------------- 数据增强和可重现性参数 ---------------
 # --aug:                  启用数据增强 (默认: False)
@@ -102,12 +105,16 @@ source activate dl2024 || { echo "Failed to activate Conda env"; exit 1; }
 
 # 执行域适应训练脚本
 python ijmond-camera-ai/bvm_training/trans_bvm_self_supervised_thesis/train.py \
---epoch 5 \
---lr_gen 2.5e-5 \
---domain_loss_weight 0.1 \
+--epoch 50 \
+--lr_gen 5e-5 \
+--batchsize 4 \
+--domain_loss_weight 2 \
 --lambda_grl_max 1.0 \
 --source_dataset_path "data/SMOKE5K_Dataset/SMOKE5K/train" \
 --target_dataset_path "data/ijmond_camera/ijmond_900_trained/citizen_constraint" \
---save_model_path "models/thesis/trained-on-ijmond-data" \
---contrastive_loss_weight 0.1 \
---no_samples 500
+--save_model_path "models/thesis/smoke5k-to-ijmond-citizen-constraint" \
+--contrastive_loss_weight 2 \
+--no_samples 500 \
+--enable_validation \
+--val_split 0.2 \
+--aug

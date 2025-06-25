@@ -34,18 +34,18 @@ def argparser():
 
     # ================================== 模型架构配置 ==================================
     parser.add_argument("--feat_channel", type=int, default=32, help="feature channel count for saliency features")
-    parser.add_argument("--latent_dim", type=int, default=3, help="latent space dimension")
+    parser.add_argument("--latent_dim", type=int, default=8, help="latent space dimension")
     parser.add_argument("--num_filters", type=int, default=16, help="number of filters for contrastive loss layer")
 
     # ================================== 损失函数权重配置 ==================================
     parser.add_argument("--reg_weight", type=float, default=1e-4, help="weight for L2 regularization")
     parser.add_argument("--lat_weight", type=float, default=2.0, help="weight for latent loss")
-    parser.add_argument("--vae_loss_weight", type=float, default=1.0, help="weight for VAE loss component")
-    parser.add_argument("--contrastive_loss_weight", type=float, default=0.2, help="weight for contrastive loss")
+    parser.add_argument("--vae_loss_weight", type=float, default=0.6, help="weight for VAE loss component")  # 从1.0降低到0.6
+    parser.add_argument("--contrastive_loss_weight", type=float, default=1, help="weight for contrastive loss")
 
     # ================================== 半监督学习配置 ==================================
     parser.add_argument("--inter", action="store_true", default=False, help="use inter-image pixel matching (vs intra-image)")
-    parser.add_argument("--no_samples", type=int, default=50, help="number of pixels for contrastive loss sampling")
+    parser.add_argument("--no_samples", type=int, default=500, help="number of pixels for contrastive loss sampling")
 
     # ================================== 数据集路径配置 ==================================
     parser.add_argument("--labeled_dataset_path", type=str, default="data/SMOKE5K_Dataset/SMOKE5K/train", help="path to labeled dataset")
@@ -188,7 +188,7 @@ def linear_annealing(init, fin, step, annealing_steps):
     return annealed
 
 
-def load_data(dataset_path, opt, aug=False, freeze=False):
+def load_data(dataset_path, opt, aug=True, freeze=False, dataset_type=""):
     """
     加载数据集（半监督学习专用）
     Args:
@@ -196,6 +196,7 @@ def load_data(dataset_path, opt, aug=False, freeze=False):
         opt: 训练选项
         aug: 是否启用数据增强
         freeze: 是否冻结随机性
+        dataset_type: 数据集类型描述
     Returns:
         tuple: (train_loader, total_step)
     """
@@ -204,7 +205,15 @@ def load_data(dataset_path, opt, aug=False, freeze=False):
     trans_map_root = os.path.join(dataset_path, "trans/")
 
     train_loader = get_loader(
-        image_root, gt_root, trans_map_root, batchsize=opt.batchsize, trainsize=opt.trainsize, aug=aug, freeze=freeze, random_seed=opt.random_seed
+        image_root,
+        gt_root,
+        trans_map_root,
+        batchsize=opt.batchsize,
+        trainsize=opt.trainsize,
+        aug=aug,
+        freeze=freeze,
+        random_seed=opt.random_seed,
+        dataset_type=dataset_type,
     )
     total_step = len(train_loader)
     return train_loader, total_step
@@ -364,34 +373,43 @@ generator_optimizer = torch.optim.Adam(generator_params, opt.lr_gen, betas=(opt.
 
 # Load labeled data (with or without validation split)
 if opt.enable_validation:
-    # 启用校验模式：使用训练/验证分割
-    train_loader_labeled, val_loader, total_step_labeled, val_step = load_labeled_data_with_validation(
-        opt.labeled_dataset_path, opt, freeze=opt.freeze
+    # 启用校验模式：在目标域上进行验证，源域完全用于训练
+    # 源域（标注数据）：完全用于训练，不分割
+    train_loader_labeled, total_step_labeled = load_data(
+        opt.labeled_dataset_path, opt, aug=False, freeze=opt.freeze, dataset_type="labeled data (full)"
     )
-    print(f"Labeled training set size: {total_step_labeled}")
-    print(f"Validation set size: {val_step}")
 
-    # 初始化早停策略 - 基于验证指标
+    # 目标域（伪标签数据）：分割出验证集
+    train_loader_un, val_loader, total_step_un, val_step = load_labeled_data_with_validation(opt.unlabeled_dataset_path, opt, freeze=opt.freeze)
+
+    print(f"Labeled training set size (source domain): {total_step_labeled}")
+    print(f"Unlabeled training set size (target domain): {total_step_un}")
+    print(f"Validation set size (target domain): {val_step}")
+    print("🎯 Using TARGET DOMAIN for validation!")
+
+    # 初始化早停策略 - 统一基于训练损失
     early_stopping = EarlyStopping(patience=opt.patience, min_delta=opt.min_delta, restore_best_weights=True)
-    best_val_iou = 0.0
+    best_train_loss = float("inf")
     best_epoch = 0
     validation_enabled = True
 else:
     # 非校验模式：使用所有标注数据进行训练
-    train_loader_labeled, total_step_labeled = load_data(opt.labeled_dataset_path, opt, aug=False, freeze=opt.freeze)
+    train_loader_labeled, total_step_labeled = load_data(opt.labeled_dataset_path, opt, aug=False, freeze=opt.freeze, dataset_type="labeled data")
+
+    # 非验证模式：使用完整的目标域数据
+    train_loader_un, total_step_un = load_data(opt.unlabeled_dataset_path, opt, aug=opt.aug, freeze=opt.freeze, dataset_type="unlabeled data")
+
     val_loader = None
     print(f"Labeled dataset size: {total_step_labeled}")
+    print(f"Unlabeled dataset size: {total_step_un}")
 
-    # 初始化早停策略 - 基于训练损失
+    # 初始化早停策略 - 统一基于训练损失
     early_stopping = EarlyStopping(patience=opt.patience, min_delta=opt.min_delta, restore_best_weights=True)
-    best_val_loss = float("inf")
+    best_train_loss = float("inf")
     best_epoch = 0
     validation_enabled = False
 
-# Load pseudo labeled data (with augmentation if enabled)
-train_loader_un, total_step_un = load_data(opt.unlabeled_dataset_path, opt, aug=opt.aug, freeze=opt.freeze)
 train_loader_un_iter = cycle(train_loader_un)  # continuously iterate over the pseudo-labeled dataset
-print(f"Unlabeled dataset size: {total_step_un}")
 
 # Use labeled data loader for main training loop
 train_loader = train_loader_labeled
@@ -571,60 +589,44 @@ for epoch in range(1, opt.epoch + 1):
     else:
         print(f"Epoch {epoch} completed. Learning rate: {current_lr:.6f}")
 
-    # 校验和早停逻辑
+    # 校验和早停逻辑 - 统一基于训练损失
+    current_train_loss = loss_record.avg
+
     if validation_enabled and val_loader is not None:
-        # 启用校验模式：在验证集上评估模型
+        # 启用校验模式：在验证集上评估模型，但仅供参考
         print("Starting validation...")
         val_loss, val_metrics = validate_model(generator, val_loader, device, structure_loss)
 
-        print(f"Validation Results - Loss: {val_loss:.4f}")
+        print(f"Validation Results (Reference Only) - Loss: {val_loss:.4f}")
         print(f"  IoU: {val_metrics['iou']:.4f}")
         print(f"  F1-Score: {val_metrics['f1']:.4f}")
         print(f"  Precision: {val_metrics['precision']:.4f}")
         print(f"  Recall: {val_metrics['recall']:.4f}")
         print(f"  Accuracy: {val_metrics['accuracy']:.4f}")
 
-        # 使用验证损失更新学习率调度器
-        scheduler.step(val_loss)
+        # 使用训练损失更新学习率调度器（而非验证损失）
+        scheduler.step(current_train_loss)
         new_lr = generator_optimizer.param_groups[0]["lr"]
         if new_lr != current_lr:
-            print(f"Learning rate adjusted after validation: {current_lr:.6f} -> {new_lr:.6f}")
+            print(f"Learning rate adjusted based on training loss: {current_lr:.6f} -> {new_lr:.6f}")
 
-        # 检查是否是最佳模型 - 使用IoU作为主要指标
-        current_iou = val_metrics["iou"]
-        if current_iou > best_val_iou:
-            best_val_iou = current_iou
-            best_epoch = epoch
-            # 保存最佳模型
-            best_model_filename = generate_best_model_filename(model_name, opt.pretrained_weights)
-            torch.save(generator.state_dict(), os.path.join(opt.save_model_path, best_model_filename))
-            print(f"New best model saved! Validation IoU: {current_iou:.4f}")
+    # 统一的模型保存和早停逻辑 - 基于训练损失
+    if current_train_loss < best_train_loss:
+        best_train_loss = current_train_loss
+        best_epoch = epoch
+        # 保存最佳模型
+        best_model_filename = generate_best_model_filename(model_name, opt.pretrained_weights)
+        torch.save(generator.state_dict(), os.path.join(opt.save_model_path, best_model_filename))
+        print(f"New best model saved! Training loss: {current_train_loss:.4f}")
+        if validation_enabled and val_loader is not None:
+            print(f"  Corresponding validation IoU: {val_metrics['iou']:.4f} (reference)")
 
-        # 早停检查 - 使用IoU
-        early_stopping(current_iou, generator)
-        if early_stopping.early_stop:
-            print(f"Early stopping triggered at epoch {epoch}")
-            print(f"Best validation IoU: {best_val_iou:.4f} achieved at epoch {best_epoch}")
-            break
-    else:
-        # 非校验模式：使用训练损失进行早停判断
-        current_loss = loss_record.avg
-
-        # 检查是否是最佳模型
-        if current_loss < best_val_loss:
-            best_val_loss = current_loss
-            best_epoch = epoch
-            # 保存最佳模型
-            best_model_filename = generate_best_model_filename(model_name, opt.pretrained_weights)
-            torch.save(generator.state_dict(), os.path.join(opt.save_model_path, best_model_filename))
-            print(f"New best model saved! Training loss: {current_loss:.4f}")
-
-        # 早停检查 - 使用训练损失
-        early_stopping(current_loss, generator)
-        if early_stopping.early_stop:
-            print(f"Early stopping triggered at epoch {epoch}")
-            print(f"Best training loss: {best_val_loss:.4f} achieved at epoch {best_epoch}")
-            break
+    # 统一的早停检查 - 基于训练损失
+    early_stopping(current_train_loss, generator)
+    if early_stopping.early_stop:
+        print(f"Early stopping triggered at epoch {epoch}")
+        print(f"Best training loss: {best_train_loss:.4f} achieved at epoch {best_epoch}")
+        break
 
     # 定期保存检查点 - 使用动态文件名
     if epoch >= 0 and epoch % 10 == 0:
@@ -635,10 +637,7 @@ for epoch in range(1, opt.epoch + 1):
 # 训练结束后的总结
 print("\n" + "=" * 50)
 print("Semi-Supervised Training completed!")
-if validation_enabled:
-    print(f"Best validation IoU: {best_val_iou:.4f} achieved at epoch {best_epoch}")
-else:
-    print(f"Best training loss: {best_val_loss:.4f} achieved at epoch {best_epoch}")
+print(f"Best training loss: {best_train_loss:.4f} achieved at epoch {best_epoch}")
 best_model_filename = generate_best_model_filename(model_name, opt.pretrained_weights)
 print(f"Best model saved at: {os.path.join(opt.save_model_path, best_model_filename)}")
 print("=" * 50)

@@ -150,17 +150,17 @@ def get_video_constraint_info(video_name, video_labels, constraint_type):
     if label_value == -1 or label_value == -2:
         return {"has_constraint": False, "constraint_confidence": 1.0, "expected_smoke": None, "constraint_strength": "none"}
 
-    # 定义标签含义和置信度
+    # 定义标签含义和约束强度（confidence与实际推理概率对应）
     label_meanings = {
-        47: {"smoke": True, "confidence": 1.0, "strength": "gold_positive"},  # 黄金标准正样本
-        32: {"smoke": False, "confidence": 1.0, "strength": "gold_negative"},  # 黄金标准负样本
-        23: {"smoke": True, "confidence": 0.9, "strength": "strong_positive"},  # 强正样本
-        16: {"smoke": False, "confidence": 0.9, "strength": "strong_negative"},  # 强负样本
-        19: {"smoke": True, "confidence": 0.7, "strength": "weak_positive"},  # 弱正样本
-        20: {"smoke": False, "confidence": 0.7, "strength": "weak_negative"},  # 弱负样本
-        5: {"smoke": True, "confidence": 0.5, "strength": "maybe_positive"},  # 可能正样本
-        4: {"smoke": False, "confidence": 0.5, "strength": "maybe_negative"},  # 可能负样本
-        3: {"smoke": None, "confidence": 0.3, "strength": "discord"},  # 有分歧
+        47: {"smoke": True, "confidence": 0.9, "strength": "gold_positive"},  # 黄金标准正样本 -> 推理概率0.9
+        32: {"smoke": False, "confidence": 0.2, "strength": "gold_negative"},  # 黄金标准负样本 -> 推理概率0.2
+        23: {"smoke": True, "confidence": 0.8, "strength": "strong_positive"},  # 强正样本 -> 推理概率0.8
+        16: {"smoke": False, "confidence": 0.4, "strength": "strong_negative"},  # 强负样本 -> 推理概率0.4
+        19: {"smoke": True, "confidence": 0.7, "strength": "weak_positive"},  # 弱正样本 -> 推理概率0.7
+        20: {"smoke": False, "confidence": 0.55, "strength": "weak_negative"},  # 弱负样本 -> 推理概率0.55
+        5: {"smoke": True, "confidence": 0.65, "strength": "maybe_positive"},  # 可能正样本 -> 推理概率0.65
+        4: {"smoke": False, "confidence": 0.58, "strength": "maybe_negative"},  # 可能负样本 -> 推理概率0.58
+        3: {"smoke": None, "confidence": 0.0, "strength": "discord"},  # 有分歧 -> 无约束
     }
 
     if label_value in label_meanings:

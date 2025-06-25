@@ -203,7 +203,7 @@ for dataset in test_datasets:
 
         # IoU 计算
         iou_positive = sum_TP / (sum_TP + sum_FP + sum_FN + 1e-8)  # 烟雾类 IoU
-        iou_negative = sum_TN / (sum_TN + sum_FP + sum_FN + 1e-8)  # 背景类 IoU
+        iou_negative = sum_TN / (sum_TN + sum_FN + sum_FP + 1e-8)  # 背景类 IoU
         miou = (iou_positive + iou_negative) / 2  # 真正的 mIoU：两个类别 IoU 的平均
 
         # Dice 系数（与 F1-Score 等价）

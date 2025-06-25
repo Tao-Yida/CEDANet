@@ -8,6 +8,22 @@ from model.ResNet_models import Generator
 from domain_adapt import create_domain_adaptive_model
 from dataloader import test_dataset
 import cv2
+from sklearn.metrics import mean_squared_error, mean_absolute_error
+from scipy.ndimage import distance_transform_edt
+
+
+def compute_mse(pred, gt):
+    """计算均方误差 (MSE)"""
+    pred_norm = pred.astype(np.float32) / 255.0
+    gt_norm = gt.astype(np.float32) / 255.0
+    return mean_squared_error(gt_norm.flatten(), pred_norm.flatten())
+
+
+def compute_mae(pred, gt):
+    """计算平均绝对误差 (MAE)"""
+    pred_norm = pred.astype(np.float32) / 255.0
+    gt_norm = gt.astype(np.float32) / 255.0
+    return mean_absolute_error(gt_norm.flatten(), pred_norm.flatten())
 
 
 parser = argparse.ArgumentParser()
@@ -185,6 +201,10 @@ for dataset in test_datasets:
     sum_TN = 0
     total_images = 0
 
+    # 初始化额外的评估指标累积变量
+    sum_mse = 0.0
+    sum_mae = 0.0
+
     test_loader = test_dataset(image_root, opt.testsize)
     for i in range(test_loader.size):
         print(f"Processing image {i+1}/{test_loader.size}")
@@ -230,6 +250,14 @@ for dataset in test_datasets:
                     sum_FP += FP
                     sum_FN += FN
                     sum_TN += TN
+
+                    # 计算额外的评估指标
+                    mse = compute_mse(res, gt_mask)
+                    mae = compute_mae(res, gt_mask)
+
+                    sum_mse += mse
+                    sum_mae += mae
+
                     total_images += 1
             else:
                 print(f"Warning: GT file {gt_path} not found")
@@ -245,11 +273,15 @@ for dataset in test_datasets:
 
         # IoU 计算
         iou_positive = sum_TP / (sum_TP + sum_FP + sum_FN + 1e-8)  # 烟雾类 IoU
-        iou_negative = sum_TN / (sum_TN + sum_FP + sum_FN + 1e-8)  # 背景类 IoU
+        iou_negative = sum_TN / (sum_TN + sum_FN + sum_FP + 1e-8)  # 背景类 IoU
         miou = (iou_positive + iou_negative) / 2  # 真正的 mIoU：两个类别 IoU 的平均
 
         # Dice 系数（与 F1-Score 等价）
         dice = 2 * sum_TP / (2 * sum_TP + sum_FP + sum_FN + 1e-8)
+
+        # 计算平均额外指标
+        mean_mse = sum_mse / total_images
+        mean_mae = sum_mae / total_images
 
         # 打印结果
         print(f"\n=== Domain Adaptation Evaluation Results for {opt.test_dataset} dataset ===")
@@ -263,6 +295,9 @@ for dataset in test_datasets:
         print(f"IoU (Background): {iou_negative:.4f}")
         print(f"mIoU: {miou:.4f}")
         print(f"Dice Coefficient: {dice:.4f}")
+        print(f"\n=== Additional Evaluation Metrics ===")
+        print(f"Mean MSE: {mean_mse:.6f}")
+        print(f"Mean MAE: {mean_mae:.6f}")
 
         # 混淆矩阵
         confusion_matrix = f"""
@@ -298,6 +333,10 @@ Actual N    {sum_FP:8d} {sum_TN:8d}
             f.write(f"IoU (Background): {iou_negative:.6f}\n")
             f.write(f"mIoU: {miou:.6f}\n")
             f.write(f"Dice Coefficient: {dice:.6f}\n\n")
+
+            f.write("Additional Evaluation Metrics:\n")
+            f.write(f"Mean MSE: {mean_mse:.8f}\n")
+            f.write(f"Mean MAE: {mean_mae:.8f}\n\n")
 
             f.write("Confusion Matrix:\n")
             f.write("                Predicted\n")

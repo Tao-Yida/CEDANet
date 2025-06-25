@@ -61,8 +61,8 @@ class LDConv(nn.Module):
 
     @staticmethod
     def _set_lr(module, grad_input, grad_output):
-        grad_input = (grad_input[i] * 0.1 for i in range(len(grad_input)))
-        grad_output = (grad_output[i] * 0.1 for i in range(len(grad_output)))
+        grad_input = (grad_input[i] * 0.3 for i in range(len(grad_input)))
+        grad_output = (grad_output[i] * 0.3 for i in range(len(grad_output)))
 
     def forward(self, x):
         offset = self.p_conv(x)

@@ -54,19 +54,25 @@ def _get_file_paths(image_root, gt_root, trans_map_root):
     return sorted(images), sorted(gts), sorted(trans)
 
 
-def _print_augmentation_status(aug, freeze):
+def _print_augmentation_status(aug, freeze, dataset_type=""):
     """
     打印数据增强状态信息
     Args:
         aug: 是否启用数据增强
         freeze: 是否冻结模式
+        dataset_type: 数据集类型描述，如 "labeled data" 或 "unlabeled data"
     """
     if aug and not freeze:
-        print("  - Data augmentation: ENABLED")
+        status = "ENABLED"
     elif freeze:
-        print("  - Data augmentation: DISABLED (freeze mode)")
+        status = "DISABLED (freeze mode)"
     else:
-        print("  - Data augmentation: DISABLED")
+        status = "DISABLED"
+
+    if dataset_type:
+        print(f"  - Data augmentation: {status} ({dataset_type})")
+    else:
+        print(f"  - Data augmentation: {status}")
 
 
 def get_dataset_name_from_path(dataset_path):
@@ -114,6 +120,7 @@ def get_loader(
     num_workers=8,
     pin_memory=True,
     random_seed=42,
+    dataset_type="",
 ):
     """
     创建单一训练数据加载器（半监督学习专用）
@@ -129,6 +136,7 @@ def get_loader(
         num_workers: 数据加载线程数
         pin_memory: 是否固定内存
         random_seed: 随机种子
+        dataset_type: 数据集类型描述，用于增强日志显示
     Returns:
         DataLoader: 训练数据加载器
     """
@@ -140,7 +148,7 @@ def get_loader(
     dataset = SalObjDataset(images, gts, trans, trainsize, aug=aug, freeze=freeze)
 
     print(f"Dataset size: {len(dataset)}")
-    _print_augmentation_status(aug, freeze)
+    _print_augmentation_status(aug, freeze, dataset_type)
 
     # 创建数据加载器
     train_loader = data.DataLoader(
@@ -198,7 +206,9 @@ def get_train_val_loaders(
 
     print(f"Total dataset size: {len(images)}")
     print(f"Training set size: {len(train_dataset)}")
+    _print_augmentation_status(aug, freeze, "training data")
     print(f"Validation set size: {len(val_dataset)}")
+    _print_augmentation_status(False, freeze, "validation data")  # 验证集总是不使用数据增强
 
     # 创建数据加载器
     train_loader = data.DataLoader(

@@ -75,30 +75,20 @@ source activate dl2024 || { echo "Failed to activate Conda env"; exit 1; }
 
 # 执行半监督训练脚本
 #
-# 推荐配置：启用数据增强，正常训练模式
+# 实验配置：SMOKE5K标注数据(完整训练) + ijmond伪标签数据(训练+目标域验证)
+# 🎯 关键修改：验证在目标域(ijmond)上进行，而非源域(SMOKE5K)
 python ijmond-camera-ai/bvm_training/trans_bvm_self_supervised/train.py \
---contrastive_loss_weight 0.1 \
+--epoch 100 \
+--batchsize 8 \
+--trainsize 352 \
+--lr_gen 5e-5 \
 --labeled_dataset_path "data/SMOKE5K_Dataset/SMOKE5K/train" \
---unlabeled_dataset_path "data/ijmond_data/train" \
---save_model_path "models/semi-supervision" \
---no_samples 50 \
+--unlabeled_dataset_path "data/ijmond_camera/SMOKE5K-full/citizen_constraint" \
+--save_model_path "models/semi-supervision/SMOKE5K-ijmond-camera-on-SMOKE5K" \
+--no_samples 500 \
 --aug \
 --enable_validation \
 --val_split 0.2 \
---patience 45 \
---min_delta 0.0001 \
---random_seed 123
-
-# 调试配置：冻结模式（数据增强会被自动禁用）
-# python ijmond-camera-ai/bvm_training/trans_bvm_self_supervised/train.py \
-#     --contrastive_loss_weight 0.1 \
-#     --labeled_dataset_path "data/SMOKE5K_Dataset/SMOKE5K/train" \
-#     --unlabeled_dataset_path "data/SMOKE5K_Dataset/SMOKE5K/weak_supervision" \
-#     --save_model_path "models/semi-supervision" \
-#     --no_samples 500 \
-#     --enable_validation \
-#     --val_split 0.2 \
-#     --patience 45 \
-#     --min_delta 0.0001 \
-#     --freeze \
-#     --random_seed 123
+--patience 25 \
+--min_delta 0.001 \
+--random_seed 42

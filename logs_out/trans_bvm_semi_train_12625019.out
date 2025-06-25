@@ -1,0 +1,494 @@
+================================================================================
+SEMI-SUPERVISED TRAINING CONFIGURATION
+================================================================================
+📋 BASIC TRAINING SETTINGS
+----------------------------------------
+  Training Epochs: 100
+  Batch Size: 8
+  Training Image Size: 352x352
+  Device: cuda
+  Model Name: SMOKE5K_Dataset_SMOKE5K_train_ssl_ijmond_camera_SMOKE5K-full_citizen_constraint
+
+⚙️  OPTIMIZER SETTINGS
+----------------------------------------
+  Generator Learning Rate: 5e-05
+  Adam Beta: 0.5
+  Gradient Clipping: 0.5
+  LR Decay Factor: 0.8
+  LR Patience (epochs): 12
+
+🏗️  MODEL ARCHITECTURE
+----------------------------------------
+  Feature Channels: 32
+  Latent Dimension: 8
+  Contrastive Layer Filters: 16
+
+📊 LOSS FUNCTION WEIGHTS
+----------------------------------------
+  L2 Regularization: 0.0001
+  Latent Loss: 2.0
+  VAE Loss: 0.6
+  Contrastive Loss: 1
+
+🎯 SEMI-SUPERVISED LEARNING
+----------------------------------------
+  Contrastive Pixel Matching: Intra-image
+  Contrastive Sample Count: 500
+
+📁 DATASET CONFIGURATION
+----------------------------------------
+  Labeled Dataset: data/SMOKE5K_Dataset/SMOKE5K/train
+  Labeled Dataset Name: SMOKE5K_Dataset_SMOKE5K_train
+  Unlabeled Dataset: data/ijmond_camera/SMOKE5K-full/citizen_constraint
+  Unlabeled Dataset Name: ijmond_camera_SMOKE5K-full_citizen_constraint
+  Pretrained Weights: None
+  Original Save Path: models/semi-supervision/SMOKE5K-ijmond-camera-on-SMOKE5K
+  Final Save Path: models/semi-supervision/SMOKE5K-ijmond-camera-on-SMOKE5K/SMOKE5K_Dataset_SMOKE5K_train_ssl_ijmond_camera_SMOKE5K-full_citizen_constraint
+
+✅ VALIDATION & EARLY STOPPING
+----------------------------------------
+  Enable Validation: True
+  Validation Split: 0.2
+  Early Stopping Patience: 25
+  Min Delta for Improvement: 0.001
+
+🔀 DATA AUGMENTATION & REPRODUCIBILITY
+----------------------------------------
+  Data Augmentation (unlabeled): True
+  Freeze Randomness: False
+  Random Seed: 42
+  ✅ Data augmentation enabled for unlabeled data
+================================================================================
+Dataset size: 5058
+  - Data augmentation: DISABLED (labeled data (full))
+Total dataset size: 4215
+Training set size: 3372
+  - Data augmentation: DISABLED (training data)
+Validation set size: 843
+  - Data augmentation: DISABLED (validation data)
+Labeled training set size (source domain): 632
+Unlabeled training set size (target domain): 421
+Validation set size (target domain): 105
+🎯 Using TARGET DOMAIN for validation!
+Learning Rate Scheduler configured:
+  - Type: ReduceLROnPlateau (adaptive based on loss)
+  - Patience (epochs to wait): 12
+  - Decay Factor: 0.8
+  - Minimum LR: 1e-7
+Let's go!
+--------------------Epoch: 1/100--------------------
+Generator Learning Rate: 5e-05
+2025-06-25 19:41:41.889595 Epoch [001/100], Step [0158/0632] (25%), Gen Loss: 2.2970
+2025-06-25 19:43:52.869156 Epoch [001/100], Step [0316/0632] (50%), Gen Loss: 1.9336
+2025-06-25 19:46:03.337761 Epoch [001/100], Step [0474/0632] (75%), Gen Loss: 1.7439
+2025-06-25 19:48:13.484928 Epoch [001/100], Step [0632/0632] (100%), Gen Loss: 1.6785
+Epoch 1 completed. Learning rate: 0.000050
+Starting validation...
+Validation Results (Reference Only) - Loss: 1.2314
+  IoU: 0.2121
+  F1-Score: 0.3499
+  Precision: 0.2289
+  Recall: 0.7425
+  Accuracy: 0.8741
+New best model saved! Training loss: 2.0397
+  Corresponding validation IoU: 0.2121 (reference)
+--------------------Epoch: 2/100--------------------
+Generator Learning Rate: 5e-05
+2025-06-25 19:50:39.526980 Epoch [002/100], Step [0158/0632] (25%), Gen Loss: 1.6247
+2025-06-25 19:52:50.101253 Epoch [002/100], Step [0316/0632] (50%), Gen Loss: 1.5920
+2025-06-25 19:55:00.594007 Epoch [002/100], Step [0474/0632] (75%), Gen Loss: 1.5925
+2025-06-25 19:57:10.820423 Epoch [002/100], Step [0632/0632] (100%), Gen Loss: 1.5859
+Epoch 2 completed. Learning rate: 0.000050
+Starting validation...
+Validation Results (Reference Only) - Loss: 1.2442
+  IoU: 0.1666
+  F1-Score: 0.2856
+  Precision: 0.1748
+  Recall: 0.7795
+  Accuracy: 0.8220
+New best model saved! Training loss: 1.6049
+  Corresponding validation IoU: 0.1666 (reference)
+--------------------Epoch: 3/100--------------------
+Generator Learning Rate: 5e-05
+2025-06-25 19:59:33.045108 Epoch [003/100], Step [0158/0632] (25%), Gen Loss: 1.5521
+2025-06-25 20:01:43.299175 Epoch [003/100], Step [0316/0632] (50%), Gen Loss: 1.4729
+2025-06-25 20:03:53.492781 Epoch [003/100], Step [0474/0632] (75%), Gen Loss: 1.5265
+2025-06-25 20:06:03.590997 Epoch [003/100], Step [0632/0632] (100%), Gen Loss: 1.4856
+Epoch 3 completed. Learning rate: 0.000050
+Starting validation...
+Validation Results (Reference Only) - Loss: 1.3034
+  IoU: 0.1659
+  F1-Score: 0.2845
+  Precision: 0.1771
+  Recall: 0.7226
+  Accuracy: 0.8341
+New best model saved! Training loss: 1.5292
+  Corresponding validation IoU: 0.1659 (reference)
+--------------------Epoch: 4/100--------------------
+Generator Learning Rate: 5e-05
+2025-06-25 20:08:27.887354 Epoch [004/100], Step [0158/0632] (25%), Gen Loss: 1.4815
+2025-06-25 20:10:37.996553 Epoch [004/100], Step [0316/0632] (50%), Gen Loss: 1.6071
+2025-06-25 20:12:48.243813 Epoch [004/100], Step [0474/0632] (75%), Gen Loss: 1.5643
+2025-06-25 20:14:58.563158 Epoch [004/100], Step [0632/0632] (100%), Gen Loss: 1.3625
+Epoch 4 completed. Learning rate: 0.000050
+Starting validation...
+Validation Results (Reference Only) - Loss: 1.4954
+  IoU: 0.1228
+  F1-Score: 0.2187
+  Precision: 0.1254
+  Recall: 0.8574
+  Accuracy: 0.7205
+New best model saved! Training loss: 1.5019
+  Corresponding validation IoU: 0.1228 (reference)
+--------------------Epoch: 5/100--------------------
+Generator Learning Rate: 5e-05
+2025-06-25 20:17:23.194387 Epoch [005/100], Step [0158/0632] (25%), Gen Loss: 1.3135
+2025-06-25 20:19:33.297602 Epoch [005/100], Step [0316/0632] (50%), Gen Loss: 1.3020
+2025-06-25 20:21:43.576061 Epoch [005/100], Step [0474/0632] (75%), Gen Loss: 1.3595
+2025-06-25 20:23:53.794825 Epoch [005/100], Step [0632/0632] (100%), Gen Loss: 1.3455
+Epoch 5 completed. Learning rate: 0.000050
+Starting validation...
+Validation Results (Reference Only) - Loss: 1.5350
+  IoU: 0.1267
+  F1-Score: 0.2249
+  Precision: 0.1289
+  Recall: 0.8808
+  Accuracy: 0.7229
+New best model saved! Training loss: 1.3235
+  Corresponding validation IoU: 0.1267 (reference)
+--------------------Epoch: 6/100--------------------
+Generator Learning Rate: 5e-05
+2025-06-25 20:26:15.791416 Epoch [006/100], Step [0158/0632] (25%), Gen Loss: 1.2872
+2025-06-25 20:28:25.817964 Epoch [006/100], Step [0316/0632] (50%), Gen Loss: 1.2567
+2025-06-25 20:30:35.888526 Epoch [006/100], Step [0474/0632] (75%), Gen Loss: 1.3117
+2025-06-25 20:32:45.969232 Epoch [006/100], Step [0632/0632] (100%), Gen Loss: 1.2753
+Epoch 6 completed. Learning rate: 0.000050
+Starting validation...
+Validation Results (Reference Only) - Loss: 1.6185
+  IoU: 0.1124
+  F1-Score: 0.2021
+  Precision: 0.1144
+  Recall: 0.8651
+  Accuracy: 0.6882
+New best model saved! Training loss: 1.2926
+  Corresponding validation IoU: 0.1124 (reference)
+--------------------Epoch: 7/100--------------------
+Generator Learning Rate: 5e-05
+2025-06-25 20:35:08.143862 Epoch [007/100], Step [0158/0632] (25%), Gen Loss: 1.2607
+2025-06-25 20:37:18.297978 Epoch [007/100], Step [0316/0632] (50%), Gen Loss: 1.2342
+2025-06-25 20:39:28.454391 Epoch [007/100], Step [0474/0632] (75%), Gen Loss: 1.2450
+2025-06-25 20:41:38.697174 Epoch [007/100], Step [0632/0632] (100%), Gen Loss: 1.2498
+Epoch 7 completed. Learning rate: 0.000050
+Starting validation...
+Validation Results (Reference Only) - Loss: 1.7462
+  IoU: 0.1094
+  F1-Score: 0.1972
+  Precision: 0.1105
+  Recall: 0.9172
+  Accuracy: 0.6591
+New best model saved! Training loss: 1.2519
+  Corresponding validation IoU: 0.1094 (reference)
+--------------------Epoch: 8/100--------------------
+Generator Learning Rate: 5e-05
+2025-06-25 20:44:00.872993 Epoch [008/100], Step [0158/0632] (25%), Gen Loss: 1.2849
+2025-06-25 20:46:10.907003 Epoch [008/100], Step [0316/0632] (50%), Gen Loss: 1.2318
+2025-06-25 20:48:21.031340 Epoch [008/100], Step [0474/0632] (75%), Gen Loss: 1.1843
+2025-06-25 20:50:31.191775 Epoch [008/100], Step [0632/0632] (100%), Gen Loss: 1.2084
+Epoch 8 completed. Learning rate: 0.000050
+Starting validation...
+Validation Results (Reference Only) - Loss: 1.4866
+  IoU: 0.1334
+  F1-Score: 0.2355
+  Precision: 0.1363
+  Recall: 0.8631
+  Accuracy: 0.7442
+New best model saved! Training loss: 1.2338
+  Corresponding validation IoU: 0.1334 (reference)
+--------------------Epoch: 9/100--------------------
+Generator Learning Rate: 5e-05
+2025-06-25 20:52:53.810419 Epoch [009/100], Step [0158/0632] (25%), Gen Loss: 1.1809
+2025-06-25 20:55:03.993744 Epoch [009/100], Step [0316/0632] (50%), Gen Loss: 1.1772
+2025-06-25 20:57:14.246934 Epoch [009/100], Step [0474/0632] (75%), Gen Loss: 1.1839
+2025-06-25 20:59:24.366066 Epoch [009/100], Step [0632/0632] (100%), Gen Loss: 1.1579
+Epoch 9 completed. Learning rate: 0.000050
+Starting validation...
+Validation Results (Reference Only) - Loss: 1.9022
+  IoU: 0.1040
+  F1-Score: 0.1884
+  Precision: 0.1048
+  Recall: 0.9357
+  Accuracy: 0.6321
+New best model saved! Training loss: 1.1824
+  Corresponding validation IoU: 0.1040 (reference)
+--------------------Epoch: 10/100--------------------
+Generator Learning Rate: 5e-05
+2025-06-25 21:01:47.952034 Epoch [010/100], Step [0158/0632] (25%), Gen Loss: 1.1622
+2025-06-25 21:03:58.189961 Epoch [010/100], Step [0316/0632] (50%), Gen Loss: 1.1716
+2025-06-25 21:06:08.529811 Epoch [010/100], Step [0474/0632] (75%), Gen Loss: 1.1660
+2025-06-25 21:08:18.523816 Epoch [010/100], Step [0632/0632] (100%), Gen Loss: 1.1698
+Epoch 10 completed. Learning rate: 0.000050
+Starting validation...
+Validation Results (Reference Only) - Loss: 1.9254
+  IoU: 0.1065
+  F1-Score: 0.1924
+  Precision: 0.1076
+  Recall: 0.9099
+  Accuracy: 0.6514
+New best model saved! Training loss: 1.1626
+  Corresponding validation IoU: 0.1065 (reference)
+Checkpoint saved: SMOKE5K_Dataset_SMOKE5K_train_ssl_ijmond_camera_SMOKE5K-full_citizen_constraint_epoch_010_from_scratch.pth
+--------------------Epoch: 11/100--------------------
+Generator Learning Rate: 5e-05
+2025-06-25 21:10:41.961548 Epoch [011/100], Step [0158/0632] (25%), Gen Loss: 1.1562
+2025-06-25 21:12:52.197912 Epoch [011/100], Step [0316/0632] (50%), Gen Loss: 1.1495
+2025-06-25 21:15:02.225648 Epoch [011/100], Step [0474/0632] (75%), Gen Loss: 1.1747
+2025-06-25 21:17:12.199604 Epoch [011/100], Step [0632/0632] (100%), Gen Loss: 1.1661
+Epoch 11 completed. Learning rate: 0.000050
+Starting validation...
+Validation Results (Reference Only) - Loss: 1.8256
+  IoU: 0.1109
+  F1-Score: 0.1997
+  Precision: 0.1122
+  Recall: 0.9072
+  Accuracy: 0.6682
+--------------------Epoch: 12/100--------------------
+Generator Learning Rate: 5e-05
+2025-06-25 21:19:33.971694 Epoch [012/100], Step [0158/0632] (25%), Gen Loss: 1.1407
+2025-06-25 21:21:44.096283 Epoch [012/100], Step [0316/0632] (50%), Gen Loss: 1.1371
+2025-06-25 21:23:54.076180 Epoch [012/100], Step [0474/0632] (75%), Gen Loss: 1.1465
+2025-06-25 21:26:04.068499 Epoch [012/100], Step [0632/0632] (100%), Gen Loss: 1.1566
+Epoch 12 completed. Learning rate: 0.000050
+Starting validation...
+Validation Results (Reference Only) - Loss: 2.0809
+  IoU: 0.0992
+  F1-Score: 0.1805
+  Precision: 0.1003
+  Recall: 0.9003
+  Accuracy: 0.6269
+New best model saved! Training loss: 1.1474
+  Corresponding validation IoU: 0.0992 (reference)
+--------------------Epoch: 13/100--------------------
+Generator Learning Rate: 5e-05
+2025-06-25 21:28:26.118922 Epoch [013/100], Step [0158/0632] (25%), Gen Loss: 1.1595
+2025-06-25 21:30:36.150472 Epoch [013/100], Step [0316/0632] (50%), Gen Loss: 1.1495
+2025-06-25 21:32:46.236155 Epoch [013/100], Step [0474/0632] (75%), Gen Loss: 1.1361
+2025-06-25 21:34:56.249433 Epoch [013/100], Step [0632/0632] (100%), Gen Loss: 1.1341
+Epoch 13 completed. Learning rate: 0.000050
+Starting validation...
+Validation Results (Reference Only) - Loss: 2.4058
+  IoU: 0.0926
+  F1-Score: 0.1695
+  Precision: 0.0931
+  Recall: 0.9396
+  Accuracy: 0.5797
+New best model saved! Training loss: 1.1431
+  Corresponding validation IoU: 0.0926 (reference)
+--------------------Epoch: 14/100--------------------
+Generator Learning Rate: 5e-05
+2025-06-25 21:37:18.025640 Epoch [014/100], Step [0158/0632] (25%), Gen Loss: 1.1160
+2025-06-25 21:39:28.008858 Epoch [014/100], Step [0316/0632] (50%), Gen Loss: 1.2114
+2025-06-25 21:41:38.073779 Epoch [014/100], Step [0474/0632] (75%), Gen Loss: 1.1674
+2025-06-25 21:43:48.057114 Epoch [014/100], Step [0632/0632] (100%), Gen Loss: 1.1731
+Epoch 14 completed. Learning rate: 0.000050
+Starting validation...
+Validation Results (Reference Only) - Loss: 1.9041
+  IoU: 0.1095
+  F1-Score: 0.1974
+  Precision: 0.1111
+  Recall: 0.8842
+  Accuracy: 0.6719
+--------------------Epoch: 15/100--------------------
+Generator Learning Rate: 5e-05
+2025-06-25 21:46:09.740887 Epoch [015/100], Step [0158/0632] (25%), Gen Loss: 1.1329
+2025-06-25 21:48:19.647336 Epoch [015/100], Step [0316/0632] (50%), Gen Loss: 1.1647
+2025-06-25 21:50:29.606564 Epoch [015/100], Step [0474/0632] (75%), Gen Loss: 1.1509
+2025-06-25 21:52:39.620832 Epoch [015/100], Step [0632/0632] (100%), Gen Loss: 1.1507
+Epoch 15 completed. Learning rate: 0.000050
+Starting validation...
+Validation Results (Reference Only) - Loss: 2.0270
+  IoU: 0.1083
+  F1-Score: 0.1954
+  Precision: 0.1095
+  Recall: 0.9048
+  Accuracy: 0.6599
+--------------------Epoch: 16/100--------------------
+Generator Learning Rate: 5e-05
+2025-06-25 21:55:01.214309 Epoch [016/100], Step [0158/0632] (25%), Gen Loss: 1.1038
+2025-06-25 21:57:11.245209 Epoch [016/100], Step [0316/0632] (50%), Gen Loss: 1.0742
+2025-06-25 21:59:21.302084 Epoch [016/100], Step [0474/0632] (75%), Gen Loss: 1.0953
+2025-06-25 22:01:31.179663 Epoch [016/100], Step [0632/0632] (100%), Gen Loss: 1.1256
+Epoch 16 completed. Learning rate: 0.000050
+Starting validation...
+Validation Results (Reference Only) - Loss: 2.5960
+  IoU: 0.0935
+  F1-Score: 0.1711
+  Precision: 0.0942
+  Recall: 0.9346
+  Accuracy: 0.5866
+New best model saved! Training loss: 1.1107
+  Corresponding validation IoU: 0.0935 (reference)
+--------------------Epoch: 17/100--------------------
+Generator Learning Rate: 5e-05
+2025-06-25 22:03:53.128820 Epoch [017/100], Step [0158/0632] (25%), Gen Loss: 1.1448
+2025-06-25 22:06:03.147761 Epoch [017/100], Step [0316/0632] (50%), Gen Loss: 1.1077
+2025-06-25 22:08:13.069235 Epoch [017/100], Step [0474/0632] (75%), Gen Loss: 1.0967
+2025-06-25 22:10:23.016067 Epoch [017/100], Step [0632/0632] (100%), Gen Loss: 1.1390
+Epoch 17 completed. Learning rate: 0.000050
+Starting validation...
+Validation Results (Reference Only) - Loss: 2.0804
+  IoU: 0.1068
+  F1-Score: 0.1930
+  Precision: 0.1083
+  Recall: 0.8870
+  Accuracy: 0.6616
+--------------------Epoch: 18/100--------------------
+Generator Learning Rate: 5e-05
+2025-06-25 22:12:46.234435 Epoch [018/100], Step [0158/0632] (25%), Gen Loss: 1.1302
+2025-06-25 22:14:56.168783 Epoch [018/100], Step [0316/0632] (50%), Gen Loss: 1.0850
+2025-06-25 22:17:06.131529 Epoch [018/100], Step [0474/0632] (75%), Gen Loss: 1.1892
+2025-06-25 22:19:16.052293 Epoch [018/100], Step [0632/0632] (100%), Gen Loss: 1.1532
+Epoch 18 completed. Learning rate: 0.000050
+Starting validation...
+Validation Results (Reference Only) - Loss: 2.6603
+  IoU: 0.0923
+  F1-Score: 0.1690
+  Precision: 0.0929
+  Recall: 0.9324
+  Accuracy: 0.5816
+--------------------Epoch: 19/100--------------------
+Generator Learning Rate: 5e-05
+2025-06-25 22:21:37.645670 Epoch [019/100], Step [0158/0632] (25%), Gen Loss: 1.1493
+2025-06-25 22:23:47.564885 Epoch [019/100], Step [0316/0632] (50%), Gen Loss: 1.1182
+2025-06-25 22:25:57.562337 Epoch [019/100], Step [0474/0632] (75%), Gen Loss: 1.1368
+2025-06-25 22:28:07.550640 Epoch [019/100], Step [0632/0632] (100%), Gen Loss: 1.1921
+Epoch 19 completed. Learning rate: 0.000050
+Starting validation...
+Validation Results (Reference Only) - Loss: 2.7967
+  IoU: 0.0893
+  F1-Score: 0.1640
+  Precision: 0.0898
+  Recall: 0.9435
+  Accuracy: 0.5611
+--------------------Epoch: 20/100--------------------
+Generator Learning Rate: 5e-05
+2025-06-25 22:30:31.617603 Epoch [020/100], Step [0158/0632] (25%), Gen Loss: 1.1522
+2025-06-25 22:32:41.801111 Epoch [020/100], Step [0316/0632] (50%), Gen Loss: 1.1520
+2025-06-25 22:34:51.845413 Epoch [020/100], Step [0474/0632] (75%), Gen Loss: 1.1682
+2025-06-25 22:37:01.965700 Epoch [020/100], Step [0632/0632] (100%), Gen Loss: 1.1343
+Epoch 20 completed. Learning rate: 0.000050
+Starting validation...
+Validation Results (Reference Only) - Loss: 2.5319
+  IoU: 0.0918
+  F1-Score: 0.1682
+  Precision: 0.0924
+  Recall: 0.9308
+  Accuracy: 0.5798
+Checkpoint saved: SMOKE5K_Dataset_SMOKE5K_train_ssl_ijmond_camera_SMOKE5K-full_citizen_constraint_epoch_020_from_scratch.pth
+--------------------Epoch: 21/100--------------------
+Generator Learning Rate: 5e-05
+2025-06-25 22:39:26.408789 Epoch [021/100], Step [0158/0632] (25%), Gen Loss: 1.1465
+2025-06-25 22:41:36.382519 Epoch [021/100], Step [0316/0632] (50%), Gen Loss: 1.1811
+2025-06-25 22:43:46.313837 Epoch [021/100], Step [0474/0632] (75%), Gen Loss: 1.1687
+2025-06-25 22:45:56.534833 Epoch [021/100], Step [0632/0632] (100%), Gen Loss: 1.2018
+Epoch 21 completed. Learning rate: 0.000050
+Starting validation...
+Validation Results (Reference Only) - Loss: 2.4232
+  IoU: 0.0987
+  F1-Score: 0.1797
+  Precision: 0.0997
+  Recall: 0.9108
+  Accuracy: 0.6204
+--------------------Epoch: 22/100--------------------
+Generator Learning Rate: 5e-05
+2025-06-25 22:48:18.288218 Epoch [022/100], Step [0158/0632] (25%), Gen Loss: 1.1987
+2025-06-25 22:50:28.408726 Epoch [022/100], Step [0316/0632] (50%), Gen Loss: 1.0909
+2025-06-25 22:52:38.420421 Epoch [022/100], Step [0474/0632] (75%), Gen Loss: 1.1870
+2025-06-25 22:54:48.480694 Epoch [022/100], Step [0632/0632] (100%), Gen Loss: 1.1281
+Epoch 22 completed. Learning rate: 0.000050
+Starting validation...
+Validation Results (Reference Only) - Loss: 2.7705
+  IoU: 0.0880
+  F1-Score: 0.1618
+  Precision: 0.0886
+  Recall: 0.9245
+  Accuracy: 0.5628
+--------------------Epoch: 23/100--------------------
+Generator Learning Rate: 5e-05
+2025-06-25 22:57:10.609024 Epoch [023/100], Step [0158/0632] (25%), Gen Loss: 1.1500
+2025-06-25 22:59:20.642960 Epoch [023/100], Step [0316/0632] (50%), Gen Loss: 1.1653
+2025-06-25 23:01:30.656020 Epoch [023/100], Step [0474/0632] (75%), Gen Loss: 1.1187
+2025-06-25 23:03:40.660214 Epoch [023/100], Step [0632/0632] (100%), Gen Loss: 1.1574
+Epoch 23 completed. Learning rate: 0.000050
+Starting validation...
+Validation Results (Reference Only) - Loss: 2.3280
+  IoU: 0.0995
+  F1-Score: 0.1810
+  Precision: 0.1005
+  Recall: 0.9067
+  Accuracy: 0.6255
+--------------------Epoch: 24/100--------------------
+Generator Learning Rate: 5e-05
+2025-06-25 23:06:03.102253 Epoch [024/100], Step [0158/0632] (25%), Gen Loss: 1.1107
+2025-06-25 23:08:13.056747 Epoch [024/100], Step [0316/0632] (50%), Gen Loss: 1.1635
+2025-06-25 23:10:22.915104 Epoch [024/100], Step [0474/0632] (75%), Gen Loss: 1.1569
+2025-06-25 23:12:32.882837 Epoch [024/100], Step [0632/0632] (100%), Gen Loss: 1.1540
+Epoch 24 completed. Learning rate: 0.000050
+Starting validation...
+Validation Results (Reference Only) - Loss: 2.7602
+  IoU: 0.0894
+  F1-Score: 0.1641
+  Precision: 0.0901
+  Recall: 0.9171
+  Accuracy: 0.5737
+--------------------Epoch: 25/100--------------------
+Generator Learning Rate: 5e-05
+2025-06-25 23:14:54.707141 Epoch [025/100], Step [0158/0632] (25%), Gen Loss: 1.1488
+2025-06-25 23:17:04.655222 Epoch [025/100], Step [0316/0632] (50%), Gen Loss: 1.1373
+2025-06-25 23:19:14.702530 Epoch [025/100], Step [0474/0632] (75%), Gen Loss: 1.1667
+2025-06-25 23:21:24.719000 Epoch [025/100], Step [0632/0632] (100%), Gen Loss: 1.2108
+Epoch 25 completed. Learning rate: 0.000050
+Starting validation...
+Validation Results (Reference Only) - Loss: 3.1278
+  IoU: 0.0820
+  F1-Score: 0.1516
+  Precision: 0.0824
+  Recall: 0.9367
+  Accuracy: 0.5214
+--------------------Epoch: 26/100--------------------
+Generator Learning Rate: 5e-05
+2025-06-25 23:23:48.374926 Epoch [026/100], Step [0158/0632] (25%), Gen Loss: 1.2149
+2025-06-25 23:25:58.432476 Epoch [026/100], Step [0316/0632] (50%), Gen Loss: 1.0242
+2025-06-25 23:28:08.591462 Epoch [026/100], Step [0474/0632] (75%), Gen Loss: 1.0746
+2025-06-25 23:30:18.582312 Epoch [026/100], Step [0632/0632] (100%), Gen Loss: 1.0594
+Epoch 26 completed. Learning rate: 0.000050
+Starting validation...
+Validation Results (Reference Only) - Loss: 3.0578
+  IoU: 0.0837
+  F1-Score: 0.1544
+  Precision: 0.0842
+  Recall: 0.9249
+  Accuracy: 0.5377
+New best model saved! Training loss: 1.0964
+  Corresponding validation IoU: 0.0837 (reference)
+Early stopping triggered at epoch 26
+Best training loss: 1.0964 achieved at epoch 26
+
+==================================================
+Semi-Supervised Training completed!
+Best training loss: 1.0964 achieved at epoch 26
+Best model saved at: models/semi-supervision/SMOKE5K-ijmond-camera-on-SMOKE5K/SMOKE5K_Dataset_SMOKE5K_train_ssl_ijmond_camera_SMOKE5K-full_citizen_constraint/SMOKE5K_Dataset_SMOKE5K_train_ssl_ijmond_camera_SMOKE5K-full_citizen_constraint_best_model.pth
+==================================================
+
+JOB STATISTICS
+==============
+Job ID: 12625019
+Cluster: snellius
+User/Group: ytao/ytao
+State: COMPLETED (exit code 0)
+Nodes: 1
+Cores per node: 9
+CPU Utilized: 04:40:37
+CPU Efficiency: 13.45% of 1-10:46:48 core-walltime
+Job Wall-clock time: 03:51:52
+Memory Utilized: 12.77 GB
+Memory Efficiency: 53.21% of 24.00 GB (24.00 GB/node)
