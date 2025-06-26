@@ -37,7 +37,7 @@ def argparser():
 
     # ================================== 基础训练配置 ==================================
     parser.add_argument("--epoch", type=int, default=50, help="number of training epochs")
-    parser.add_argument("--batchsize", type=int, default=8, help="batch size for training")
+    parser.add_argument("--batchsize", type=int, default=4, help="batch size for training")
     parser.add_argument("--trainsize", type=int, default=352, help="input image resolution (trainsize x trainsize)")
 
     # ================================== 优化器配置 ==================================
@@ -67,6 +67,7 @@ def argparser():
     parser.add_argument("--lambda_grl_max", type=float, default=1.0, help="maximum lambda for gradient reversal layer")
     parser.add_argument("--num_domains", type=int, default=2, help="number of domains (source=0, target=1)")
     parser.add_argument("--use_ldconv", action="store_true", default=False, help="use LDConv in domain discriminators")
+    parser.add_argument("--use_attention_pool", action="store_true", default=False, help="use AttentionPool2d in domain discriminators")
 
     # ================================== 伪标签学习配置 ==================================
     parser.add_argument("--pseudo_loss_weight", type=float, default=0.5, help="weight for pseudo label supervision loss")
@@ -81,8 +82,8 @@ def argparser():
 
     # ================================== 验证和早停配置 ==================================
     parser.add_argument("--val_split", type=float, default=0.2, help="fraction of target data used for validation (0.0-1.0)")
-    parser.add_argument("--patience", type=int, default=15, help="early stopping patience (epochs)")
-    parser.add_argument("--min_delta", type=float, default=0.0005, help="minimum improvement threshold for early stopping")
+    parser.add_argument("--patience", type=int, default=25, help="early stopping patience (epochs)")
+    parser.add_argument("--min_delta", type=float, default=0.0001, help="minimum improvement threshold for early stopping")
     parser.add_argument("--enable_validation", action="store_true", default=True, help="enable validation on target data subset")
 
     # ================================== 数据增强和可重现性配置 ==================================
@@ -231,6 +232,7 @@ def print_training_configuration(opt, device, model_name):
     print(f"  Number of Domains: {opt.num_domains}")
     print(f"  Gradient Reversal Lambda Max: {opt.lambda_grl_max}")
     print(f"  Use LDConv in Discriminators: {opt.use_ldconv}")
+    print(f"  Use AttentionPool2d in Discriminators: {opt.use_attention_pool}")
     print(f"  Pseudo Label Weight: {opt.pseudo_loss_weight}")
 
     # ================================== 半监督学习配置 ==================================
@@ -342,6 +344,7 @@ model = create_domain_adaptive_model(
     num_domains=opt.num_domains,
     domain_loss_weight=opt.domain_loss_weight,
     use_ldconv=opt.use_ldconv,
+    use_attention_pool=opt.use_attention_pool,
 )
 
 model.to(device)
@@ -641,7 +644,7 @@ for epoch in range(1, opt.epoch + 1):
     else:
         # 如果未启用验证，使用训练损失
         current_loss = loss_record.avg
-        scheduler.step(current_loss)
+        # scheduler.step(current_loss)  # 注释：原本用训练损失调整学习率
 
     current_lr = optimizer.param_groups[0]["lr"]
 
@@ -650,13 +653,14 @@ for epoch in range(1, opt.epoch + 1):
     else:
         print(f"Epoch {epoch} completed. Learning rate: {current_lr:.6f}")
 
-    # 校验和早停逻辑 - 统一基于训练损失
-    current_train_loss = loss_record.avg
+    # 校验和早停逻辑 - 统一基于校验损失（val_loss）
+    # current_train_loss = loss_record.avg  # 注释：原本用训练损失做早停
 
     if validation_enabled and val_loader is not None:
-        # 启用校验模式：在目标域验证集上评估模型，但仅供参考
+        # 启用校验模式：在目标域验证集上评估模型
         print("Starting validation on target domain...")
-        val_loss, val_metrics = validate_model(model.base_generator, val_loader, device, structure_loss)
+        with torch.no_grad():
+            val_loss, val_metrics = validate_model(model.base_generator, val_loader, device, structure_loss)
 
         print(f"Target Domain Validation Results (Reference Only) - Loss: {val_loss:.4f}")
         print(f"  IoU: {val_metrics['iou']:.4f}")
@@ -665,35 +669,42 @@ for epoch in range(1, opt.epoch + 1):
         print(f"  Recall: {val_metrics['recall']:.4f}")
         print(f"  Accuracy: {val_metrics['accuracy']:.4f}")
 
-        # 使用训练损失更新学习率调度器（而非验证损失）
-        scheduler.step(current_train_loss)
+        # 使用校验损失更新学习率调度器
+        scheduler.step(val_loss)
         new_lr = optimizer.param_groups[0]["lr"]
         if new_lr != current_lr:
-            print(f"Learning rate adjusted based on training loss: {current_lr:.6f} -> {new_lr:.6f}")
+            print(f"Learning rate adjusted based on validation loss: {current_lr:.6f} -> {new_lr:.6f}")
 
-    # 统一的模型保存和早停逻辑 - 基于训练损失
-    if current_train_loss < best_train_loss:
-        best_train_loss = current_train_loss
-        best_epoch = epoch
-        # 保存最佳模型
-        best_model_filename = generate_best_model_filename(model_name, opt.pretrained_weights)
-        torch.save(model.base_generator.state_dict(), os.path.join(opt.save_model_path, best_model_filename))
-        print(f"New best model saved! Training loss: {current_train_loss:.4f}")
-        if validation_enabled and val_loader is not None:
-            print(f"  Corresponding target validation IoU: {val_metrics['iou']:.4f} (reference)")
+        # 统一的模型保存和早停逻辑 - 基于校验损失
+        current_val_loss = val_loss
+        if current_val_loss < best_train_loss:
+            best_train_loss = current_val_loss
+            best_epoch = epoch
+            # 保存最佳模型
+            best_model_filename = generate_best_model_filename(model_name, opt.pretrained_weights)
+            torch.save(model.base_generator.state_dict(), os.path.join(opt.save_model_path, best_model_filename))
+            print(f"New best model saved! Validation loss: {current_val_loss:.4f}")
+            print(f"  Corresponding target validation IoU: {val_metrics['iou']:.4f}")
 
-    # 统一的早停检查 - 基于训练损失
-    early_stopping(current_train_loss, model.base_generator)
-    if early_stopping.early_stop:
-        print(f"Early stopping triggered at epoch {epoch}")
-        print(f"Best training loss: {best_train_loss:.4f} achieved at epoch {best_epoch}")
-        break
-
-    # 定期保存检查点 - 使用动态文件名
-    if epoch >= 0 and epoch % 10 == 0:
-        checkpoint_filename = generate_checkpoint_filename(epoch, model_name, opt.pretrained_weights)
-        torch.save(model.base_generator.state_dict(), os.path.join(opt.save_model_path, checkpoint_filename))
-        print(f"Checkpoint saved: {checkpoint_filename}")
+        early_stopping(current_val_loss, model.base_generator)
+        if early_stopping.early_stop:
+            print(f"Early stopping triggered at epoch {epoch}")
+            print(f"Best validation loss: {best_train_loss:.4f} achieved at epoch {best_epoch}")
+            break
+    else:
+        # 如果未启用验证，使用训练损失
+        current_train_loss = loss_record.avg
+        # if current_train_loss < best_train_loss:
+        #     best_train_loss = current_train_loss
+        #     best_epoch = epoch
+        #     best_model_filename = generate_best_model_filename(model_name, opt.pretrained_weights)
+        #     torch.save(model.base_generator.state_dict(), os.path.join(opt.save_model_path, best_model_filename))
+        #     print(f"New best model saved! Training loss: {current_train_loss:.4f}")
+        # early_stopping(current_train_loss, model.base_generator)
+        # if early_stopping.early_stop:
+        #     print(f"Early stopping triggered at epoch {epoch}")
+        #     print(f"Best training loss: {best_train_loss:.4f} achieved at epoch {best_epoch}")
+        #     break
 
 # 训练结束后的总结
 print("\n" + "=" * 50)

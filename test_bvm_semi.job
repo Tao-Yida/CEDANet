@@ -32,5 +32,5 @@ source activate dl2024 || { echo "Failed to activate Conda env"; exit 1; }
 # --model_path: 半监督训练后的模型路径
 # --test_dataset: 测试数据集 (smoke5k)
 python ijmond-camera-ai/bvm_training/trans_bvm_self_supervised/test.py \
---model_path "models/semi-supervision/SMOKE5K_Dataset_SMOKE5K_train_ssl_SMOKE5K_Dataset_SMOKE5K_weak_supervision/SMOKE5K_Dataset_SMOKE5K_train_ssl_SMOKE5K_Dataset_SMOKE5K_weak_supervision_best_model.pth" \
+--model_path "models/semi-supervision/SMOKE5K-ijmond-camera-on-SMOKE5K/SMOKE5K_Dataset_SMOKE5K_train_ssl_ijmond_camera_SMOKE5K-full_expert_constraint/SMOKE5K_Dataset_SMOKE5K_train_ssl_ijmond_camera_SMOKE5K-full_expert_constraint_best_model.pth" \
 --test_dataset ijmond \

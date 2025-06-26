@@ -33,4 +33,4 @@ source activate dl2024 || { echo "Failed to activate Conda env"; exit 1; }
 # --model_path: 监督学习训练后的模型路径
 # --method: 训练方法标识 (supervised)
 # --test_dataset: 测试数据集 (ijmond)
-python ijmond-camera-ai/bvm_training/trans_bvm/test.py --model_path models/finetune/Model_50_gen.pth --method supervised --test_dataset ijmond
+python ijmond-camera-ai/bvm_training/trans_bvm/test.py --model_path models/full-supervision/SMOKE5K-supervised/SMOKE5K_Dataset_SMOKE5K_train/SMOKE5K_Dataset_SMOKE5K_train_best_model.pth --test_dataset ijmond

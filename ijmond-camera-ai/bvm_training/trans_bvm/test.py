@@ -26,20 +26,9 @@ def compute_mae(pred, gt):
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--testsize", type=int, default=352, help="testing size")
-parser.add_argument("--langevin_step_num_des", type=int, default=10, help="number of langevin steps for ebm")
-parser.add_argument("-langevin_step_size_des", type=float, default=0.026, help="step size of EBM langevin")
-parser.add_argument("--energy_form", default="identity", help="tanh | sigmoid | identity | softplus")
-parser.add_argument("--latent_dim", type=int, default=3, help="latent dim")
+parser.add_argument("--latent_dim", type=int, default=8, help="latent dim")
 parser.add_argument("--feat_channel", type=int, default=32, help="reduced channel of saliency feat")
 parser.add_argument("--model_path", type=str, required=True, help="path to model file", default="models/ucnet_trans3/Model_50_gen.pth")
-parser.add_argument(
-    "--method",
-    type=str,
-    required=True,
-    default="supervised",
-    choices=["supervised", "semi_supervised", "domain_adaptation"],
-    help="training method: supervised | semi_supervised | domain_adaptation",
-)
 parser.add_argument("--test_dataset", type=str, required=True, choices=["ijmond", "smoke5k"], help="test dataset: ijmond | smoke5k")
 opt = parser.parse_args()
 
@@ -83,20 +72,7 @@ except Exception as e:
 generator.to(device)
 generator.eval()
 
-# test_datasets = ['CAMO','CHAMELEON','COD10K']
 test_datasets = [""]
-
-
-def compute_energy(disc_score):
-    if opt.energy_form == "tanh":
-        energy = torch.tanh(-disc_score.squeeze())
-    elif opt.energy_form == "sigmoid":
-        energy = F.sigmoid(-disc_score.squeeze())
-    elif opt.energy_form == "identity":
-        energy = -disc_score.squeeze()
-    elif opt.energy_form == "softplus":
-        energy = F.softplus(-disc_score.squeeze())
-    return energy
 
 
 for dataset in test_datasets:
@@ -107,11 +83,11 @@ for dataset in test_datasets:
 
     # 构建包含完整模型信息的保存路径，避免同目录下多个模型混淆
     if model_dir and model_dir != ".":
-        # 包含目录和具体模型名: ./results/method/dataset/model_dir/model_name/
-        save_path = os.path.join("./results", opt.method, opt.test_dataset, model_dir, model_name, dataset)
+        # 包含目录和具体模型名: ./results/supervised/dataset/model_dir/model_name/
+        save_path = os.path.join("./results", "supervised", opt.test_dataset, model_dir, model_name, dataset)
     else:
-        # 只有模型名: ./results/method/dataset/model_name/
-        save_path = os.path.join("./results", opt.method, opt.test_dataset, model_name, dataset)
+        # 只有模型名: ./results/supervised/dataset/model_name/
+        save_path = os.path.join("./results", "supervised", opt.test_dataset, model_name, dataset)
 
     if not os.path.exists(save_path):
         os.makedirs(save_path)
@@ -246,7 +222,7 @@ Actual N    {sum_FP:8d} {sum_TN:8d}
             f.write(f"Dataset Path: {dataset_path}\n")
             f.write(f"GT Path: {gt_root}\n")
             f.write(f"Model: {opt.model_path}\n")
-            f.write(f"Method: {opt.method}\n")
+            f.write(f"Method: supervised\n")
             f.write(f"Test size: {opt.testsize}\n")
             f.write(f"Total images processed: {total_images}\n\n")
 

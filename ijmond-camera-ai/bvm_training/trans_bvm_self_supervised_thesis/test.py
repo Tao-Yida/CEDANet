@@ -28,16 +28,14 @@ def compute_mae(pred, gt):
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--testsize", type=int, default=352, help="testing size")
-parser.add_argument("--langevin_step_num_des", type=int, default=10, help="number of langevin steps for ebm")
-parser.add_argument("--langevin_step_size_des", type=float, default=0.026, help="step size of EBM langevin")
-parser.add_argument("--energy_form", default="identity", help="tanh | sigmoid | identity | softplus")
-parser.add_argument("--latent_dim", type=int, default=3, help="latent dim")
-parser.add_argument("--feat_channel", type=int, default=32, help="reduced channel of saliency feat")
+parser.add_argument("--latent_dim", type=int, default=8, help="latent dim")
+parser.add_argument("--feat_channel", type=int, default=64, help="reduced channel of saliency feat")
 parser.add_argument("--model_path", type=str, default="./models/domain_adapt/Model_16_gen.pth", help="path to domain adapted model file")
 parser.add_argument("--test_dataset", type=str, default="ijmond", choices=["ijmond", "smoke5k"], help="test dataset: ijmond | smoke5k")
 parser.add_argument("--num_domains", type=int, default=2, help="number of domains (source=0, target=1)")
-parser.add_argument("--domain_loss_weight", type=float, default=0.1, help="domain loss weight used during training")
+parser.add_argument("--domain_loss_weight", type=float, default=0.5, help="domain loss weight used during training")
 parser.add_argument("--use_ldconv", action="store_true", default=False, help="use LDConv in domain discriminators")
+parser.add_argument("--use_attention_pool", action="store_true", default=False, help="use AttentionPool2d in domain discriminators")
 opt = parser.parse_args()
 
 # 根据测试数据集设置数据路径
@@ -58,6 +56,7 @@ model = create_domain_adaptive_model(
     num_domains=opt.num_domains,
     domain_loss_weight=opt.domain_loss_weight,
     use_ldconv=opt.use_ldconv,
+    use_attention_pool=opt.use_attention_pool,
 )
 
 # 鲁棒的模型加载

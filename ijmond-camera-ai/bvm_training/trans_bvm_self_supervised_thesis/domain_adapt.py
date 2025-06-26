@@ -4,6 +4,7 @@ import torch.nn.functional as F
 import numpy as np
 import math
 from einops import rearrange
+from torch.nn.modules.utils import _pair
 
 
 # Gradient Reversal Layer
@@ -19,6 +20,62 @@ def grad_reverse(x, lambda_=1.0):
     by reversing the gradient during backpropagation, effectively penalizing the model for distinguishing between domains
     """
     return GradientReversalLayer.apply(x, lambda_)
+
+
+class AttentionPool2d(nn.Module):
+    """
+    Attention-guided pooling with the same interface as nn.AdaptiveAvgPool2d.
+    Forward signature matches AdaptiveAvgPool2d: (x) -> y
+    Before calling forward, user must set an attention map via `set_attention`:
+        att: shape (B, 1, H, W) or (B, H, W)
+    The output is:
+        out[b, c, i, j] = sum_{h,w in region_ij} x[b,c,h,w] * att[b,1,h,w]
+                         --------------------------------------------------
+                         sum_{h,w in region_ij} att[b,1,h,w]
+    i.e. weighted adaptive average pooling.
+    """
+
+    def __init__(self, output_size):
+        super().__init__()
+        self.output_size = _pair(output_size)
+        self.attention = None
+
+    def set_attention(self, att: torch.Tensor):
+        """
+        Set the attention map to be used in pooling.
+        Args:
+            att: Tensor of shape (B, 1, H, W) or (B, H, W)
+        """
+        if att.dim() == 3:
+            att = att.unsqueeze(1)
+        if att.dim() != 4 or att.size(1) != 1:
+            raise ValueError(f"Attention map must have shape (B,1,H,W), got {tuple(att.shape)}")
+        self.attention = att
+
+    def forward(self, x: torch.Tensor):
+        """
+        Args:
+            x: feature map of shape (B, C, H, W)
+        Returns:
+            Pooled feature of shape (B, C, out_h, out_w)
+        """
+        if self.attention is None:
+            raise RuntimeError("Attention map not set. Call `set_attention` before forward.")
+        B, C, H, W = x.shape
+        out_h, out_w = self.output_size
+        # Ensure attention matches input spatial dims
+        att = self.attention
+        if att.shape[2:] != (H, W):
+            att = F.interpolate(att, size=(H, W), mode="bilinear", align_corners=False)
+        # Weighted features
+        weighted = x * att
+        # Numerator: weighted features downsampled
+        num = F.adaptive_avg_pool2d(weighted, (out_h, out_w))
+        # Denominator: attention downsampled
+        den = F.adaptive_avg_pool2d(att, (out_h, out_w))
+        # Avoid division by zero
+        out = num / (den + 1e-6)
+        return out
 
 
 class GradientReversalLayer(torch.autograd.Function):
@@ -152,15 +209,17 @@ class DomainDiscriminator(nn.Module):
     支持使用LDConv替换标准卷积的选项
     """
 
-    def __init__(self, in_channels, num_domains=2, use_ldconv=False):
+    def __init__(self, in_channels, num_domains=2, use_ldconv=True, use_attention_pool=False):
         """
         Args:
             in_channels (int): Number of input channels (feature map depth).
             num_domains (int): Number of domains to discriminate (default is 2).
             use_ldconv (bool): Whether to use LDConv instead of regular Conv2d.
+            use_attention_pool (bool): Whether to use AttentionPool2d instead of AdaptiveAvgPool2d.
         """
         super().__init__()
         self.use_ldconv = use_ldconv
+        self.use_attention_pool = use_attention_pool
 
         if use_ldconv:
             # 使用LDConv替换常规卷积，num_param=9近似3x3卷积
@@ -173,7 +232,12 @@ class DomainDiscriminator(nn.Module):
 
         self.fc = nn.Conv2d(in_channels // 4, num_domains, 1)
         self.relu = nn.ReLU()
-        self.pool = nn.AdaptiveAvgPool2d(1)
+
+        # 池化层选择
+        if use_attention_pool:
+            self.pool = AttentionPool2d(1)
+        else:
+            self.pool = nn.AdaptiveAvgPool2d(1)
 
     def forward(self, feature_map, category_mask=None, grl_lambda=1.0):
         """
@@ -195,6 +259,11 @@ class DomainDiscriminator(nn.Module):
         if not self.use_ldconv:
             x = self.relu(x)
 
+        # 使用注意力池化或普通池化
+        if self.use_attention_pool and category_mask is not None:
+            # 设置注意力图并应用注意力池化
+            self.pool.set_attention(category_mask)
+
         x = self.pool(x)
         x = self.fc(x)
         return x.view(x.size(0), -1)
@@ -203,7 +272,7 @@ class DomainDiscriminator(nn.Module):
 class DomainAdaptiveGenerator(nn.Module):
     """领域自适应的生成器，集成了原有的Generator和域判别器"""
 
-    def __init__(self, base_generator, feat_channels=32, num_domains=2, domain_loss_weight=0.1, use_ldconv=False):
+    def __init__(self, base_generator, feat_channels=32, num_domains=2, domain_loss_weight=0.1, use_ldconv=False, use_attention_pool=False):
         """
         Args:
             base_generator: 原有的生成器模型（Generator）
@@ -211,16 +280,18 @@ class DomainAdaptiveGenerator(nn.Module):
             num_domains: 域判别器的域数量（通常为2，表示源域和目标域）
             domain_loss_weight: 域判别损失的权重，用于平衡生成器和域判别器的损失
             use_ldconv: 是否在域判别器中使用LDConv
+            use_attention_pool: 是否在域判别器中使用AttentionPool2d
         """
         super().__init__()
         self.base_generator = base_generator
         self.domain_loss_weight = domain_loss_weight
         self.feat_channels = feat_channels
         self.use_ldconv = use_ldconv
+        self.use_attention_pool = use_attention_pool
 
-        # 为烟雾区域和背景区域分别建立域判别器，支持LDConv选项
-        self.domain_disc_smoke = DomainDiscriminator(feat_channels, num_domains, use_ldconv=use_ldconv)
-        self.domain_disc_bg = DomainDiscriminator(feat_channels, num_domains, use_ldconv=use_ldconv)
+        # 为烟雾区域和背景区域分别建立域判别器，支持LDConv和AttentionPool2d选项
+        self.domain_disc_smoke = DomainDiscriminator(feat_channels, num_domains, use_ldconv=use_ldconv, use_attention_pool=use_attention_pool)
+        self.domain_disc_bg = DomainDiscriminator(feat_channels, num_domains, use_ldconv=use_ldconv, use_attention_pool=use_attention_pool)
 
     def extract_features(self, x):
         """
@@ -400,7 +471,7 @@ def log_domain_adaptation_stats(d_smoke_src, d_bg_src, d_smoke_tgt, d_bg_tgt, ba
     }
 
 
-def create_domain_adaptive_model(base_generator, feat_channels=32, num_domains=2, domain_loss_weight=0.1, use_ldconv=False):
+def create_domain_adaptive_model(base_generator, feat_channels=32, num_domains=2, domain_loss_weight=0.1, use_ldconv=False, use_attention_pool=False):
     """
     创建领域自适应模型
     Args:
@@ -409,6 +480,7 @@ def create_domain_adaptive_model(base_generator, feat_channels=32, num_domains=2
         num_domains: 域数量
         domain_loss_weight: 域损失权重
         use_ldconv: 是否使用LDConv (默认False，保持向后兼容)
+        use_attention_pool: 是否使用AttentionPool2d (默认False，保持向后兼容)
     """
     model = DomainAdaptiveGenerator(
         base_generator=base_generator,
@@ -416,5 +488,6 @@ def create_domain_adaptive_model(base_generator, feat_channels=32, num_domains=2
         num_domains=num_domains,
         domain_loss_weight=domain_loss_weight,
         use_ldconv=use_ldconv,
+        use_attention_pool=use_attention_pool,
     )
     return model

@@ -1,8 +1,6 @@
 Using device: cuda
 Loading model...
-Successfully loaded 887/912 parameters
-Warning: Some parameters were not loaded due to architecture mismatch
-Missing keys: ['x_encoder.fc1_2.weight', 'xy_encoder.fc1_3.weight', 'x_encoder.fc2_2.bias', 'x_encoder.fc1_3.weight', 'x_encoder.fc1_3.bias']...
+Successfully loaded 912/912 parameters
 Loading test data from: data/ijmond_data/test/img/
 Processing image 1/800
 Processing image 2/800
@@ -807,38 +805,39 @@ Processing image 800/800
 
 === Evaluation Results for ijmond dataset ===
 Processed 800 images
-Precision: 0.0096
-Recall: 0.6824
-F1-Score: 0.0190
-Specificity: 0.6008
-Accuracy: 0.6012
-IoU (Smoke): 0.0096
-IoU (Background): 0.5997
-mIoU: 0.3046
-Dice Coefficient: 0.0190
+Precision: 0.0180
+Recall: 0.7728
+F1-Score: 0.0352
+Specificity: 0.7598
+Accuracy: 0.7599
+IoU (Smoke): 0.0179
+IoU (Background): 0.7588
+mIoU: 0.3884
+Dice Coefficient: 0.0352
 
 === Additional Evaluation Metrics ===
-Mean MSE: 0.348947
-Mean MAE: 0.395982
+Mean MSE: 0.205659
+Mean MAE: 0.240616
 
 Confusion Matrix:
                 Predicted
                  P    N
-Actual P     6414571  2985513
-Actual N    658528272 990951644
+Actual P     7263941  2136143
+Actual N    396190058 1253289858
 
 Evaluation metrics saved to: ./results/self_supervised/ijmond/SMOKE5K_Dataset_SMOKE5K_train_ssl_ijmond_camera_SMOKE5K-full_citizen_constraint/SMOKE5K_Dataset_SMOKE5K_train_ssl_ijmond_camera_SMOKE5K-full_citizen_constraint_best_model/evaluation_metrics.txt
 
 JOB STATISTICS
 ==============
-Job ID: 12631904
+Job ID: 12632074
 Cluster: snellius
 User/Group: ytao/ytao
-State: COMPLETED (exit code 0)
+State: RUNNING
 Nodes: 1
 Cores per node: 9
-CPU Utilized: 00:01:50
-CPU Efficiency: 10.63% of 00:17:15 core-walltime
-Job Wall-clock time: 00:01:55
-Memory Utilized: 1.02 GB
-Memory Efficiency: 6.37% of 16.00 GB (16.00 GB/node)
+CPU Utilized: 00:00:00
+CPU Efficiency: 0.00% of 00:16:21 core-walltime
+Job Wall-clock time: 00:01:49
+Memory Utilized: 0.00 MB
+Memory Efficiency: 0.00% of 16.00 GB (16.00 GB/node)
+WARNING: Efficiency statistics can only be obtained after the job has ended as seff tool is based on the accounting database data.

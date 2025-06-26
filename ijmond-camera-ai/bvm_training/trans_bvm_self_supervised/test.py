@@ -13,10 +13,7 @@ import cv2
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--testsize", type=int, default=352, help="testing size")
-parser.add_argument("--langevin_step_num_des", type=int, default=10, help="number of langevin steps for ebm")
-parser.add_argument("-langevin_step_size_des", type=float, default=0.026, help="step size of EBM langevin")
-parser.add_argument("--energy_form", default="identity", help="tanh | sigmoid | identity | softplus")
-parser.add_argument("--latent_dim", type=int, default=3, help="latent dim")
+parser.add_argument("--latent_dim", type=int, default=8, help="latent dim")
 parser.add_argument("--feat_channel", type=int, default=32, help="reduced channel of saliency feat")
 parser.add_argument("--model_path", type=str, default="./models/ss__no_samples_1000/Model_16_gen.pth", help="path to model file")
 parser.add_argument("--test_dataset", type=str, default="ijmond", choices=["ijmond", "smoke5k"], help="test dataset: ijmond | smoke5k")
@@ -62,20 +59,7 @@ except Exception as e:
 generator.to(device)
 generator.eval()
 
-# test_datasets = ['CAMO','CHAMELEON','COD10K']
 test_datasets = [""]
-
-
-def compute_energy(disc_score):
-    if opt.energy_form == "tanh":
-        energy = torch.tanh(-disc_score.squeeze())
-    elif opt.energy_form == "sigmoid":
-        energy = F.sigmoid(-disc_score.squeeze())
-    elif opt.energy_form == "identity":
-        energy = -disc_score.squeeze()
-    elif opt.energy_form == "softplus":
-        energy = F.softplus(-disc_score.squeeze())
-    return energy
 
 
 def compute_mse(pred, gt):
