@@ -1,0 +1,507 @@
+================================================================================
+DOMAIN ADAPTIVE TRAINING CONFIGURATION
+================================================================================
+📋 BASIC TRAINING SETTINGS
+----------------------------------------
+  Training Epochs: 100
+  Batch Size: 4
+  Training Image Size: 352x352
+  Device: cuda
+  Model Name: SMOKE5K_Dataset_SMOKE5K_train_to_ijmond_camera_SMOKE5K-full_citizen_constraint_da
+
+⚙️  OPTIMIZER SETTINGS
+----------------------------------------
+  Learning Rate: 5e-05
+  Adam Beta: 0.5
+  Gradient Clipping: 0.5
+  LR Decay Factor: 0.8
+  LR Patience (epochs): 12
+
+🏗️  MODEL ARCHITECTURE
+----------------------------------------
+  Feature Channels: 32
+  Latent Dimension: 8
+  Contrastive Layer Filters: 8
+
+📊 LOSS FUNCTION WEIGHTS
+----------------------------------------
+  L2 Regularization: 0.0001
+  Latent Loss: 2.0
+  VAE Loss: 0.6
+  Contrastive Loss: 1.0
+  Domain Adaptation Loss: 1.0
+  Pseudo Label Loss: 0.5
+
+🔄 DOMAIN ADAPTATION SETTINGS
+----------------------------------------
+  Number of Domains: 2
+  Gradient Reversal Lambda Max: 1.0
+  Use LDConv in Discriminators: True
+  Use AttentionPool2d in Discriminators: True
+  Pseudo Label Weight: 0.5
+
+🎯 SEMI-SUPERVISED LEARNING
+----------------------------------------
+  Contrastive Pixel Matching: Intra-image
+  Contrastive Sample Count: 500
+
+📁 DATASET CONFIGURATION
+----------------------------------------
+  Source Domain Path: data/SMOKE5K_Dataset/SMOKE5K/train
+  Target Domain Path: data/ijmond_camera/SMOKE5K-full/citizen_constraint
+  Pretrained Weights: None
+  Model Save Path: models/thesis/E4/SMOKE5K_Dataset_SMOKE5K_train_to_ijmond_camera_SMOKE5K-full_citizen_constraint_da
+
+✅ VALIDATION & EARLY STOPPING
+----------------------------------------
+  Enable Validation: True
+  Validation Domain: Target Domain
+  Validation Split: 0.2 (of target data)
+  Early Stopping Patience: 25
+  Min Delta for Improvement: 0.0001
+  📊 Validation Strategy: Target domain split for training/validation
+     - Source domain: Full dataset for training
+     - Target domain: Split into training/validation sets
+
+🔀 DATA AUGMENTATION & REPRODUCIBILITY
+----------------------------------------
+  Data Augmentation (Both Domains): True
+  Freeze Randomness: False
+  Random Seed: 42
+================================================================================
+
+🔄 LOADING DATASETS...
+Dataset size: 5058
+  - Data augmentation: ENABLED
+源域训练集: 1264 batches (full dataset)
+Total dataset size: 4326
+Training set size: 3460
+Validation set size: 866
+目标域训练集: 865 batches
+目标域验证集: 216 batches
+构建模型...
+Learning Rate Scheduler configured:
+  - Type: ReduceLROnPlateau (adaptive based on loss)
+  - Patience (epochs to wait): 12
+  - Decay Factor: 0.8
+  - Minimum LR: 1e-7
+Let's go!
+--------------------Epoch: 1/100--------------------
+Learning Rate: 5e-05
+2025-06-28 04:25:59.753405 Epoch [001/100], Step [0316/1264] (25%), Total Loss: 4.0293, Src Seg Loss: 1.3107, Tgt Seg Loss: 1.4426, Contrastive Loss: 0.4209, Domain Loss: 0.6789
+2025-06-28 04:28:49.100832 Epoch [001/100], Step [0632/1264] (50%), Total Loss: 3.4773, Src Seg Loss: 1.2033, Tgt Seg Loss: 1.1260, Contrastive Loss: 0.3792, Domain Loss: 0.5016
+2025-06-28 04:31:40.232594 Epoch [001/100], Step [0948/1264] (75%), Total Loss: 3.2269, Src Seg Loss: 0.9519, Tgt Seg Loss: 1.0636, Contrastive Loss: 0.1717, Domain Loss: 0.4230
+2025-06-28 04:34:29.554170 Epoch [001/100], Step [1264/1264] (100%), Total Loss: 2.8910, Src Seg Loss: 0.8610, Tgt Seg Loss: 1.0098, Contrastive Loss: 0.0357, Domain Loss: 0.3848
+Epoch 1 completed. Learning rate: 0.000050
+Starting validation on target domain...
+Target Domain Validation Results (Reference Only) - Loss: 1.3072
+  IoU: 0.1110
+  F1-Score: 0.1998
+  Precision: 0.2010
+  Recall: 0.1987
+  Accuracy: 0.9623
+New best model saved! Validation loss: 1.3072
+  Corresponding target validation IoU: 0.1110
+--------------------Epoch: 2/100--------------------
+Learning Rate: 5e-05
+2025-06-28 04:37:28.658099 Epoch [002/100], Step [0316/1264] (25%), Total Loss: 2.9578, Src Seg Loss: 1.0603, Tgt Seg Loss: 1.0304, Contrastive Loss: 0.0857, Domain Loss: 0.4233
+2025-06-28 04:40:19.660785 Epoch [002/100], Step [0632/1264] (50%), Total Loss: 2.8660, Src Seg Loss: 0.6646, Tgt Seg Loss: 1.0609, Contrastive Loss: 0.1579, Domain Loss: 0.3617
+2025-06-28 04:43:10.597441 Epoch [002/100], Step [0948/1264] (75%), Total Loss: 2.9436, Src Seg Loss: 0.8929, Tgt Seg Loss: 0.9959, Contrastive Loss: 0.3152, Domain Loss: 0.3651
+2025-06-28 04:46:02.104120 Epoch [002/100], Step [1264/1264] (100%), Total Loss: 2.9140, Src Seg Loss: 0.9753, Tgt Seg Loss: 0.9851, Contrastive Loss: 0.2821, Domain Loss: 0.4421
+Epoch 2 completed. Learning rate: 0.000050
+Starting validation on target domain...
+Target Domain Validation Results (Reference Only) - Loss: 2.1075
+  IoU: 0.1534
+  F1-Score: 0.2660
+  Precision: 0.1916
+  Recall: 0.4344
+  Accuracy: 0.9432
+--------------------Epoch: 3/100--------------------
+Learning Rate: 5e-05
+2025-06-28 04:49:01.356823 Epoch [003/100], Step [0316/1264] (25%), Total Loss: 2.7481, Src Seg Loss: 0.6238, Tgt Seg Loss: 1.1123, Contrastive Loss: 0.3812, Domain Loss: 0.3881
+2025-06-28 04:51:51.801741 Epoch [003/100], Step [0632/1264] (50%), Total Loss: 2.6761, Src Seg Loss: 0.8251, Tgt Seg Loss: 0.9671, Contrastive Loss: 0.1092, Domain Loss: 0.6171
+2025-06-28 04:54:42.165721 Epoch [003/100], Step [0948/1264] (75%), Total Loss: 2.8128, Src Seg Loss: 0.5439, Tgt Seg Loss: 0.8841, Contrastive Loss: 0.2770, Domain Loss: 0.6284
+2025-06-28 04:57:32.587580 Epoch [003/100], Step [1264/1264] (100%), Total Loss: 2.8756, Src Seg Loss: 0.6438, Tgt Seg Loss: 0.9739, Contrastive Loss: 0.2630, Domain Loss: 0.5779
+Epoch 3 completed. Learning rate: 0.000050
+Starting validation on target domain...
+Target Domain Validation Results (Reference Only) - Loss: 0.9682
+  IoU: 0.3658
+  F1-Score: 0.5357
+  Precision: 0.5242
+  Recall: 0.5477
+  Accuracy: 0.9775
+New best model saved! Validation loss: 0.9682
+  Corresponding target validation IoU: 0.3658
+--------------------Epoch: 4/100--------------------
+Learning Rate: 5e-05
+2025-06-28 05:00:34.398982 Epoch [004/100], Step [0316/1264] (25%), Total Loss: 3.1163, Src Seg Loss: 0.6236, Tgt Seg Loss: 0.9788, Contrastive Loss: 0.5580, Domain Loss: 0.6186
+2025-06-28 05:03:26.289037 Epoch [004/100], Step [0632/1264] (50%), Total Loss: 3.2136, Src Seg Loss: 0.5674, Tgt Seg Loss: 0.7301, Contrastive Loss: 0.5486, Domain Loss: 0.6416
+2025-06-28 05:06:16.974630 Epoch [004/100], Step [0948/1264] (75%), Total Loss: 3.0952, Src Seg Loss: 0.6215, Tgt Seg Loss: 0.8408, Contrastive Loss: 0.5818, Domain Loss: 0.4852
+2025-06-28 05:09:07.730336 Epoch [004/100], Step [1264/1264] (100%), Total Loss: 3.1131, Src Seg Loss: 0.6630, Tgt Seg Loss: 1.0242, Contrastive Loss: 0.3286, Domain Loss: 0.4706
+Epoch 4 completed. Learning rate: 0.000050
+Starting validation on target domain...
+Target Domain Validation Results (Reference Only) - Loss: 0.9713
+  IoU: 0.3911
+  F1-Score: 0.5623
+  Precision: 0.6212
+  Recall: 0.5137
+  Accuracy: 0.9811
+--------------------Epoch: 5/100--------------------
+Learning Rate: 5e-05
+2025-06-28 05:12:20.838827 Epoch [005/100], Step [0316/1264] (25%), Total Loss: 3.1243, Src Seg Loss: 0.6960, Tgt Seg Loss: 1.0434, Contrastive Loss: 0.4862, Domain Loss: 0.4743
+2025-06-28 05:15:11.451893 Epoch [005/100], Step [0632/1264] (50%), Total Loss: 2.9349, Src Seg Loss: 0.6087, Tgt Seg Loss: 0.8606, Contrastive Loss: 0.3745, Domain Loss: 0.7961
+2025-06-28 05:18:03.139399 Epoch [005/100], Step [0948/1264] (75%), Total Loss: 2.9363, Src Seg Loss: 0.5027, Tgt Seg Loss: 1.0272, Contrastive Loss: 0.2890, Domain Loss: 0.5117
+2025-06-28 05:20:53.402496 Epoch [005/100], Step [1264/1264] (100%), Total Loss: 2.9151, Src Seg Loss: 0.5676, Tgt Seg Loss: 0.8528, Contrastive Loss: 0.4876, Domain Loss: 0.6023
+Epoch 5 completed. Learning rate: 0.000050
+Starting validation on target domain...
+Target Domain Validation Results (Reference Only) - Loss: 0.9535
+  IoU: 0.4284
+  F1-Score: 0.5998
+  Precision: 0.6019
+  Recall: 0.5977
+  Accuracy: 0.9811
+New best model saved! Validation loss: 0.9535
+  Corresponding target validation IoU: 0.4284
+Checkpoint saved at epoch 5: checkpoint_epoch_005.pth
+--------------------Epoch: 6/100--------------------
+Learning Rate: 5e-05
+2025-06-28 05:23:53.011717 Epoch [006/100], Step [0316/1264] (25%), Total Loss: 2.9959, Src Seg Loss: 0.4351, Tgt Seg Loss: 0.7565, Contrastive Loss: 0.3504, Domain Loss: 0.5193
+2025-06-28 05:26:43.488093 Epoch [006/100], Step [0632/1264] (50%), Total Loss: 3.0771, Src Seg Loss: 0.3870, Tgt Seg Loss: 0.8688, Contrastive Loss: 0.5493, Domain Loss: 0.6908
+2025-06-28 05:29:34.111271 Epoch [006/100], Step [0948/1264] (75%), Total Loss: 3.1019, Src Seg Loss: 0.4986, Tgt Seg Loss: 0.9604, Contrastive Loss: 0.7264, Domain Loss: 0.6669
+2025-06-28 05:32:25.642037 Epoch [006/100], Step [1264/1264] (100%), Total Loss: 3.0836, Src Seg Loss: 0.4875, Tgt Seg Loss: 0.9516, Contrastive Loss: 0.6486, Domain Loss: 0.5258
+Epoch 6 completed. Learning rate: 0.000050
+Starting validation on target domain...
+Target Domain Validation Results (Reference Only) - Loss: 0.9568
+  IoU: 0.4237
+  F1-Score: 0.5952
+  Precision: 0.6514
+  Recall: 0.5480
+  Accuracy: 0.9824
+--------------------Epoch: 7/100--------------------
+Learning Rate: 5e-05
+2025-06-28 05:35:24.419304 Epoch [007/100], Step [0316/1264] (25%), Total Loss: 2.9213, Src Seg Loss: 0.4447, Tgt Seg Loss: 0.8168, Contrastive Loss: 0.4569, Domain Loss: 0.6064
+2025-06-28 05:38:14.562905 Epoch [007/100], Step [0632/1264] (50%), Total Loss: 3.1078, Src Seg Loss: 0.6504, Tgt Seg Loss: 0.9406, Contrastive Loss: 0.6782, Domain Loss: 0.5606
+2025-06-28 05:41:05.027852 Epoch [007/100], Step [0948/1264] (75%), Total Loss: 2.8391, Src Seg Loss: 0.5459, Tgt Seg Loss: 0.9022, Contrastive Loss: 0.2882, Domain Loss: 0.3782
+2025-06-28 05:43:55.062741 Epoch [007/100], Step [1264/1264] (100%), Total Loss: 2.7639, Src Seg Loss: 0.3849, Tgt Seg Loss: 0.9058, Contrastive Loss: 0.2461, Domain Loss: 0.5104
+Epoch 7 completed. Learning rate: 0.000050
+Starting validation on target domain...
+Target Domain Validation Results (Reference Only) - Loss: 0.9150
+  IoU: 0.4254
+  F1-Score: 0.5969
+  Precision: 0.5142
+  Recall: 0.7113
+  Accuracy: 0.9773
+New best model saved! Validation loss: 0.9150
+  Corresponding target validation IoU: 0.4254
+--------------------Epoch: 8/100--------------------
+Learning Rate: 5e-05
+2025-06-28 05:46:53.630769 Epoch [008/100], Step [0316/1264] (25%), Total Loss: 2.7191, Src Seg Loss: 0.5446, Tgt Seg Loss: 0.8347, Contrastive Loss: 0.2696, Domain Loss: 0.5498
+2025-06-28 05:49:45.433362 Epoch [008/100], Step [0632/1264] (50%), Total Loss: 2.6780, Src Seg Loss: 0.5085, Tgt Seg Loss: 0.6267, Contrastive Loss: 0.2421, Domain Loss: 0.6119
+2025-06-28 05:52:35.365002 Epoch [008/100], Step [0948/1264] (75%), Total Loss: 2.7749, Src Seg Loss: 0.3472, Tgt Seg Loss: 0.9076, Contrastive Loss: 0.3026, Domain Loss: 0.5497
+2025-06-28 05:55:25.178570 Epoch [008/100], Step [1264/1264] (100%), Total Loss: 2.7970, Src Seg Loss: 0.4719, Tgt Seg Loss: 0.8137, Contrastive Loss: 0.3924, Domain Loss: 0.6184
+Epoch 8 completed. Learning rate: 0.000050
+Starting validation on target domain...
+Target Domain Validation Results (Reference Only) - Loss: 0.9436
+  IoU: 0.4356
+  F1-Score: 0.6069
+  Precision: 0.6088
+  Recall: 0.6049
+  Accuracy: 0.9814
+--------------------Epoch: 9/100--------------------
+Learning Rate: 5e-05
+2025-06-28 05:58:23.504075 Epoch [009/100], Step [0316/1264] (25%), Total Loss: 2.8632, Src Seg Loss: 0.4299, Tgt Seg Loss: 0.6950, Contrastive Loss: 0.4447, Domain Loss: 0.6413
+2025-06-28 06:01:13.535512 Epoch [009/100], Step [0632/1264] (50%), Total Loss: 2.7180, Src Seg Loss: 0.6086, Tgt Seg Loss: 0.8309, Contrastive Loss: 0.4374, Domain Loss: 0.6859
+2025-06-28 06:04:05.123948 Epoch [009/100], Step [0948/1264] (75%), Total Loss: 2.6640, Src Seg Loss: 0.4585, Tgt Seg Loss: 1.0072, Contrastive Loss: 0.2974, Domain Loss: 0.6543
+2025-06-28 06:06:55.543055 Epoch [009/100], Step [1264/1264] (100%), Total Loss: 2.8397, Src Seg Loss: 0.5126, Tgt Seg Loss: 0.7429, Contrastive Loss: 0.4708, Domain Loss: 0.6191
+Epoch 9 completed. Learning rate: 0.000050
+Starting validation on target domain...
+Target Domain Validation Results (Reference Only) - Loss: 0.9531
+  IoU: 0.4393
+  F1-Score: 0.6104
+  Precision: 0.6655
+  Recall: 0.5638
+  Accuracy: 0.9830
+--------------------Epoch: 10/100--------------------
+Learning Rate: 5e-05
+2025-06-28 06:09:59.109717 Epoch [010/100], Step [0316/1264] (25%), Total Loss: 2.9002, Src Seg Loss: 0.3597, Tgt Seg Loss: 0.9866, Contrastive Loss: 0.1851, Domain Loss: 0.7577
+2025-06-28 06:12:49.670626 Epoch [010/100], Step [0632/1264] (50%), Total Loss: 2.9364, Src Seg Loss: 0.3518, Tgt Seg Loss: 0.9353, Contrastive Loss: 0.6665, Domain Loss: 0.8205
+2025-06-28 06:15:39.944150 Epoch [010/100], Step [0948/1264] (75%), Total Loss: 2.8873, Src Seg Loss: 0.4164, Tgt Seg Loss: 0.7279, Contrastive Loss: 0.4717, Domain Loss: 0.6148
+2025-06-28 06:18:30.488120 Epoch [010/100], Step [1264/1264] (100%), Total Loss: 2.8096, Src Seg Loss: 0.4429, Tgt Seg Loss: 0.7560, Contrastive Loss: 0.3367, Domain Loss: 0.5079
+Epoch 10 completed. Learning rate: 0.000050
+Starting validation on target domain...
+Target Domain Validation Results (Reference Only) - Loss: 0.9215
+  IoU: 0.4595
+  F1-Score: 0.6297
+  Precision: 0.5959
+  Recall: 0.6675
+  Accuracy: 0.9814
+Checkpoint saved at epoch 10: checkpoint_epoch_010.pth
+--------------------Epoch: 11/100--------------------
+Learning Rate: 5e-05
+2025-06-28 06:21:28.815186 Epoch [011/100], Step [0316/1264] (25%), Total Loss: 2.7741, Src Seg Loss: 0.3089, Tgt Seg Loss: 0.9150, Contrastive Loss: 0.2724, Domain Loss: 0.7687
+2025-06-28 06:24:18.933662 Epoch [011/100], Step [0632/1264] (50%), Total Loss: 2.7774, Src Seg Loss: 0.4426, Tgt Seg Loss: 0.8966, Contrastive Loss: 0.3764, Domain Loss: 0.6049
+2025-06-28 06:27:09.226387 Epoch [011/100], Step [0948/1264] (75%), Total Loss: 2.8510, Src Seg Loss: 0.3935, Tgt Seg Loss: 0.7908, Contrastive Loss: 0.4138, Domain Loss: 0.6666
+2025-06-28 06:29:59.454766 Epoch [011/100], Step [1264/1264] (100%), Total Loss: 2.6886, Src Seg Loss: 0.4640, Tgt Seg Loss: 0.7741, Contrastive Loss: 0.2776, Domain Loss: 0.7582
+Epoch 11 completed. Learning rate: 0.000050
+Starting validation on target domain...
+Target Domain Validation Results (Reference Only) - Loss: 0.9469
+  IoU: 0.4569
+  F1-Score: 0.6272
+  Precision: 0.6762
+  Recall: 0.5848
+  Accuracy: 0.9835
+--------------------Epoch: 12/100--------------------
+Learning Rate: 5e-05
+2025-06-28 06:32:57.235653 Epoch [012/100], Step [0316/1264] (25%), Total Loss: 2.5532, Src Seg Loss: 0.2562, Tgt Seg Loss: 0.8824, Contrastive Loss: 0.0954, Domain Loss: 0.7201
+2025-06-28 06:35:48.821703 Epoch [012/100], Step [0632/1264] (50%), Total Loss: 2.8432, Src Seg Loss: 0.3240, Tgt Seg Loss: 0.6649, Contrastive Loss: 0.4259, Domain Loss: 0.6444
+2025-06-28 06:38:38.865056 Epoch [012/100], Step [0948/1264] (75%), Total Loss: 2.8106, Src Seg Loss: 0.3699, Tgt Seg Loss: 0.9991, Contrastive Loss: 0.5919, Domain Loss: 0.6267
+2025-06-28 06:41:29.045591 Epoch [012/100], Step [1264/1264] (100%), Total Loss: 2.8921, Src Seg Loss: 0.3840, Tgt Seg Loss: 0.8478, Contrastive Loss: 0.3389, Domain Loss: 0.6603
+Epoch 12 completed. Learning rate: 0.000050
+Starting validation on target domain...
+Target Domain Validation Results (Reference Only) - Loss: 0.9383
+  IoU: 0.4743
+  F1-Score: 0.6434
+  Precision: 0.6559
+  Recall: 0.6315
+  Accuracy: 0.9834
+--------------------Epoch: 13/100--------------------
+Learning Rate: 5e-05
+2025-06-28 06:44:26.935929 Epoch [013/100], Step [0316/1264] (25%), Total Loss: 2.9091, Src Seg Loss: 0.3393, Tgt Seg Loss: 0.6170, Contrastive Loss: 0.4737, Domain Loss: 0.7962
+2025-06-28 06:47:17.330946 Epoch [013/100], Step [0632/1264] (50%), Total Loss: 2.9155, Src Seg Loss: 0.6111, Tgt Seg Loss: 0.8102, Contrastive Loss: 0.6772, Domain Loss: 0.5288
+2025-06-28 06:50:08.971853 Epoch [013/100], Step [0948/1264] (75%), Total Loss: 2.9015, Src Seg Loss: 0.4609, Tgt Seg Loss: 0.7740, Contrastive Loss: 0.4499, Domain Loss: 0.6536
+2025-06-28 06:52:59.558029 Epoch [013/100], Step [1264/1264] (100%), Total Loss: 2.8975, Src Seg Loss: 0.4638, Tgt Seg Loss: 0.7527, Contrastive Loss: 0.5903, Domain Loss: 0.7215
+Epoch 13 completed. Learning rate: 0.000050
+Starting validation on target domain...
+Target Domain Validation Results (Reference Only) - Loss: 0.9617
+  IoU: 0.4614
+  F1-Score: 0.6314
+  Precision: 0.7000
+  Recall: 0.5750
+  Accuracy: 0.9841
+--------------------Epoch: 14/100--------------------
+Learning Rate: 5e-05
+2025-06-28 06:55:57.831441 Epoch [014/100], Step [0316/1264] (25%), Total Loss: 2.8974, Src Seg Loss: 0.3865, Tgt Seg Loss: 0.8824, Contrastive Loss: 0.5601, Domain Loss: 0.4943
+2025-06-28 06:58:48.161676 Epoch [014/100], Step [0632/1264] (50%), Total Loss: 2.8571, Src Seg Loss: 0.5376, Tgt Seg Loss: 0.9013, Contrastive Loss: 0.5230, Domain Loss: 0.6578
+2025-06-28 07:01:38.360373 Epoch [014/100], Step [0948/1264] (75%), Total Loss: 2.8633, Src Seg Loss: 0.4582, Tgt Seg Loss: 0.6517, Contrastive Loss: 0.4963, Domain Loss: 0.6751
+2025-06-28 07:04:28.550400 Epoch [014/100], Step [1264/1264] (100%), Total Loss: 2.7531, Src Seg Loss: 0.3675, Tgt Seg Loss: 0.7513, Contrastive Loss: 0.2551, Domain Loss: 0.6527
+Epoch 14 completed. Learning rate: 0.000050
+Starting validation on target domain...
+Target Domain Validation Results (Reference Only) - Loss: 0.9152
+  IoU: 0.4774
+  F1-Score: 0.6463
+  Precision: 0.6118
+  Recall: 0.6850
+  Accuracy: 0.9823
+--------------------Epoch: 15/100--------------------
+Learning Rate: 5e-05
+2025-06-28 07:07:27.903093 Epoch [015/100], Step [0316/1264] (25%), Total Loss: 2.8048, Src Seg Loss: 0.2641, Tgt Seg Loss: 0.7763, Contrastive Loss: 0.5011, Domain Loss: 0.9938
+2025-06-28 07:10:18.387925 Epoch [015/100], Step [0632/1264] (50%), Total Loss: 2.7626, Src Seg Loss: 0.3229, Tgt Seg Loss: 0.5935, Contrastive Loss: 0.4664, Domain Loss: 0.6143
+2025-06-28 07:13:08.652619 Epoch [015/100], Step [0948/1264] (75%), Total Loss: 2.8413, Src Seg Loss: 0.3414, Tgt Seg Loss: 0.7943, Contrastive Loss: 0.6696, Domain Loss: 0.7186
+2025-06-28 07:15:58.874645 Epoch [015/100], Step [1264/1264] (100%), Total Loss: 2.7890, Src Seg Loss: 0.3715, Tgt Seg Loss: 0.7371, Contrastive Loss: 0.2780, Domain Loss: 0.7547
+Epoch 15 completed. Learning rate: 0.000050
+Starting validation on target domain...
+Target Domain Validation Results (Reference Only) - Loss: 0.9458
+  IoU: 0.4462
+  F1-Score: 0.6171
+  Precision: 0.6592
+  Recall: 0.5801
+  Accuracy: 0.9830
+Checkpoint saved at epoch 15: checkpoint_epoch_015.pth
+--------------------Epoch: 16/100--------------------
+Learning Rate: 5e-05
+2025-06-28 07:18:57.746252 Epoch [016/100], Step [0316/1264] (25%), Total Loss: 2.8550, Src Seg Loss: 0.4036, Tgt Seg Loss: 0.4340, Contrastive Loss: 0.5947, Domain Loss: 0.8467
+2025-06-28 07:21:49.331395 Epoch [016/100], Step [0632/1264] (50%), Total Loss: 3.0046, Src Seg Loss: 0.3902, Tgt Seg Loss: 0.6573, Contrastive Loss: 0.6294, Domain Loss: 0.7052
+2025-06-28 07:24:39.715775 Epoch [016/100], Step [0948/1264] (75%), Total Loss: 2.9417, Src Seg Loss: 0.3618, Tgt Seg Loss: 1.0035, Contrastive Loss: 0.4128, Domain Loss: 0.5726
+2025-06-28 07:27:29.883957 Epoch [016/100], Step [1264/1264] (100%), Total Loss: 2.8440, Src Seg Loss: 0.3131, Tgt Seg Loss: 0.6866, Contrastive Loss: 0.6762, Domain Loss: 0.6899
+Epoch 16 completed. Learning rate: 0.000050
+Starting validation on target domain...
+Target Domain Validation Results (Reference Only) - Loss: 0.9460
+  IoU: 0.4880
+  F1-Score: 0.6559
+  Precision: 0.6948
+  Recall: 0.6211
+  Accuracy: 0.9846
+--------------------Epoch: 17/100--------------------
+Learning Rate: 5e-05
+2025-06-28 07:30:28.119034 Epoch [017/100], Step [0316/1264] (25%), Total Loss: 2.9296, Src Seg Loss: 0.3316, Tgt Seg Loss: 0.5263, Contrastive Loss: 0.5859, Domain Loss: 0.6573
+2025-06-28 07:33:18.772856 Epoch [017/100], Step [0632/1264] (50%), Total Loss: 2.8516, Src Seg Loss: 0.3031, Tgt Seg Loss: 0.7047, Contrastive Loss: 0.5663, Domain Loss: 0.6685
+2025-06-28 07:36:10.897562 Epoch [017/100], Step [0948/1264] (75%), Total Loss: 2.8474, Src Seg Loss: 0.3659, Tgt Seg Loss: 0.7771, Contrastive Loss: 0.7351, Domain Loss: 0.6444
+2025-06-28 07:39:01.523811 Epoch [017/100], Step [1264/1264] (100%), Total Loss: 2.7120, Src Seg Loss: 0.3615, Tgt Seg Loss: 0.8823, Contrastive Loss: 0.3923, Domain Loss: 0.6146
+Epoch 17 completed. Learning rate: 0.000050
+Starting validation on target domain...
+Target Domain Validation Results (Reference Only) - Loss: 0.9665
+  IoU: 0.4740
+  F1-Score: 0.6431
+  Precision: 0.7217
+  Recall: 0.5800
+  Accuracy: 0.9848
+--------------------Epoch: 18/100--------------------
+Learning Rate: 5e-05
+2025-06-28 07:41:59.713743 Epoch [018/100], Step [0316/1264] (25%), Total Loss: 2.6898, Src Seg Loss: 0.2823, Tgt Seg Loss: 0.6184, Contrastive Loss: 0.5023, Domain Loss: 0.7235
+2025-06-28 07:44:49.985420 Epoch [018/100], Step [0632/1264] (50%), Total Loss: 2.8187, Src Seg Loss: 0.4330, Tgt Seg Loss: 0.7176, Contrastive Loss: 0.7541, Domain Loss: 0.7156
+2025-06-28 07:47:40.012192 Epoch [018/100], Step [0948/1264] (75%), Total Loss: 2.8529, Src Seg Loss: 0.4036, Tgt Seg Loss: 0.7441, Contrastive Loss: 0.7056, Domain Loss: 0.5970
+2025-06-28 07:50:30.170646 Epoch [018/100], Step [1264/1264] (100%), Total Loss: 2.7748, Src Seg Loss: 0.2492, Tgt Seg Loss: 0.4660, Contrastive Loss: 0.4518, Domain Loss: 0.7693
+Epoch 18 completed. Learning rate: 0.000050
+Starting validation on target domain...
+Target Domain Validation Results (Reference Only) - Loss: 0.9356
+  IoU: 0.4775
+  F1-Score: 0.6464
+  Precision: 0.6627
+  Recall: 0.6308
+  Accuracy: 0.9837
+--------------------Epoch: 19/100--------------------
+Learning Rate: 5e-05
+2025-06-28 07:53:29.385796 Epoch [019/100], Step [0316/1264] (25%), Total Loss: 2.8275, Src Seg Loss: 0.3678, Tgt Seg Loss: 0.8450, Contrastive Loss: 0.7247, Domain Loss: 0.6965
+2025-06-28 07:56:20.073291 Epoch [019/100], Step [0632/1264] (50%), Total Loss: 2.8909, Src Seg Loss: 0.1842, Tgt Seg Loss: 0.6398, Contrastive Loss: 0.4460, Domain Loss: 0.6787
+2025-06-28 07:59:10.294670 Epoch [019/100], Step [0948/1264] (75%), Total Loss: 2.8851, Src Seg Loss: 0.3131, Tgt Seg Loss: 0.5941, Contrastive Loss: 0.6051, Domain Loss: 0.7580
+2025-06-28 08:02:00.789708 Epoch [019/100], Step [1264/1264] (100%), Total Loss: 2.9484, Src Seg Loss: 0.3920, Tgt Seg Loss: 0.4117, Contrastive Loss: 0.7139, Domain Loss: 0.7879
+Epoch 19 completed. Learning rate: 0.000050
+Starting validation on target domain...
+Target Domain Validation Results (Reference Only) - Loss: 0.9108
+  IoU: 0.4813
+  F1-Score: 0.6498
+  Precision: 0.6055
+  Recall: 0.7011
+  Accuracy: 0.9821
+New best model saved! Validation loss: 0.9108
+  Corresponding target validation IoU: 0.4813
+--------------------Epoch: 20/100--------------------
+Learning Rate: 5e-05
+2025-06-28 08:04:59.136159 Epoch [020/100], Step [0316/1264] (25%), Total Loss: 2.9036, Src Seg Loss: 0.3123, Tgt Seg Loss: 0.8458, Contrastive Loss: 0.7739, Domain Loss: 0.6153
+2025-06-28 08:07:50.638644 Epoch [020/100], Step [0632/1264] (50%), Total Loss: 2.9262, Src Seg Loss: 0.2210, Tgt Seg Loss: 0.6539, Contrastive Loss: 0.6866, Domain Loss: 0.7392
+2025-06-28 08:10:40.817733 Epoch [020/100], Step [0948/1264] (75%), Total Loss: 2.7925, Src Seg Loss: 0.2109, Tgt Seg Loss: 0.6068, Contrastive Loss: 0.4093, Domain Loss: 0.6311
+2025-06-28 08:13:31.042684 Epoch [020/100], Step [1264/1264] (100%), Total Loss: 2.8002, Src Seg Loss: 0.3966, Tgt Seg Loss: 0.6922, Contrastive Loss: 0.5804, Domain Loss: 0.6356
+Epoch 20 completed. Learning rate: 0.000050
+Starting validation on target domain...
+Target Domain Validation Results (Reference Only) - Loss: 0.9797
+  IoU: 0.4810
+  F1-Score: 0.6495
+  Precision: 0.7287
+  Recall: 0.5859
+  Accuracy: 0.9850
+Checkpoint saved at epoch 20: checkpoint_epoch_020.pth
+--------------------Epoch: 21/100--------------------
+Learning Rate: 5e-05
+2025-06-28 08:16:29.251635 Epoch [021/100], Step [0316/1264] (25%), Total Loss: 2.8340, Src Seg Loss: 0.2951, Tgt Seg Loss: 0.7388, Contrastive Loss: 0.6620, Domain Loss: 0.6514
+2025-06-28 08:19:19.769703 Epoch [021/100], Step [0632/1264] (50%), Total Loss: 2.6954, Src Seg Loss: 0.4290, Tgt Seg Loss: 0.4440, Contrastive Loss: 0.4996, Domain Loss: 0.6969
+2025-06-28 08:22:11.461193 Epoch [021/100], Step [0948/1264] (75%), Total Loss: 2.7092, Src Seg Loss: 0.2595, Tgt Seg Loss: 0.8882, Contrastive Loss: 0.6956, Domain Loss: 0.6500
+2025-06-28 08:25:01.572074 Epoch [021/100], Step [1264/1264] (100%), Total Loss: 2.7763, Src Seg Loss: 0.2996, Tgt Seg Loss: 0.7310, Contrastive Loss: 0.5961, Domain Loss: 0.7226
+Epoch 21 completed. Learning rate: 0.000050
+Starting validation on target domain...
+Target Domain Validation Results (Reference Only) - Loss: 0.9199
+  IoU: 0.4806
+  F1-Score: 0.6492
+  Precision: 0.6159
+  Recall: 0.6861
+  Accuracy: 0.9824
+--------------------Epoch: 22/100--------------------
+Learning Rate: 5e-05
+2025-06-28 08:28:00.010853 Epoch [022/100], Step [0316/1264] (25%), Total Loss: 2.8119, Src Seg Loss: 0.2353, Tgt Seg Loss: 0.8492, Contrastive Loss: 0.4148, Domain Loss: 0.8299
+2025-06-28 08:30:50.315143 Epoch [022/100], Step [0632/1264] (50%), Total Loss: 2.7960, Src Seg Loss: 0.3532, Tgt Seg Loss: 0.7837, Contrastive Loss: 0.5739, Domain Loss: 0.5945
+2025-06-28 08:33:40.467999 Epoch [022/100], Step [0948/1264] (75%), Total Loss: 2.8196, Src Seg Loss: 0.4080, Tgt Seg Loss: 1.0012, Contrastive Loss: 0.4401, Domain Loss: 0.6366
+2025-06-28 08:36:30.795534 Epoch [022/100], Step [1264/1264] (100%), Total Loss: 2.7945, Src Seg Loss: 0.2788, Tgt Seg Loss: 0.7246, Contrastive Loss: 0.6540, Domain Loss: 0.7325
+Epoch 22 completed. Learning rate: 0.000050
+Starting validation on target domain...
+Target Domain Validation Results (Reference Only) - Loss: 0.9323
+  IoU: 0.4807
+  F1-Score: 0.6492
+  Precision: 0.6530
+  Recall: 0.6455
+  Accuracy: 0.9835
+--------------------Epoch: 23/100--------------------
+Learning Rate: 5e-05
+2025-06-28 08:39:30.008128 Epoch [023/100], Step [0316/1264] (25%), Total Loss: 2.9188, Src Seg Loss: 0.2524, Tgt Seg Loss: 0.6845, Contrastive Loss: 0.5427, Domain Loss: 0.6521
+2025-06-28 08:42:20.548118 Epoch [023/100], Step [0632/1264] (50%), Total Loss: 2.9210, Src Seg Loss: 0.2552, Tgt Seg Loss: 0.7976, Contrastive Loss: 0.6675, Domain Loss: 0.6933
+2025-06-28 08:45:10.893843 Epoch [023/100], Step [0948/1264] (75%), Total Loss: 2.9903, Src Seg Loss: 0.4900, Tgt Seg Loss: 0.8633, Contrastive Loss: 0.7774, Domain Loss: 0.6499
+2025-06-28 08:48:01.278871 Epoch [023/100], Step [1264/1264] (100%), Total Loss: 2.5727, Src Seg Loss: 0.2491, Tgt Seg Loss: 0.6437, Contrastive Loss: 0.3539, Domain Loss: 0.6844
+Epoch 23 completed. Learning rate: 0.000050
+Starting validation on target domain...
+Target Domain Validation Results (Reference Only) - Loss: 0.9264
+  IoU: 0.4866
+  F1-Score: 0.6546
+  Precision: 0.6294
+  Recall: 0.6820
+  Accuracy: 0.9830
+--------------------Epoch: 24/100--------------------
+Learning Rate: 5e-05
+2025-06-28 08:50:59.759679 Epoch [024/100], Step [0316/1264] (25%), Total Loss: 2.6822, Src Seg Loss: 0.3143, Tgt Seg Loss: 0.7099, Contrastive Loss: 0.6616, Domain Loss: 0.6656
+2025-06-28 08:53:51.579241 Epoch [024/100], Step [0632/1264] (50%), Total Loss: 2.7004, Src Seg Loss: 0.3756, Tgt Seg Loss: 0.6721, Contrastive Loss: 0.5580, Domain Loss: 0.6689
+2025-06-28 08:56:42.241563 Epoch [024/100], Step [0948/1264] (75%), Total Loss: 2.9517, Src Seg Loss: 0.2549, Tgt Seg Loss: 0.7020, Contrastive Loss: 0.8481, Domain Loss: 0.6696
+2025-06-28 08:59:33.247566 Epoch [024/100], Step [1264/1264] (100%), Total Loss: 2.8382, Src Seg Loss: 0.2255, Tgt Seg Loss: 0.8443, Contrastive Loss: 0.5926, Domain Loss: 0.6206
+Epoch 24 completed. Learning rate: 0.000050
+Starting validation on target domain...
+Target Domain Validation Results (Reference Only) - Loss: 0.9707
+  IoU: 0.4724
+  F1-Score: 0.6416
+  Precision: 0.6854
+  Recall: 0.6031
+  Accuracy: 0.9841
+--------------------Epoch: 25/100--------------------
+Learning Rate: 5e-05
+2025-06-28 09:02:31.822540 Epoch [025/100], Step [0316/1264] (25%), Total Loss: 2.8432, Src Seg Loss: 0.3045, Tgt Seg Loss: 0.8833, Contrastive Loss: 0.4932, Domain Loss: 0.5978
+2025-06-28 09:05:22.307783 Epoch [025/100], Step [0632/1264] (50%), Total Loss: 2.8212, Src Seg Loss: 0.3470, Tgt Seg Loss: 0.6733, Contrastive Loss: 0.6585, Domain Loss: 0.6497
+2025-06-28 09:08:13.882063 Epoch [025/100], Step [0948/1264] (75%), Total Loss: 2.7676, Src Seg Loss: 0.2534, Tgt Seg Loss: 0.8401, Contrastive Loss: 0.4336, Domain Loss: 0.6582
+2025-06-28 09:11:04.314885 Epoch [025/100], Step [1264/1264] (100%), Total Loss: 2.8179, Src Seg Loss: 0.2358, Tgt Seg Loss: 0.7128, Contrastive Loss: 0.6013, Domain Loss: 0.6728
+Epoch 25 completed. Learning rate: 0.000050
+Starting validation on target domain...
+Target Domain Validation Results (Reference Only) - Loss: 0.9467
+  IoU: 0.4848
+  F1-Score: 0.6530
+  Precision: 0.6583
+  Recall: 0.6478
+  Accuracy: 0.9837
+Checkpoint saved at epoch 25: checkpoint_epoch_025.pth
+--------------------Epoch: 26/100--------------------
+Learning Rate: 5e-05
+2025-06-28 09:14:02.848169 Epoch [026/100], Step [0316/1264] (25%), Total Loss: 2.8153, Src Seg Loss: 0.2816, Tgt Seg Loss: 1.0005, Contrastive Loss: 0.2714, Domain Loss: 0.5222
+2025-06-28 09:16:53.383078 Epoch [026/100], Step [0632/1264] (50%), Total Loss: 2.7395, Src Seg Loss: 0.2238, Tgt Seg Loss: 0.7451, Contrastive Loss: 0.5705, Domain Loss: 0.6566
+2025-06-28 09:19:44.031302 Epoch [026/100], Step [0948/1264] (75%), Total Loss: 2.7118, Src Seg Loss: 0.3141, Tgt Seg Loss: 0.8402, Contrastive Loss: 0.7243, Domain Loss: 0.6702
+2025-06-28 09:22:34.504737 Epoch [026/100], Step [1264/1264] (100%), Total Loss: 2.8033, Src Seg Loss: 0.3252, Tgt Seg Loss: 0.4307, Contrastive Loss: 0.5088, Domain Loss: 0.6632
+Epoch 26 completed. Learning rate: 0.000050
+Starting validation on target domain...
+Target Domain Validation Results (Reference Only) - Loss: 0.9868
+  IoU: 0.4675
+  F1-Score: 0.6371
+  Precision: 0.7033
+  Recall: 0.5823
+  Accuracy: 0.9843
+--------------------Epoch: 27/100--------------------
+Learning Rate: 5e-05
+2025-06-28 09:25:33.937427 Epoch [027/100], Step [0316/1264] (25%), Total Loss: 2.7723, Src Seg Loss: 0.3077, Tgt Seg Loss: 0.6180, Contrastive Loss: 0.6206, Domain Loss: 0.7211
+2025-06-28 09:28:24.453013 Epoch [027/100], Step [0632/1264] (50%), Total Loss: 2.1970, Src Seg Loss: 0.4303, Tgt Seg Loss: 0.6838, Contrastive Loss: 0.0164, Domain Loss: 0.6426
+2025-06-28 09:31:14.800013 Epoch [027/100], Step [0948/1264] (75%), Total Loss: 2.2908, Src Seg Loss: 0.2203, Tgt Seg Loss: 0.8344, Contrastive Loss: 0.0783, Domain Loss: 0.5680
+2025-06-28 09:34:05.594253 Epoch [027/100], Step [1264/1264] (100%), Total Loss: 2.5615, Src Seg Loss: 0.2788, Tgt Seg Loss: 0.8012, Contrastive Loss: 0.3469, Domain Loss: 0.6521
+Epoch 27 completed. Learning rate: 0.000050
+Starting validation on target domain...
+Target Domain Validation Results (Reference Only) - Loss: 0.9776
+  IoU: 0.4876
+  F1-Score: 0.6556
+  Precision: 0.7166
+  Recall: 0.6041
+  Accuracy: 0.9850
+Early stopping triggered at epoch 27
+Best validation loss: 0.9108 achieved at epoch 19
+
+==================================================
+Two-Domain Adaptive Training with Pseudo Labels completed!
+Source Domain: SMOKE5K_Dataset_SMOKE5K_train (Ground Truth Labels - Full Dataset)
+Target Domain: ijmond_camera_SMOKE5K-full_citizen_constraint (Pseudo Labels)
+Pseudo Label Weight: 0.5
+Best training loss: 0.9108 achieved at epoch 19
+Best model saved at: models/thesis/E4/SMOKE5K_Dataset_SMOKE5K_train_to_ijmond_camera_SMOKE5K-full_citizen_constraint_da/SMOKE5K_Dataset_SMOKE5K_train_to_ijmond_camera_SMOKE5K-full_citizen_constraint_da_best_model.pth
+==================================================
+
+JOB STATISTICS
+==============
+Job ID: 12691131
+Cluster: snellius
+User/Group: ytao/ytao
+State: RUNNING
+Nodes: 1
+Cores per node: 16
+CPU Utilized: 00:00:00
+CPU Efficiency: 0.00% of 3-11:01:52 core-walltime
+Job Wall-clock time: 05:11:22
+Memory Utilized: 0.00 MB
+Memory Efficiency: 0.00% of 80.00 GB (80.00 GB/node)
+WARNING: Efficiency statistics can only be obtained after the job has ended as seff tool is based on the accounting database data.

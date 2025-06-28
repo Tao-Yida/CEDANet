@@ -113,9 +113,9 @@ def intra_inter_contrastive_loss(features, masks, num_samples=100, margin=1.0, i
         # print(smoke_samples.shape)
 
         # if background_features.size(1) > num_samples:
-        #     background_samples = background_features[:, torch.randperm(background_features.size(1))[:num_samples]] # 16 x 100
+        #     background_samples = background_features[:, torch.randperm(backgroundFeatures.size(1))[:num_samples]] # 16 x 100
         # else:
-        #     background_samples = background_features
+        #     background_samples = backgroundFeatures
         # print(background_samples.shape)
 
         # Intra-image contrastive loss
@@ -130,6 +130,9 @@ def intra_inter_contrastive_loss(features, masks, num_samples=100, margin=1.0, i
             # loss = torch.div(torch.add(smoke_loss, background_loss), 2)
             # print(loss)
             total_loss += smoke_loss
+
+    if batch_size == 0:
+        return torch.tensor(0.0)
 
     return total_loss / batch_size
 

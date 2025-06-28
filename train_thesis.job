@@ -7,8 +7,8 @@
 #SBATCH --time=24:00:00
 #SBATCH --mem-per-gpu=80G
 #SBATCH --cpus-per-task=8
-#SBATCH --output=logs_out/citizen-att_thesis_train_%j.out
-#SBATCH --error=logs_err/citizen-att_thesis_train_%j.err
+#SBATCH --output=logs_out/gold_thesis_train_%j.out
+#SBATCH --error=logs_err/gold_thesis_train_%j.err
 
 # ============================================================================
 # BVM 域适应训练脚本参数说明
@@ -110,13 +110,13 @@ python ijmond-camera-ai/bvm_training/trans_bvm_self_supervised_thesis/train.py \
 --domain_loss_weight 1.0 \
 --lambda_grl_max 1.0 \
 --source_dataset_path "data/SMOKE5K_Dataset/SMOKE5K/train" \
---target_dataset_path "data/ijmond_camera/SMOKE5K-full/citizen_constraint" \
---save_model_path "models/thesis/ablation-att" \
+--target_dataset_path "data/ijmond_data/train" \
+--save_model_path "models/thesis/gold" \
 --contrastive_loss_weight 1.0 \
---no_samples 1000 \
+--no_samples 500 \
 --enable_validation \
 --val_split 0.2 \
 --aug \
 --batchsize 4 \
 --use_attention_pool \
---use_ldconv
+--use_ldconv \
