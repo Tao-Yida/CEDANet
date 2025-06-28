@@ -294,11 +294,13 @@ def predict_frames(model, image_paths, testsize, device, constraint_info=None):
             if constraint_info and constraint_info["has_constraint"]:
                 pred_sigmoid = apply_video_constraint(pred_sigmoid, constraint_info)
 
-            # 计算平均置信度作为该帧的置信度
-            confidence = pred_sigmoid.mean().item()
+            # 计算更可靠的置信度：均值与高于阈值像素比例的加权
+            pred_np = pred_sigmoid.data.cpu().numpy().squeeze()
+            foreground_ratio = (pred_np > 0.6).sum() / pred_np.size
+            confidence = 0.5 * pred_np.mean() + 0.5 * foreground_ratio
 
             # 保存预测结果和置信度
-            predictions[image_path] = (pred_sigmoid.data.cpu().numpy().squeeze(), confidence)
+            predictions[image_path] = (pred_np, confidence)
 
     return predictions
 
@@ -323,38 +325,28 @@ def apply_video_constraint(pred_sigmoid, constraint_info):
     if expected_smoke is False:
         # "一定没有"区域：根据约束强度设置不同的抑制概率
         if "gold" in constraint_strength:
-            # 黄金标准负样本：设置为很低概率，确保二值化后为背景
             constraint_prob = 0.2
         elif "strong" in constraint_strength:
-            # 强负约束：设置为较低概率
             constraint_prob = 0.4
         elif "weak" in constraint_strength:
-            # 弱负约束：设置为稍低于阈值的概率，但仍给原始预测一些机会
             constraint_prob = 0.5
         else:
-            # 其他负约束：设置为接近中性的概率
             constraint_prob = 0.58
-
-        # 将预测值向约束概率拉近，但保留更多原始预测信息
+        # 负样本仍然以约束为主
         pred_sigmoid = pred_sigmoid * 0.4 + constraint_prob * 0.6
 
     elif expected_smoke is True:
         # "一定有"或"可能有"区域：根据约束强度设置不同的增强概率
         if "gold" in constraint_strength:
-            # 黄金标准正样本：设置为很高概率，确保二值化后为前景
             constraint_prob = 0.9
         elif "strong" in constraint_strength:
-            # 强正约束：设置为高概率
             constraint_prob = 0.8
         elif "weak" in constraint_strength:
-            # 弱正约束："可能有"区域，设置为稍高于阈值的概率
             constraint_prob = 0.7
         else:
-            # 其他正约束：设置为稍高于阈值的概率
             constraint_prob = 0.65
-
-        # 将预测值向约束概率拉近，但保留更多原始预测信息
-        pred_sigmoid = pred_sigmoid * 0.4 + constraint_prob * 0.6
+        # 正样本更偏向模型预测
+        pred_sigmoid = pred_sigmoid * 0.8 + constraint_prob * 0.2
 
     # 确保值在有效范围内
     pred_sigmoid = torch.clamp(pred_sigmoid, 0, 1)
@@ -457,7 +449,7 @@ def calculate_mask_quality(pred_tensor):
 
 def select_high_confidence_frames(predictions, frame_infos, context_frames=2, threshold=0.5):
     """
-    选择高置信度帧及其上下文帧 - 集成时序约束的改进版本
+    选择高置信度帧及其上下文帧（不再包含时序一致性约束）
     Args:
         predictions: 预测结果字典
         frame_infos: 帧信息字典
@@ -466,15 +458,7 @@ def select_high_confidence_frames(predictions, frame_infos, context_frames=2, th
     Returns:
         list: 选择的帧路径列表
     """
-    # 硬编码启用时序约束
-    enable_temporal_constraint = True
-
-    # 首先应用时序约束（如果启用）
-    if enable_temporal_constraint:
-        print("应用时序约束...")
-        predictions = apply_temporal_constraint(predictions, frame_infos)
-
-    # 按照置信度排序
+    # 直接按置信度排序
     sorted_preds = sorted(predictions.items(), key=lambda x: x[1][1], reverse=True)
 
     if not sorted_preds:
@@ -498,18 +482,11 @@ def select_high_confidence_frames(predictions, frame_infos, context_frames=2, th
         # 计算mask质量分数
         quality_score = calculate_mask_quality(pred_tensor)
 
-        # 计算时序兼容性分数（如果启用时序约束）
-        temporal_score = 0.0
-        if enable_temporal_constraint:
-            temporal_score = calculate_temporal_compatibility(frame_path, predictions, frame_infos)
-
-        # 综合评分：置信度越高越好，质量分数越低越好，时序兼容性越高越好
+        # 综合评分：置信度越高越好，质量分数越低越好
         normalized_confidence = confidence
-        combined_score = quality_score - normalized_confidence * 0.4 - temporal_score * 0.2
+        combined_score = quality_score - normalized_confidence * 0.4
 
-        print(
-            f"  帧 {os.path.basename(frame_path)}: 置信度={confidence:.3f}, 质量分数={quality_score:.3f}, 时序分数={temporal_score:.3f}, 综合分数={combined_score:.3f}"
-        )
+        print(f"  帧 {os.path.basename(frame_path)}: 置信度={confidence:.3f}, 质量分数={quality_score:.3f}, 综合分数={combined_score:.3f}")
 
         if combined_score < best_score:
             best_score = combined_score
@@ -547,18 +524,6 @@ def select_high_confidence_frames(predictions, frame_infos, context_frames=2, th
             selected_frames.add(next_frame_paths[0])
 
     print(f"选择了最佳帧 (ID: {frame_id}) 及其前后各 {context_frames} 帧，总共 {len(selected_frames)} 帧")
-
-    # 最后检查选中帧的时序一致性
-    if enable_temporal_constraint and len(selected_frames) > 1:
-        selected_frame_paths = sorted([f for f in selected_frames], key=lambda x: frame_infos[x])
-        selected_predictions = [predictions[path] for path in selected_frame_paths]
-        is_consistent, avg_sim, _ = check_temporal_consistency(selected_predictions)
-        print(f"选中帧时序一致性: 平均相似度={avg_sim:.3f}, 一致性={'✓' if is_consistent else '✗'}")
-
-        # 检测异常帧
-        anomaly_indices = detect_temporal_anomalies(selected_predictions, selected_frame_paths)
-        if anomaly_indices:
-            print(f"警告: 检测到 {len(anomaly_indices)} 个异常帧")
 
     return list(selected_frames)
 
@@ -802,211 +767,6 @@ def calculate_frame_similarity(pred1, pred2):
     return similarity
 
 
-def check_temporal_consistency(predictions_sequence, similarity_threshold=0.7):
-    """
-    检查预测序列的时序一致性
-    Args:
-        predictions_sequence: 按时间顺序排列的预测结果列表 [(pred, confidence), ...]
-        similarity_threshold: 相似度阈值 (硬编码为0.7)
-    Returns:
-        tuple: (is_consistent, avg_similarity, consistency_scores)
-    """
-    if len(predictions_sequence) < 2:
-        return True, 1.0, []
-
-    consistency_scores = []
-
-    for i in range(len(predictions_sequence) - 1):
-        pred1, _ = predictions_sequence[i]
-        pred2, _ = predictions_sequence[i + 1]
-
-        similarity = calculate_frame_similarity(pred1, pred2)
-        consistency_scores.append(similarity)
-
-    avg_similarity = np.mean(consistency_scores)
-    is_consistent = avg_similarity >= similarity_threshold
-
-    return is_consistent, avg_similarity, consistency_scores
-
-
-def calculate_temporal_compatibility(target_frame_path, predictions, frame_infos):
-    """
-    计算目标帧与相邻帧的时序兼容性分数
-    Args:
-        target_frame_path: 目标帧路径
-        predictions: 预测结果字典
-        frame_infos: 帧信息字典
-    Returns:
-        float: 时序兼容性分数 (0-1，越高表示越兼容)
-    """
-    target_frame_id = frame_infos[target_frame_path]
-    target_pred, _ = predictions[target_frame_path]
-
-    compatibility_scores = []
-
-    # 检查前后各2帧的兼容性
-    for offset in [-2, -1, 1, 2]:
-        neighbor_frame_id = target_frame_id + offset
-        neighbor_paths = [p for p, id in frame_infos.items() if id == neighbor_frame_id]
-
-        if neighbor_paths and neighbor_paths[0] in predictions:
-            neighbor_pred, _ = predictions[neighbor_paths[0]]
-            similarity = calculate_frame_similarity(target_pred, neighbor_pred)
-            compatibility_scores.append(similarity)
-
-    if not compatibility_scores:
-        return 0.5  # 中性分数，如果没有相邻帧
-
-    # 返回平均兼容性
-    return np.mean(compatibility_scores)
-
-
-def apply_temporal_smoothing(predictions_sequence, frame_paths, smoothing_strength=0.3):
-    """
-    对预测序列应用时序平滑，保持上下文一致性
-    Args:
-        predictions_sequence: 预测结果序列 [(pred, confidence), ...]
-        frame_paths: 对应的帧路径列表
-        smoothing_strength: 平滑强度 (硬编码为0.3)
-    Returns:
-        dict: 平滑后的预测结果字典
-    """
-    if len(predictions_sequence) < 3:
-        # 序列太短，不进行平滑
-        return {frame_paths[i]: predictions_sequence[i] for i in range(len(predictions_sequence))}
-
-    smoothed_predictions = {}
-
-    for i in range(len(predictions_sequence)):
-        current_pred, current_conf = predictions_sequence[i]
-
-        if i == 0:
-            # 第一帧：只考虑后一帧
-            next_pred, _ = predictions_sequence[i + 1]
-            smoothed_pred = current_pred * (1 - smoothing_strength * 0.5) + next_pred * (smoothing_strength * 0.5)
-        elif i == len(predictions_sequence) - 1:
-            # 最后一帧：只考虑前一帧
-            prev_pred, _ = predictions_sequence[i - 1]
-            smoothed_pred = current_pred * (1 - smoothing_strength * 0.5) + prev_pred * (smoothing_strength * 0.5)
-        else:
-            # 中间帧：考虑前后两帧
-            prev_pred, _ = predictions_sequence[i - 1]
-            next_pred, _ = predictions_sequence[i + 1]
-
-            # 三帧加权平均
-            smoothed_pred = current_pred * (1 - smoothing_strength) + prev_pred * (smoothing_strength * 0.5) + next_pred * (smoothing_strength * 0.5)
-
-        # 确保值在有效范围内
-        smoothed_pred = np.clip(smoothed_pred, 0, 1)
-
-        # 重新计算置信度
-        smoothed_conf = smoothed_pred.mean()
-
-        smoothed_predictions[frame_paths[i]] = (smoothed_pred, smoothed_conf)
-
-    return smoothed_predictions
-
-
-def apply_temporal_constraint(predictions, frame_infos):
-    """
-    应用时序约束，确保相邻帧之间的预测一致性
-    Args:
-        predictions: 原始预测结果字典
-        frame_infos: 帧信息字典
-    Returns:
-        dict: 应用时序约束后的预测结果
-    """
-    # 硬编码参数
-    similarity_threshold = 0.7
-    enable_smoothing = True
-    smoothing_strength = 0.3
-
-    if len(predictions) < 2:
-        print("  时序约束: 帧数不足，跳过时序约束")
-        return predictions
-
-    # 按帧编号排序
-    sorted_frames = sorted(frame_infos.items(), key=lambda x: x[1])
-    frame_paths = [path for path, _ in sorted_frames]
-
-    # 构建有序的预测序列
-    predictions_sequence = []
-    valid_frame_paths = []
-
-    for frame_path in frame_paths:
-        if frame_path in predictions:
-            predictions_sequence.append(predictions[frame_path])
-            valid_frame_paths.append(frame_path)
-
-    if len(predictions_sequence) < 2:
-        print("  时序约束: 有效预测帧数不足")
-        return predictions
-
-    # 检查时序一致性
-    is_consistent, avg_similarity, consistency_scores = check_temporal_consistency(predictions_sequence, similarity_threshold)
-
-    print(f"  时序一致性检查: 平均相似度={avg_similarity:.3f}, 一致性={'✓' if is_consistent else '✗'}")
-
-    if len(consistency_scores) > 0:
-        min_similarity = min(consistency_scores)
-        max_similarity = max(consistency_scores)
-        print(f"  相似度范围: [{min_similarity:.3f}, {max_similarity:.3f}]")
-
-    # 如果启用平滑且一致性较差，应用时序平滑
-    if enable_smoothing and (not is_consistent or avg_similarity < 0.8):
-        print(f"  应用时序平滑 (强度={smoothing_strength})")
-        smoothed_predictions = apply_temporal_smoothing(predictions_sequence, valid_frame_paths, smoothing_strength)
-
-        # 更新原始预测字典
-        updated_predictions = predictions.copy()
-        updated_predictions.update(smoothed_predictions)
-
-        # 重新检查平滑后的一致性
-        smoothed_sequence = [smoothed_predictions[path] for path in valid_frame_paths]
-        new_consistency, new_avg_sim, _ = check_temporal_consistency(smoothed_sequence, similarity_threshold)
-        print(f"  平滑后一致性: 平均相似度={new_avg_sim:.3f}, 一致性={'✓' if new_consistency else '✗'}")
-
-        return updated_predictions
-    else:
-        print("  时序约束: 一致性良好，无需平滑")
-        return predictions
-
-
-def detect_temporal_anomalies(predictions_sequence, frame_paths):
-    """
-    检测时序异常帧（预测结果与相邻帧差异过大的帧）
-    Args:
-        predictions_sequence: 预测序列
-        frame_paths: 帧路径列表
-    Returns:
-        list: 异常帧的索引列表
-    """
-    # 硬编码异常检测阈值
-    anomaly_threshold = 0.4
-
-    if len(predictions_sequence) < 3:
-        return []
-
-    anomaly_indices = []
-
-    for i in range(1, len(predictions_sequence) - 1):
-        prev_pred, _ = predictions_sequence[i - 1]
-        curr_pred, _ = predictions_sequence[i]
-        next_pred, _ = predictions_sequence[i + 1]
-
-        # 计算当前帧与前后帧的相似度
-        sim_prev = calculate_frame_similarity(curr_pred, prev_pred)
-        sim_next = calculate_frame_similarity(curr_pred, next_pred)
-
-        # 如果与前后帧的相似度都很低，标记为异常
-        if sim_prev < anomaly_threshold and sim_next < anomaly_threshold:
-            anomaly_indices.append(i)
-            frame_name = os.path.basename(frame_paths[i])
-            print(f"    检测到异常帧: {frame_name} (与前帧相似度={sim_prev:.3f}, 与后帧相似度={sim_next:.3f})")
-
-    return anomaly_indices
-
-
 def main():
     """
     主函数 - 执行整个伪标签生成流程:
@@ -1083,10 +843,46 @@ def main():
                 f"约束置信度: {constraint_info['constraint_confidence']:.2f}"
             )
 
-            # 对于强负约束（确定无烟雾），可以选择跳过处理
-            if constraint_info["expected_smoke"] is False and "gold" in constraint_info["constraint_strength"]:
-                print(f"  跳过视频 {video_name}: 黄金标准负样本，确定无烟雾")
-                skipped_videos += 1
+            # 新增：只要是负样本，直接跳过预测，采样5帧保存全0掩码
+            if constraint_info["expected_smoke"] is False:
+                print(f"  跳过模型预测，负样本直接采样5帧并保存全0掩码")
+                temp_frames_dir = os.path.join(final_output_path, f"temp_{video_name}")
+                os.makedirs(temp_frames_dir, exist_ok=True)
+                frame_infos = extract_frames_from_video(video_file, temp_frames_dir, opt.sampling_rate)
+                frame_paths = list(frame_infos.keys())
+                if len(frame_paths) == 0:
+                    print(f"跳过视频 {video_name}: 无法提取帧")
+                    skipped_videos += 1
+                    continue
+                # 随机采样5帧
+                import random
+
+                sample_num = min(5, len(frame_paths))
+                sampled_frames = random.sample(frame_paths, sample_num)
+                # 保存原图和全0掩码
+                img_dir = os.path.join(final_output_path, "img")
+                gt_dir = os.path.join(final_output_path, "gt")
+                os.makedirs(img_dir, exist_ok=True)
+                os.makedirs(gt_dir, exist_ok=True)
+                for idx, frame_path in enumerate(sampled_frames, start=next_idx):
+                    new_filename = f"{video_name}_{idx:02d}"
+                    output_image_path = os.path.join(img_dir, f"{new_filename}.jpg")
+                    output_label_path = os.path.join(gt_dir, f"{new_filename}.png")
+                    with Image.open(frame_path) as img:
+                        img.save(output_image_path)
+                    # 生成全0掩码，尺寸与原图一致
+                    img0 = Image.open(frame_path)
+                    mask = np.zeros(img0.size[::-1], dtype=np.uint8)  # (H, W)
+                    cv2.imwrite(output_label_path, mask)
+                next_idx += sample_num
+                all_saved_files.extend([f"{video_name}_{i:02d}" for i in range(next_idx - sample_num, next_idx)])
+                processed_videos += 1
+                # 清理临时帧目录
+                for frame_path in frame_paths:
+                    if os.path.exists(frame_path):
+                        os.remove(frame_path)
+                os.rmdir(temp_frames_dir)
+                print(f"视频 {video_name} 处理完成 (负样本全0掩码)")
                 continue
         else:
             print(f"  无约束信息，正常处理")
@@ -1108,7 +904,7 @@ def main():
         # 预测所有帧（应用约束）
         predictions = predict_frames(generator, frame_paths, opt.testsize, device, constraint_info)
 
-        # 选择高置信度帧及其上下文（集成时序约束）
+        # 选择高置信度帧及其上下文（不再包含时序一致性约束）
         selected_frames = select_high_confidence_frames(predictions, frame_infos, opt.context_frames, opt.threshold)
 
         print(f"选择了 {len(selected_frames)} 帧 (从 {len(frame_paths)} 帧中)")

@@ -19,7 +19,6 @@ from utils import (
     AvgMeter,
     EarlyStopping,
     validate_model,
-    generate_checkpoint_filename,
     generate_best_model_filename,
     generate_domain_adaptation_model_name,
     l2_regularisation,
@@ -48,9 +47,11 @@ def argparser():
     parser.add_argument("--decay_epoch", type=int, default=12, help="patience epochs for ReduceLROnPlateau scheduler")
 
     # ================================== 模型架构配置 ==================================
-    parser.add_argument("--feat_channel", type=int, default=64, help="feature channel count for saliency features")
-    parser.add_argument("--latent_dim", type=int, default=8, help="latent space dimension")
-    parser.add_argument("--num_filters", type=int, default=16, help="number of filters for contrastive loss layer")
+    parser.add_argument(
+        "--feat_channel", type=int, default=32, help="feature channel count for saliency features (default: 32, lower for less memory)"
+    )
+    parser.add_argument("--latent_dim", type=int, default=8, help="latent space dimension (default: 4, lower for less memory)")
+    parser.add_argument("--num_filters", type=int, default=8, help="number of filters for contrastive loss layer (default: 8, lower for less memory)")
 
     # ================================== 损失函数权重配置 ==================================
     parser.add_argument("--reg_weight", type=float, default=1e-4, help="weight for L2 regularization")
@@ -66,8 +67,10 @@ def argparser():
     parser.add_argument("--domain_loss_weight", type=float, default=0.5, help="weight for domain adaptation loss")
     parser.add_argument("--lambda_grl_max", type=float, default=1.0, help="maximum lambda for gradient reversal layer")
     parser.add_argument("--num_domains", type=int, default=2, help="number of domains (source=0, target=1)")
-    parser.add_argument("--use_ldconv", action="store_true", default=False, help="use LDConv in domain discriminators")
-    parser.add_argument("--use_attention_pool", action="store_true", default=False, help="use AttentionPool2d in domain discriminators")
+    parser.add_argument("--use_ldconv", action="store_true", default=False, help="use LDConv in domain discriminators (default: False, saves memory)")
+    parser.add_argument(
+        "--use_attention_pool", action="store_true", default=False, help="use AttentionPool2d in domain discriminators (default: False, saves memory)"
+    )
 
     # ================================== 伪标签学习配置 ==================================
     parser.add_argument("--pseudo_loss_weight", type=float, default=0.5, help="weight for pseudo label supervision loss")
@@ -90,6 +93,14 @@ def argparser():
     parser.add_argument("--aug", action="store_true", default=True, help="enable data augmentation for both source and target domain data")
     parser.add_argument("--freeze", action="store_true", default=False, help="freeze randomness for reproducibility")
     parser.add_argument("--random_seed", type=int, default=42, help="random seed for reproducible results")
+
+    # ================================== 训练技巧配置 ==================================
+    parser.add_argument(
+        "--accumulation_steps",
+        type=int,
+        default=2,
+        help="number of steps to accumulate gradients before optimizer step (default: 1, >1 to save memory)",
+    )
 
     return parser.parse_args()
 
@@ -406,7 +417,9 @@ for epoch in range(1, opt.epoch + 1):
         target_pack = next(target_train_iter)
 
         for rate in size_rates:
-            optimizer.zero_grad()
+            # 梯度累计：只在第一个rate时zero_grad
+            if (i - 1) % opt.accumulation_steps == 0:
+                optimizer.zero_grad()
 
             ### Load Data ######################################
             # Unpack source domain data
@@ -602,16 +615,21 @@ for epoch in range(1, opt.epoch + 1):
 
             ### 总损失 ###############################################
             total_loss = gen_loss_cvae + gen_loss_gsnn + reg_loss + domain_loss + opt.contrastive_loss_weight * cont_loss  # type: torch.Tensor
+            total_loss = total_loss / opt.accumulation_steps  # 梯度缩放
             total_loss.backward()
 
             # Gradient clipping
             if opt.clip > 0:
                 torch.nn.utils.clip_grad_norm_(model.parameters(), opt.clip)
 
-            optimizer.step()
+            # 累计到指定步数才step和清理缓存
+            if (i % opt.accumulation_steps == 0) or (i == total_step):
+                optimizer.step()
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
 
             if rate == 1:
-                loss_record.update(total_loss.data, opt.batchsize)
+                loss_record.update(total_loss.data * opt.accumulation_steps, opt.batchsize)
 
         # 打印训练信息 - 基于百分比打印（25%, 50%, 75%, 100%）
         progress_points = [int(total_step * 0.25), int(total_step * 0.5), int(total_step * 0.75), total_step]
@@ -685,6 +703,13 @@ for epoch in range(1, opt.epoch + 1):
             torch.save(model.base_generator.state_dict(), os.path.join(opt.save_model_path, best_model_filename))
             print(f"New best model saved! Validation loss: {current_val_loss:.4f}")
             print(f"  Corresponding target validation IoU: {val_metrics['iou']:.4f}")
+
+        # ========== 新增：每5个epoch保存一次checkpoint ===========
+        if epoch % 5 == 0:
+            checkpoint_filename = f"checkpoint_epoch_{epoch:03d}.pth"
+            torch.save(model.base_generator.state_dict(), os.path.join(opt.save_model_path, checkpoint_filename))
+            print(f"Checkpoint saved at epoch {epoch}: {checkpoint_filename}")
+        # ======================================================
 
         early_stopping(current_val_loss, model.base_generator)
         if early_stopping.early_stop:

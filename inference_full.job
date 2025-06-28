@@ -2,7 +2,7 @@
 
 # ----------- SLURM 指令 ------------
 #SBATCH --job-name=full_inference_
-#SBATCH --partition=gpu_mig
+#SBATCH --partition=gpu_h100
 #SBATCH --gres=gpu:1
 #SBATCH --time=06:00:00
 #SBATCH --mem=24G
@@ -88,7 +88,7 @@ python ijmond-camera-ai/bvm_training/trans_bvm_self_supervised_thesis/inference.
 --output_path "data/ijmond_camera/SMOKE5K-full" \
 --pretrained_weights "models/full-supervision/SMOKE5K-supervised/SMOKE5K_Dataset_SMOKE5K_train/SMOKE5K_Dataset_SMOKE5K_train_best_model.pth" \
 --context_frames 2 \
---threshold 0.7 \
+--threshold 0.6 \
 --constraint_type none
 
 # 1.2 市民标签约束生成（SMOKE5K模型）
@@ -98,7 +98,7 @@ python ijmond-camera-ai/bvm_training/trans_bvm_self_supervised_thesis/inference.
 --output_path "data/ijmond_camera/SMOKE5K-full" \
 --pretrained_weights "models/full-supervision/SMOKE5K-supervised/SMOKE5K_Dataset_SMOKE5K_train/SMOKE5K_Dataset_SMOKE5K_train_best_model.pth" \
 --context_frames 2 \
---threshold 0.7 \
+--threshold 0.6 \
 --constraint_type citizen \
 --video_labels_csv "data/ijmond_camera/video_labels.csv"
 
@@ -109,7 +109,7 @@ python ijmond-camera-ai/bvm_training/trans_bvm_self_supervised_thesis/inference.
 --output_path "data/ijmond_camera/SMOKE5K-full" \
 --pretrained_weights "models/full-supervision/SMOKE5K-supervised/SMOKE5K_Dataset_SMOKE5K_train/SMOKE5K_Dataset_SMOKE5K_train_best_model.pth" \
 --context_frames 2 \
---threshold 0.7 \
+--threshold 0.6 \
 --constraint_type expert \
 --video_labels_csv "data/ijmond_camera/video_labels.csv"
 
@@ -125,7 +125,7 @@ python ijmond-camera-ai/bvm_training/trans_bvm_self_supervised_thesis/inference.
 --output_path "data/ijmond_camera/ijmond_900_trained" \
 --pretrained_weights "models/full-supervision/ijmond-limited-train/ijmond_data_train/ijmond_data_train_best_model.pth" \
 --context_frames 2 \
---threshold 0.7 \
+--threshold 0.6 \
 --constraint_type none
 
 # 2.2 市民标签约束生成（ijmond训练集模型）
@@ -135,7 +135,7 @@ python ijmond-camera-ai/bvm_training/trans_bvm_self_supervised_thesis/inference.
 --output_path "data/ijmond_camera/ijmond_900_trained" \
 --pretrained_weights "models/full-supervision/ijmond-limited-train/ijmond_data_train/ijmond_data_train_best_model.pth" \
 --context_frames 2 \
---threshold 0.7 \
+--threshold 0.6 \
 --constraint_type citizen \
 --video_labels_csv "data/ijmond_camera/video_labels.csv"
 
@@ -146,45 +146,9 @@ python ijmond-camera-ai/bvm_training/trans_bvm_self_supervised_thesis/inference.
 --output_path "data/ijmond_camera/ijmond_900_trained" \
 --pretrained_weights "models/full-supervision/ijmond-limited-train/ijmond_data_train/ijmond_data_train_best_model.pth" \
 --context_frames 2 \
---threshold 0.7 \
+--threshold 0.6 \
 --constraint_type expert \
 --video_labels_csv "data/ijmond_camera/video_labels.csv"
 
-# ============================================================================
-# 模型3: ijmond测试集模型
-# ============================================================================
-echo "=== 开始处理 ijmond 测试集模型 ==="
-
-# 3.1 无约束生成（ijmond测试集模型）
-echo "执行无约束伪标签生成（ijmond测试集模型）..."
-python ijmond-camera-ai/bvm_training/trans_bvm_self_supervised_thesis/inference.py \
---videos_path "data/ijmond_camera/videos" \
---output_path "data/ijmond_camera/ijmond_900_test" \
---pretrained_weights "models/full-supervision/ijmond-limited-test/ijmond_data_test/ijmond_data_test_best_model.pth" \
---context_frames 2 \
---threshold 0.7 \
---constraint_type none
-
-# 3.2 市民标签约束生成（ijmond测试集模型）
-echo "执行市民标签约束伪标签生成（ijmond测试集模型）..."
-python ijmond-camera-ai/bvm_training/trans_bvm_self_supervised_thesis/inference.py \
---videos_path "data/ijmond_camera/videos" \
---output_path "data/ijmond_camera/ijmond_900_test" \
---pretrained_weights "models/full-supervision/ijmond-limited-test/ijmond_data_test/ijmond_data_test_best_model.pth" \
---context_frames 2 \
---threshold 0.7 \
---constraint_type citizen \
---video_labels_csv "data/ijmond_camera/video_labels.csv"
-
-# 3.3 专家标签约束生成（ijmond测试集模型）
-echo "执行专家标签约束伪标签生成（ijmond测试集模型）..."
-python ijmond-camera-ai/bvm_training/trans_bvm_self_supervised_thesis/inference.py \
---videos_path "data/ijmond_camera/videos" \
---output_path "data/ijmond_camera/ijmond_900_test" \
---pretrained_weights "models/full-supervision/ijmond-limited-test/ijmond_data_test/ijmond_data_test_best_model.pth" \
---context_frames 2 \
---threshold 0.7 \
---constraint_type expert \
---video_labels_csv "data/ijmond_camera/video_labels.csv"
 
 echo "所有伪标签生成任务完成！"

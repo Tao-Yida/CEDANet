@@ -209,7 +209,7 @@ class DomainDiscriminator(nn.Module):
     支持使用LDConv替换标准卷积的选项
     """
 
-    def __init__(self, in_channels, num_domains=2, use_ldconv=True, use_attention_pool=False):
+    def __init__(self, in_channels, num_domains=2, use_ldconv=False, use_attention_pool=False):
         """
         Args:
             in_channels (int): Number of input channels (feature map depth).

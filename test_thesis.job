@@ -2,13 +2,13 @@
 
 # ----------- SLURM 指令（保留必要部分） ------------
 #SBATCH --job-name=test_bvm_thesis
-#SBATCH --partition=gpu_mig
+#SBATCH --partition=gpu_a100
 #SBATCH --gres=gpu:1
 #SBATCH --time=03:00:00
-#SBATCH --mem=16G
-#SBATCH --cpus-per-task=4
-#SBATCH --output=logs_out/trans_bvm_thesis_test_%j.out
-#SBATCH --error=logs_err/trans_bvm_thesis_test_%j.err
+#SBATCH --mem=32G
+#SBATCH --cpus-per-task=6
+#SBATCH --output=logs_out/E3_test_%j.out
+#SBATCH --error=logs_err/E3_test_%j.err
 
 # ============================================================================
 # BVM 论文版本域适应模型测试脚本
@@ -32,4 +32,4 @@ source activate dl2024 || { echo "Failed to activate Conda env"; exit 1; }
 # --model_path: 论文版本域适应训练后的模型路径
 # --test_dataset: 目标域测试数据集 (ijmond)
 
-python ijmond-camera-ai/bvm_training/trans_bvm_self_supervised_thesis/test.py --model_path models/thesis/smoke5k-to-ijmond-non-constraint-full/SMOKE5K_Dataset_SMOKE5K_train_to_ijmond_camera_SMOKE5K-full_non_constraint_da/SMOKE5K_Dataset_SMOKE5K_train_to_ijmond_camera_SMOKE5K-full_non_constraint_da_best_model.pth --test_dataset ijmond
+python ijmond-camera-ai/bvm_training/trans_bvm_self_supervised_thesis/test.py --model_path models/thesis/ablation-ld-att-non/SMOKE5K_Dataset_SMOKE5K_train_to_ijmond_camera_SMOKE5K-full_non_constraint_da/SMOKE5K_Dataset_SMOKE5K_train_to_ijmond_camera_SMOKE5K-full_non_constraint_da_best_model.pth --test_dataset ijmond --use_ldconv --use_attention_pool

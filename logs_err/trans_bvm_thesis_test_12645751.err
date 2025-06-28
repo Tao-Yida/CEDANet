@@ -1,1 +1,0 @@
-[ WARN:0@3.389] global loadsave.cpp:848 imwrite_ Unsupported depth image for selected encoder is fallbacked to CV_8U.

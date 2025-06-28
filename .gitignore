@@ -5,3 +5,4 @@ pretrained_model
 *.pyc
 train_curves/
 results/
+temp/

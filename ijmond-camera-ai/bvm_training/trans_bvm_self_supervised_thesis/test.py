@@ -29,7 +29,7 @@ def compute_mae(pred, gt):
 parser = argparse.ArgumentParser()
 parser.add_argument("--testsize", type=int, default=352, help="testing size")
 parser.add_argument("--latent_dim", type=int, default=8, help="latent dim")
-parser.add_argument("--feat_channel", type=int, default=64, help="reduced channel of saliency feat")
+parser.add_argument("--feat_channel", type=int, default=32, help="reduced channel of saliency feat")
 parser.add_argument("--model_path", type=str, default="./models/domain_adapt/Model_16_gen.pth", help="path to domain adapted model file")
 parser.add_argument("--test_dataset", type=str, default="ijmond", choices=["ijmond", "smoke5k"], help="test dataset: ijmond | smoke5k")
 parser.add_argument("--num_domains", type=int, default=2, help="number of domains (source=0, target=1)")
