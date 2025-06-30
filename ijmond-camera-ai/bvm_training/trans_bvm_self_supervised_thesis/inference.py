@@ -297,7 +297,7 @@ def predict_frames(model, image_paths, testsize, device, constraint_info=None):
             # 计算更可靠的置信度：均值与高于阈值像素比例的加权
             pred_np = pred_sigmoid.data.cpu().numpy().squeeze()
             foreground_ratio = (pred_np > 0.6).sum() / pred_np.size
-            confidence = 0.5 * pred_np.mean() + 0.5 * foreground_ratio
+            confidence = 0.85 * pred_np.mean() + 0.15 * foreground_ratio
 
             # 保存预测结果和置信度
             predictions[image_path] = (pred_np, confidence)
@@ -447,9 +447,10 @@ def calculate_mask_quality(pred_tensor):
     return quality_score
 
 
-def select_high_confidence_frames(predictions, frame_infos, context_frames=2, threshold=0.5):
+# --- 高置信度帧选择（含相似性约束） ---
+def select_high_confidence_frames_with_similarity(predictions, frame_infos, context_frames=2, threshold=0.5):
     """
-    选择高置信度帧及其上下文帧（不再包含时序一致性约束）
+    选择高置信度帧及其上下文帧，结合帧间mask相似性，提升伪标签时序一致性。
     Args:
         predictions: 预测结果字典
         frame_infos: 帧信息字典
@@ -458,74 +459,82 @@ def select_high_confidence_frames(predictions, frame_infos, context_frames=2, th
     Returns:
         list: 选择的帧路径列表
     """
-    # 直接按置信度排序
+    # 1. 按置信度排序，选出top-k作为候选中心帧
     sorted_preds = sorted(predictions.items(), key=lambda x: x[1][1], reverse=True)
-
     if not sorted_preds:
         print("警告: 没有可用的帧")
         return []
+    top_k = min(3, len(sorted_preds))
+    candidate_centers = [frame_path for frame_path, _ in sorted_preds[:top_k]]
 
-    # 选择置信度前三的帧进行质量评估
-    top_candidates = sorted_preds[: min(3, len(sorted_preds))]
+    best_group = None
+    best_score = -float("inf")
+    best_center = None
+    best_conf = 0.0
+    best_sim = 0.0
 
-    print(f"评估置信度前 {len(top_candidates)} 帧的质量...")
+    for center in candidate_centers:
+        center_id = frame_infos[center]
+        group = [center]
+        # 组内添加前后context帧
+        for i in range(1, context_frames + 1):
+            prev_id = center_id - i
+            next_id = center_id + i
+            prevs = [p for p, id in frame_infos.items() if id == prev_id]
+            nexts = [p for p, id in frame_infos.items() if id == next_id]
+            if prevs:
+                group.append(prevs[0])
+            if nexts:
+                group.append(nexts[0])
+        # 只考虑实际存在的帧
+        group = [f for f in group if f in predictions]
+        if len(group) < 2:
+            continue
+        # 计算组内两两mask相似度均值
+        sims = []
+        for i in range(len(group)):
+            for j in range(i + 1, len(group)):
+                sim = calculate_frame_similarity(predictions[group[i]][0], predictions[group[j]][0])
+                sims.append(sim)
+        avg_sim = np.mean(sims) if sims else 0.0
+        # 组中心帧置信度
+        conf = predictions[center][1]
+        # 综合分数：相似性+置信度
+        score = avg_sim * 0.2 + conf * 0.8
+        print(f"  候选中心帧 {os.path.basename(center)}: 置信度={conf:.3f}, 平均相似度={avg_sim:.3f}, 综合分数={score:.3f}")
+        if score > best_score:
+            best_score = score
+            best_group = group
+            best_center = center
+            best_conf = conf
+            best_sim = avg_sim
 
-    best_frame = None
-    best_score = float("inf")
-    best_confidence = 0.0
-    best_quality = 0.0
+    if not best_group:
+        print("警告: 未找到有效的高置信度组，回退到置信度最高帧")
+        # 回退到原有逻辑
+        fallback = sorted_preds[0][0]
+        fallback_id = frame_infos[fallback]
+        fallback_group = set([fallback])
+        for i in range(1, context_frames + 1):
+            prev_id = fallback_id - i
+            next_id = fallback_id + i
+            prevs = [p for p, id in frame_infos.items() if id == prev_id]
+            nexts = [p for p, id in frame_infos.items() if id == next_id]
+            if prevs:
+                fallback_group.add(prevs[0])
+            if nexts:
+                fallback_group.add(nexts[0])
+        print(f"选择了置信度最高帧 {os.path.basename(fallback)} 及其上下文帧，总共 {len(fallback_group)} 帧")
+        return list(fallback_group)
 
-    for frame_path, (pred_numpy, confidence) in top_candidates:
-        # 将numpy数组转换为torch张量进行质量评估
-        pred_tensor = torch.from_numpy(pred_numpy).float()
+    center_name = os.path.basename(best_center) if best_center is not None else "<None>"
+    print(f"选择最佳组中心帧: {center_name} (置信度={best_conf:.3f}, 平均相似度={best_sim:.3f})")
+    print(f"选择了最佳组中心帧及其上下文帧，总共 {len(set(best_group))} 帧")
+    return list(set(best_group))
 
-        # 计算mask质量分数
-        quality_score = calculate_mask_quality(pred_tensor)
 
-        # 综合评分：置信度越高越好，质量分数越低越好
-        normalized_confidence = confidence
-        combined_score = quality_score - normalized_confidence * 0.4
-
-        print(f"  帧 {os.path.basename(frame_path)}: 置信度={confidence:.3f}, 质量分数={quality_score:.3f}, 综合分数={combined_score:.3f}")
-
-        if combined_score < best_score:
-            best_score = combined_score
-            best_frame = frame_path
-            best_confidence = confidence
-            best_quality = quality_score
-
-    if best_frame is None:
-        print("警告: 无法选择最佳帧，使用置信度最高的帧")
-        best_frame = sorted_preds[0][0]
-        best_confidence = sorted_preds[0][1][1]
-        best_quality = 0.0
-
-    print(f"选择最佳帧: {os.path.basename(best_frame)} (置信度={best_confidence:.3f}, 质量分数={best_quality:.3f})")
-
-    # 为最佳帧添加上下文帧
-    selected_frames = set()
-    frame_id = frame_infos[best_frame]
-
-    # 添加中心帧
-    selected_frames.add(best_frame)
-
-    # 添加上下文帧
-    for i in range(1, context_frames + 1):
-        # 前面的帧
-        prev_frame_id = frame_id - i
-        prev_frame_paths = [p for p, id in frame_infos.items() if id == prev_frame_id]
-        if prev_frame_paths:
-            selected_frames.add(prev_frame_paths[0])
-
-        # 后面的帧
-        next_frame_id = frame_id + i
-        next_frame_paths = [p for p, id in frame_infos.items() if id == next_frame_id]
-        if next_frame_paths:
-            selected_frames.add(next_frame_paths[0])
-
-    print(f"选择了最佳帧 (ID: {frame_id}) 及其前后各 {context_frames} 帧，总共 {len(selected_frames)} 帧")
-
-    return list(selected_frames)
+# 替换原有接口名，保证兼容
+select_high_confidence_frames = select_high_confidence_frames_with_similarity
 
 
 def save_results(predictions, selected_frames, video_name, output_path, start_idx=0, constraint_info=None):
@@ -762,7 +771,7 @@ def calculate_frame_similarity(pred1, pred2):
         correlation = 0.0
 
     # 综合IoU和相关性
-    similarity = 0.6 * iou + 0.4 * max(0, correlation)
+    similarity = 0.7 * iou + 0.3 * max(0, correlation)
 
     return similarity
 

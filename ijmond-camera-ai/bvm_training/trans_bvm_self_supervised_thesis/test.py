@@ -2,14 +2,13 @@ import torch
 import torch.nn.functional as F
 from torch.autograd import Variable
 import numpy as np
-import pdb, os, argparse
+import os, argparse
 from scipy import misc
 from model.ResNet_models import Generator
 from domain_adapt import create_domain_adaptive_model
 from dataloader import test_dataset
 import cv2
 from sklearn.metrics import mean_squared_error, mean_absolute_error
-from scipy.ndimage import distance_transform_edt
 
 
 def compute_mse(pred, gt):
