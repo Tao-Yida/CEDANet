@@ -6,3 +6,4 @@ pretrained_model
 train_curves/
 results/
 temp/
+logs_*

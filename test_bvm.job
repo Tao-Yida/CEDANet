@@ -7,8 +7,8 @@
 #SBATCH --time=02:00:00
 #SBATCH --mem=16G
 #SBATCH --cpus-per-task=4
-#SBATCH --output=logs_out/trans_bvm_sup_test_%j.out
-#SBATCH --error=logs_err/trans_bvm_sup_test_%j.err
+#SBATCH --output=logs_out/_crop_test_full_test_%j.out
+#SBATCH --error=logs_err/_crop_test_full_test_%j.err
 
 # ============================================================================
 # BVM 监督学习模型测试脚本

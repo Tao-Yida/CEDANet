@@ -7,8 +7,8 @@
 #SBATCH --time=03:00:00
 #SBATCH --mem=32G
 #SBATCH --cpus-per-task=6
-#SBATCH --output=logs_out/golden_test_%j.out
-#SBATCH --error=logs_err/golden_test_%j.err
+#SBATCH --output=logs_out/_crop_E6_test_%j.out
+#SBATCH --error=logs_err/_crop_E6_test_%j.err
 
 # ============================================================================
 # BVM 论文版本域适应模型测试脚本
@@ -32,4 +32,4 @@ source activate dl2024 || { echo "Failed to activate Conda env"; exit 1; }
 # --model_path: 论文版本域适应训练后的模型路径
 # --test_dataset: 目标域测试数据集 (ijmond)
 
-python ijmond-camera-ai/bvm_training/trans_bvm_self_supervised_thesis/test.py --model_path models/thesis/smoke5k-to-ijmond-constraint_constraint-full-ijmond100/SMOKE5K_Dataset_SMOKE5K_train_to_ijmond_camera_ijmond_900_trained_citizen_constraint_da/SMOKE5K_Dataset_SMOKE5K_train_to_ijmond_camera_ijmond_900_trained_citizen_constraint_da_best_model.pth --test_dataset ijmond --use_ldconv --use_attention_pool
+python ijmond-camera-ai/bvm_training/trans_bvm_self_supervised_thesis/test.py --model_path models/thesis/gold/SMOKE5K_Dataset_SMOKE5K_train_to_ijmond_data_train_da/SMOKE5K_Dataset_SMOKE5K_train_to_ijmond_data_train_da_best_model.pth --test_dataset ijmond --use_ldconv --use_attention_pool
