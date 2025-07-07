@@ -321,30 +321,16 @@ def apply_video_constraint(pred_sigmoid, constraint_info):
     constraint_confidence = constraint_info["constraint_confidence"]
     constraint_strength = constraint_info["constraint_strength"]
 
-    # 根据约束强度设置不同的概率值
+    # 使用constraint_confidence作为约束概率值
     if expected_smoke is False:
-        # "一定没有"区域：根据约束强度设置不同的抑制概率
-        if "gold" in constraint_strength:
-            constraint_prob = 0.2
-        elif "strong" in constraint_strength:
-            constraint_prob = 0.4
-        elif "weak" in constraint_strength:
-            constraint_prob = 0.5
-        else:
-            constraint_prob = 0.58
+        # "一定没有"区域：直接使用constraint_confidence
+        constraint_prob = constraint_confidence
         # 负样本仍然以约束为主
         pred_sigmoid = pred_sigmoid * 0.4 + constraint_prob * 0.6
 
     elif expected_smoke is True:
-        # "一定有"或"可能有"区域：根据约束强度设置不同的增强概率
-        if "gold" in constraint_strength:
-            constraint_prob = 0.9
-        elif "strong" in constraint_strength:
-            constraint_prob = 0.8
-        elif "weak" in constraint_strength:
-            constraint_prob = 0.7
-        else:
-            constraint_prob = 0.65
+        # "一定有"或"可能有"区域：直接使用constraint_confidence
+        constraint_prob = constraint_confidence
         # 正样本更偏向模型预测
         pred_sigmoid = pred_sigmoid * 0.8 + constraint_prob * 0.2
 
