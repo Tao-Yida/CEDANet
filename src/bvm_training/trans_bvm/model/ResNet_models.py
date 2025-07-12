@@ -15,16 +15,16 @@ from typing import List
 
 class Descriptor(nn.Module):
     """
-    用于将RGB图像和对应的空间先验图像进行融合，输出单通道特征图
-    聚焦于「图像特征」与「先验图」的融合与压缩。
-    通过上下采样和多层卷积，使模型在不同尺度上均能处理并融合先验信息，输出目标特征。
-    方法简单、高效，常用作 VAE/生成器中的先验编码器或粗预测模块。
+    Used to fuse RGB images with corresponding spatial prior images, outputting single-channel feature maps
+    Focuses on the fusion and compression of 'image features' and 'prior maps'.
+    Through up-sampling, down-sampling and multi-layer convolution, the model can process and fuse prior information at different scales, outputting target features.
+    The method is simple and efficient, commonly used as a prior encoder or coarse prediction module in VAE/generators.
     """
 
     def __init__(self, channel):
         super(Descriptor, self).__init__()
         self.relu = nn.ReLU(inplace=True)
-        # 输入(B, 3, H, W) RGB图像，下采样，扩通道
+        # Input (B, 3, H, W) RGB image, downsample, expand channels
         self.sconv1 = nn.Conv2d(3, channel, kernel_size=3, stride=2, padding=1)
         self.sconv2 = nn.Conv2d(64, 256, kernel_size=3, stride=1, padding=1)
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
@@ -36,9 +36,9 @@ class Descriptor(nn.Module):
         # self.bn3 = nn.BatchNorm2d(512)
         # self.bn4 = nn.BatchNorm2d(1024)
         self.layer5 = self._make_pred_layer(Classifier_Module, [6, 12, 18, 24], [6, 12, 18, 24], channel, 1024)
-        # 融合seg先验后的多步下采样支路
+        # Multi-step downsampling branch after fusing seg prior
         self.conv_pred = nn.Conv2d(1, channel, 3, 1, 1)
-        # 融合后降维
+        # Dimension reduction after fusion
         self.conv1 = nn.Conv2d(channel * 2, channel, 3, 2, 1)
         self.conv2 = nn.Conv2d(channel, channel, 3, 1, 1)
         self.conv3 = nn.Conv2d(channel, channel, 3, 2, 1)
@@ -48,20 +48,20 @@ class Descriptor(nn.Module):
         self.bn2 = nn.BatchNorm2d(channel)
         self.bn3 = nn.BatchNorm2d(channel)
         self.bn4 = nn.BatchNorm2d(channel)
-        # 上采样，2倍放大，与seg先验图像对齐
+        # Upsample, 2x enlargement, align with seg prior image
         self.upsample = nn.Upsample(scale_factor=2, mode="bilinear", align_corners=True)
 
         self.leaky_relu = nn.LeakyReLU(negative_slope=0.2, inplace=True)
 
     def _make_pred_layer(self, block, dilation_series, padding_series, NoLabels, input_channel):
         """
-        构建一个带多尺度膨胀卷积的分类器模块(Classifier_Module)，用于提取更大感受野的特征
+        Build a classifier module (Classifier_Module) with multi-scale dilated convolution for extracting features with larger receptive fields
         Args:
             block: Classifier_Module
-            dilation_series: 膨胀卷积的膨胀率列表
-            padding_series: 膨胀卷积的填充率列表
-            NoLabels: 输出通道数
-            input_channel: 输入通道数
+            dilation_series: List of dilation rates for dilated convolution
+            padding_series: List of padding rates for dilated convolution
+            NoLabels: Number of output channels
+            input_channel: Number of input channels
         Returns:
             block: Classifier_Module
         """
@@ -70,10 +70,10 @@ class Descriptor(nn.Module):
     def forward(self, input, seg):
         """
         Args:
-            input: RGB图像，shape为(B, 3, H, W)
-            seg: 先验图像，shape为(B, 1, H, W)
+            input: RGB image, shape (B, 3, H, W)
+            seg: Prior image, shape (B, 1, H, W)
         Returns:
-            x: 输出特征图，shape为(B, 1, H/16, W/16)
+            x: Output feature map, shape (B, 1, H/16, W/16)
         """
         x1 = self.sconv1(input)
         # # x1 = self.bn1(x1)
@@ -92,7 +92,7 @@ class Descriptor(nn.Module):
         # x5 = self.layer5(x4)
         int_feat = self.upsample(x1)
         seg_conv = self.conv_pred(seg)
-        # 融合RGB图像和先验图像
+        # Fuse RGB image and prior image
         feature_map = torch.cat((int_feat, seg_conv), 1)
         x = self.conv1(feature_map)
         x = self.bn1(x)
@@ -112,48 +112,48 @@ class Descriptor(nn.Module):
 
 class Encoder_x(nn.Module):
     """
-    VAE的先验编码器，只对RGB图像进行编码，输出潜在空间分布
-    先验编码器的作用是将输入图像编码为潜在空间分布，用于生成初始显著性图
+    VAE prior encoder, only encodes RGB images, outputting latent space distribution
+    The role of the prior encoder is to encode input images into latent space distribution for generating initial saliency maps
     """
 
     def __init__(self, input_channels, channels, latent_size):
         """
         Args:
-            input_channels: 输入图像的通道数
-            channels: 编码器的通道数
-            latent_size: 潜在空间的维度
+            input_channels: Number of input image channels
+            channels: Number of encoder channels
+            latent_size: Dimension of latent space
         """
         super(Encoder_x, self).__init__()
         self.contracting_path = nn.ModuleList()
         self.input_channels = input_channels
         self.relu = nn.ReLU(inplace=True)
-        # 5个卷积层，逐步下采样
-        # 输出特征图尺寸：feature_map_size = (input_image_size - kernel_size + 2 * padding) / stride + 1
-        # 输入通道数：input_channels；输出通道数：channels
+        # 5 convolutional layers with progressive downsampling
+        # Output feature map size: feature_map_size = (input_image_size - kernel_size + 2 * padding) / stride + 1
+        # Input channels: input_channels; Output channels: channels
         self.layer1 = nn.Conv2d(input_channels, channels, kernel_size=4, stride=2, padding=1)
         self.bn1 = nn.BatchNorm2d(channels)
-        # 输出通道数：2 * channels
+        # Output channels: 2 * channels
         self.layer2 = nn.Conv2d(channels, 2 * channels, kernel_size=4, stride=2, padding=1)
         self.bn2 = nn.BatchNorm2d(channels * 2)
-        # 输出通道数：4 * channels
+        # Output channels: 4 * channels
         self.layer3 = nn.Conv2d(2 * channels, 4 * channels, kernel_size=4, stride=2, padding=1)
         self.bn3 = nn.BatchNorm2d(channels * 4)
-        # 输出通道数：8 * channels
+        # Output channels: 8 * channels
         self.layer4 = nn.Conv2d(4 * channels, 8 * channels, kernel_size=4, stride=2, padding=1)
         self.bn4 = nn.BatchNorm2d(channels * 8)
-        # 输出通道数：8 * channels
+        # Output channels: 8 * channels
         self.layer5 = nn.Conv2d(8 * channels, 8 * channels, kernel_size=4, stride=2, padding=1)
         self.bn5 = nn.BatchNorm2d(channels * 8)
         self.channel = channels
 
-        # 3个全连接层，分别对应不同的输入图像大小
-        # 输入图像大小为256时，输出潜在空间分布大小为channels*8*8*8
+        # 3 fully connected layers for different input image sizes
+        # For input image size 256, output latent space distribution size is channels*8*8*8
         self.fc1_1 = nn.Linear(channels * 8 * 8 * 8, latent_size)
         self.fc2_1 = nn.Linear(channels * 8 * 8 * 8, latent_size)
-        # 输入图像大小为352时，输出潜在空间分布大小为channels*8*11*11
+        # For input image size 352, output latent space distribution size is channels*8*11*11
         self.fc1_2 = nn.Linear(channels * 8 * 11 * 11, latent_size)
         self.fc2_2 = nn.Linear(channels * 8 * 11 * 11, latent_size)
-        # 输入图像大小大于352时，输出潜在空间分布大小为channels*8*14*14
+        # For input image size larger than 352, output latent space distribution size is channels*8*14*14
         self.fc1_3 = nn.Linear(channels * 8 * 14 * 14, latent_size)
         self.fc2_3 = nn.Linear(channels * 8 * 14 * 14, latent_size)
 
@@ -162,11 +162,11 @@ class Encoder_x(nn.Module):
     def forward(self, input):
         """
         Args:
-            input: 输入图像，shape为(B, 3, H, W)
+            input: Input image, shape (B, 3, H, W)
         Returns:
-            dist: 潜在空间分布，Independent(Normal(loc=mu, scale=torch.exp(logvar)), 1)，为每个维度上独立的正态分布 N(μ,σ)，也叫多维对角高斯
-            mu: 潜在空间均值，shape为(B, latent_dim)
-            logvar: 潜在空间对数方差，shape为(B, latent_dim)
+            dist: Latent space distribution, Independent(Normal(loc=mu, scale=torch.exp(logvar)), 1), independent normal distribution N(μ,σ) for each dimension, also called multi-dimensional diagonal Gaussian
+            mu: Latent space mean, shape (B, latent_dim)
+            logvar: Latent space log variance, shape (B, latent_dim)
         """
         output = self.leakyrelu(self.bn1(self.layer1(input)))
         # print(output.size())
@@ -184,11 +184,11 @@ class Encoder_x(nn.Module):
             # print(input.size())
             output = output.view(-1, self.channel * 8 * 8 * 8)
 
-            mu = self.fc1_1(output)  # 均值 μ，shape=[B, latent_dim]
-            logvar = self.fc2_1(output)  # 对数方差 log σ²
+            mu = self.fc1_1(output)  # Mean μ, shape=[B, latent_dim]
+            logvar = self.fc2_1(output)  # Log variance log σ²
             dist = Independent(
-                Normal(loc=mu, scale=torch.exp(logvar)),  # 基础分布：每个维度上独立的正态分布 N(μ,σ)
-                1,  # 将最后 1 个维度作为“事件维度”，得到一个多维对角高斯
+                Normal(loc=mu, scale=torch.exp(logvar)),  # Base distribution: independent normal distribution N(μ,σ) for each dimension
+                1,  # Treat the last dimension as the event dimension to form a multivariate diagonal Gaussian
             )
             # print(output.size())
             # output = self.tanh(output)
@@ -233,47 +233,47 @@ class Encoder_x(nn.Module):
 
 class Encoder_xy(nn.Module):
     """
-    VAE的后验编码器，接受RGB图像和显著性图，拼接后进行编码，输出潜在空间分布
+    VAE posterior encoder, takes RGB image and saliency map, concatenates and encodes to output latent space distribution
     """
 
     def __init__(self, input_channels, channels, latent_size):
         """
         Args:
-            input_channels: 输入图像的通道数
-            channels: 编码器的通道数
-            latent_size: 潜在空间的维度
+            input_channels: Number of input image channels
+            channels: Number of encoder channels
+            latent_size: Dimension of latent space
         """
         super(Encoder_xy, self).__init__()
         self.contracting_path = nn.ModuleList()
         self.input_channels = input_channels
         self.relu = nn.ReLU(inplace=True)
-        # 5个卷积层，逐步下采样
-        # 输出特征图尺寸：feature_map_size = (input_image_size - kernel_size + 2 * padding) / stride + 1
-        # 输入通道数：input_channels；输出通道数：channels
+        # Five convolutional layers with progressive downsampling
+        # Output feature map size: feature_map_size = (input_image_size - kernel_size + 2 * padding) / stride + 1
+        # Input channels: input_channels; Output channels: channels
         self.layer1 = nn.Conv2d(input_channels, channels, kernel_size=4, stride=2, padding=1)
         self.bn1 = nn.BatchNorm2d(channels)
-        # 输出通道数：2 * channels
+        # Output channels: 2 * channels
         self.layer2 = nn.Conv2d(channels, 2 * channels, kernel_size=4, stride=2, padding=1)
         self.bn2 = nn.BatchNorm2d(channels * 2)
-        # 输出通道数：4 * channels
+        # Output channels: 4 * channels
         self.layer3 = nn.Conv2d(2 * channels, 4 * channels, kernel_size=4, stride=2, padding=1)
         self.bn3 = nn.BatchNorm2d(channels * 4)
-        # 输出通道数：8 * channels
+        # Output channels: 8 * channels
         self.layer4 = nn.Conv2d(4 * channels, 8 * channels, kernel_size=4, stride=2, padding=1)
         self.bn4 = nn.BatchNorm2d(channels * 8)
-        # 输出通道数：8 * channels
+        # Output channels: 8 * channels
         self.layer5 = nn.Conv2d(8 * channels, 8 * channels, kernel_size=4, stride=2, padding=1)
         self.bn5 = nn.BatchNorm2d(channels * 8)
         self.channel = channels
 
-        # 3个全连接层，分别对应不同的输入图像大小
-        # 输入图像大小为256时，输出潜在空间分布大小为channels*8*8*8
+        # Three fully connected layers for different input image sizes
+        # For input image size 256, output latent space distribution size is channels*8*8*8
         self.fc1_1 = nn.Linear(channels * 8 * 8 * 8, latent_size)
         self.fc2_1 = nn.Linear(channels * 8 * 8 * 8, latent_size)
-        # 输入图像大小为352时，输出潜在空间分布大小为channels*8*11*11
+        # For input image size 352, output latent space distribution size is channels*8*11*11
         self.fc1_2 = nn.Linear(channels * 8 * 11 * 11, latent_size)
         self.fc2_2 = nn.Linear(channels * 8 * 11 * 11, latent_size)
-        # 输入图像大小大于352时，输出潜在空间分布大小为channels*8*14*14
+        # For input image size larger than 352, output latent space distribution size is channels*8*14*14
         self.fc1_3 = nn.Linear(channels * 8 * 14 * 14, latent_size)
         self.fc2_3 = nn.Linear(channels * 8 * 14 * 14, latent_size)
 
@@ -282,11 +282,11 @@ class Encoder_xy(nn.Module):
     def forward(self, x):
         """
         Args:
-            x: 输入图像，shape为(B, 3, H, W)
+            x: Input image, shape (B, 3, H, W)
         Returns:
-            dist: 潜在空间分布，Independent(Normal(loc=mu, scale=torch.exp(logvar)), 1)，为每个维度上独立的正态分布 N(μ,σ)，也叫多维对角高斯
-            mu: 潜在空间均值，shape为(B, latent_dim)
-            logvar: 潜在空间对数方差，shape为(B, latent_dim)
+            dist: Latent space distribution, Independent(Normal(loc=mu, scale=torch.exp(logvar)), 1), independent normal distribution N(μ,σ) for each dimension, also called multi-dimensional diagonal Gaussian
+            mu: Latent space mean, shape (B, latent_dim)
+            logvar: Latent space log variance, shape (B, latent_dim)
         """
         output = self.leakyrelu(self.bn1(self.layer1(x)))
         # print(output.size())
@@ -338,78 +338,80 @@ class Encoder_xy(nn.Module):
 
 class Generator(nn.Module):
     """
-    实现了基于 VAE 的显著性图生成器(Saliency Generator)，含后验和先验两路编码器，以及一个联合显著性特征解码器。
-    训练时同时输出初始/精细显著图及 KL 散度损失，推理时仅输出最终概率图。
+    Implements a VAE-based saliency map generator (Saliency Generator), with both posterior and prior encoders, and a joint saliency feature decoder.
+    Outputs initial/refined saliency maps and KL divergence loss during training, and only the final probability map during inference.
     """
 
     def __init__(self, channel, latent_dim):
         """
         Args:
-            channel: 通道数
-            latent_dim: 潜在空间维度
+            channel: Number of channels
+            latent_dim: Latent space dimension
         """
         super(Generator, self).__init__()
-        self.sal_encoder = Saliency_feat_encoder(channel, latent_dim)  # 接受RGB图像和潜在空间向量，输出初始/精细显著图
-        self.xy_encoder = Encoder_xy(4, channel, latent_dim)  # 接受RGB图像和显著性图，拼接输出后验潜在空间分布
-        self.x_encoder = Encoder_x(3, channel, latent_dim)  # 先验编码器，仅编码RGB图像
+        self.sal_encoder = Saliency_feat_encoder(channel, latent_dim)  # Takes RGB image and latent vector, outputs initial/refined saliency maps
+        self.xy_encoder = Encoder_xy(
+            4, channel, latent_dim
+        )  # Takes RGB image and saliency map, concatenates to produce posterior latent distribution
+        self.x_encoder = Encoder_x(3, channel, latent_dim)  # Prior encoder, encodes only RGB image
 
     def kl_divergence(self, posterior_latent_space, prior_latent_space):
         """
-        计算后验潜在空间分布与先验潜在空间分布之间的 KL 散度损失
+        Compute KL divergence loss between posterior and prior latent space distributions
         Args:
-            posterior_latent_space: 后验潜在空间分布
-            prior_latent_space: 先验潜在空间分布
+            posterior_latent_space: Posterior latent space distribution
+            prior_latent_space: Prior latent space distribution
         Returns:
-            kl_div: KL 散度损失(KL(posterior || prior))
+            kl_div: KL divergence loss (KL(posterior || prior))
         """
         kl_div = kl.kl_divergence(posterior_latent_space, prior_latent_space)
         return kl_div
 
     def reparametrize(self, mu: torch.Tensor, logvar: torch.Tensor):
         """
-        通过重参数化技巧从潜在空间分布中采样
+        Sample from latent space distribution using reparameterization trick
         Args:
-            mu: 潜在空间均值([B, latent_dim])
-            logvar: 潜在空间对数方差([B, latent_dim])
+            mu: Latent space mean ([B, latent_dim])
+            logvar: Latent space log variance ([B, latent_dim])
         Returns:
-            eps: 采样得到的潜在空间向量
+            eps: Sampled latent space vector
         """
-        std = logvar.mul(0.5).exp_()  # 标准差([B, latent_dim])，exp_()表示就地操作
+        std = logvar.mul(0.5).exp_()  # Standard deviation ([B, latent_dim]), exp_() is in-place
         # eps = Variable(std.data.new(std.size()).normal_())
         eps = torch.randn_like(std)
         return eps.mul(std).add_(mu)
 
     def forward(self, x, y=None, training=True):
         """
-        前向传播函数
+        Forward function
         Args:
-            x: 输入图像([B, 3, H, W]).
-            y: 显著性图([B, 1, H, W]).
-            training: 是否处于训练模式.
+            x: Input image ([B, 3, H, W]).
+            y: Saliency map ([B, 1, H, W]).
+            training: Whether in training mode.
         Returns:
-            sal_init_post: 后验初始显著性图([B, 1, H, W]).
-            sal_ref_post: 后验精细显著性图([B, 1, H, W]).
-            sal_init_prior: 先验初始显著性图([B, 1, H, W]).
-            sal_ref_prior: 先验精细显著性图([B, 1, H, W]).
-            latent_loss: KL 散度损失的平均值，表示后验潜在空间分布与先验潜在空间分布之间的差异.
-            prob_pred: 预测的显著性图([B, 1, H, W])，仅在推理模式下返回.
-        过程:
-            1. 训练模式下，输入 RGB 图像和显著性图，经过编码器得到后验潜在空间分布和初始/精细显著性图.
-            2. 训练模式下，输入 RGB 图像，经过编码器得到先验潜在空间分布和初始/精细显著性图.
-            3. 训练模式下，计算后验潜在空间分布与先验潜在空间分布之间的 KL 散度损失.
-            4. 推理模式下，输入 RGB 图像，经过编码器得到先验潜在空间分布和预测的显著性图.
+            sal_init_post: Posterior initial saliency map ([B, 1, H, W]).
+            sal_ref_post: Posterior refined saliency map ([B, 1, H, W]).
+            sal_init_prior: Prior initial saliency map ([B, 1, H, W]).
+            sal_ref_prior: Prior refined saliency map ([B, 1, H, W]).
+            latent_loss: Mean KL divergence loss, representing the difference between posterior and prior latent space distributions.
+            prob_pred: Predicted saliency map ([B, 1, H, W]), only returned in inference mode.
+        Process:
+            1. In training mode, input RGB image and saliency map, encode to get posterior latent space distribution and initial/refined saliency maps.
+            2. In training mode, input RGB image, encode to get prior latent space distribution and initial/refined saliency maps.
+            3. In training mode, compute KL divergence loss between posterior and prior latent space distributions.
+            4. In inference mode, input RGB image, encode to get prior latent space distribution and predicted saliency map.
         """
         if training:
-            # 1. 后验分布
+            # 1. Posterior distribution
             self.posterior, muxy, logvarxy = self.xy_encoder(torch.cat((x, y), 1))
-            # 2. 先验分布
+            # 2. Prior distribution
             self.prior, mux, logvarx = self.x_encoder(x)
-            # 3. 计算 KL 散度损失
+            # 3. Compute KL divergence loss
             latent_loss = torch.mean(self.kl_divergence(self.posterior, self.prior))
-            # 4. 重参数化采样
+            # 4. Reparameterization sampling
             z_noise_post = self.reparametrize(muxy, logvarxy)
             z_noise_prior = self.reparametrize(mux, logvarx)
-            # 5. 通过编码器得到初始/精细显著性图
+            # 5. Decode initial/refined saliency maps via encoder
             self.sal_init_post, self.sal_ref_post = self.sal_encoder(x, z_noise_post)
             self.sal_init_prior, self.sal_ref_prior = self.sal_encoder(x, z_noise_prior)
 
@@ -419,7 +421,7 @@ class Generator(nn.Module):
             self.sal_ref_prior = F.interpolate(self.sal_ref_prior, size=(x.shape[2], x.shape[3]), mode="bilinear", align_corners=True)
             return self.sal_init_post, self.sal_ref_post, self.sal_init_prior, self.sal_ref_prior, latent_loss
         else:
-            # 推理模式，仅输出预测的显著性图
+            # Inference mode, only output predicted saliency map
             _, mux, logvarx = self.x_encoder(x)
             z_noise = self.reparametrize(mux, logvarx)
             _, self.prob_pred = self.sal_encoder(x, z_noise)
@@ -430,55 +432,55 @@ class CAM_Module(nn.Module):
     """
     Channel Attention Module (CAM)
     --------------------------------
-    实现论文 “Dual Attention Network for Scene Segmentation” 中的通道自注意力。
+    Implements channel self-attention as in "Dual Attention Network for Scene Segmentation".
 
-    参数
+    Args
     ----
     in_dim : int
-        输入特征的通道数 C。
+        Number of input feature channels C.
 
-    前向输入
+    Forward input
     -------
     x : torch.Tensor
-        形状 (B, C, H, W) 的特征图。
+        Feature map of shape (B, C, H, W).
 
-    返回
+    Returns
     ----
     out : torch.Tensor
-        通道重加权后的特征图，形状同输入。
+        Channel re-weighted feature map, same shape as input.
     attention : torch.Tensor
-        (B, C, C) 的通道注意力权重，可选返回。
+        Channel attention weights (B, C, C), optional return.
     """
 
     def __init__(self, in_dim: int) -> None:
         super().__init__()
         self.channel_in = in_dim
-        # γ 初始为 0，训练过程中学习多少注意力应被叠加
-        self.gamma: Parameter = Parameter(torch.zeros(1))  # 会被自动收集到model.parameters()中，在反向传播时会被更新
-        # Softmax 在最后一个维度（通道维）做归一化
+        # gamma initialized as 0, learnable during training for attention strength
+        self.gamma: Parameter = Parameter(torch.zeros(1))  # Collected in model.parameters(), updated during backprop
+        # Softmax normalizes along the last (channel) dimension
         self.softmax = Softmax(dim=-1)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        B, C, H, W = x.size()  # B=batch size, C=通道数, N=H*W
-        proj_query = x.view(B, C, -1)  # (B, C, N)，表示每个通道的所有空间位置当作一个向量维度
-        proj_key = proj_query.permute(0, 2, 1)  # (B, N, C)，维度变换为了用torch.bmm()计算相似度矩阵
+        B, C, H, W = x.size()  # B=batch size, C=channels, N=H*W
+        proj_query = x.view(B, C, -1)  # (B, C, N), treat all spatial positions of each channel as a vector
+        proj_key = proj_query.permute(0, 2, 1)  # (B, N, C), for torch.bmm() similarity matrix
 
-        # 通道相似度矩阵 (B, C, C)
-        energy = torch.bmm(proj_query, proj_key)  # energy[b,i,j] 就是第 b 个样本中通道 i 与通道 j 的内积，相当于它们的相似度
+        # Channel similarity matrix (B, C, C)
+        energy = torch.bmm(proj_query, proj_key)  # energy[b,i,j]: similarity between channel i and j in sample b
 
-        # 稳定训练的 trick：把能量转成“距离”形式
+        # Training stability trick: convert energy to "distance" form
         energy_new = (
             torch.max(energy, -1, keepdim=True)[0].expand_as(energy) - energy
-        )  # 为每一⾏（即每个通道 j）找出本⾏的最⾼相似度；将相似度 Similarity 变为“距离” Distance
+        )  # For each row (channel j), find max similarity; convert similarity to distance
         attention = self.softmax(
             energy_new
-        )  # (B, C, C)，大部分通道之间的“距离”会大于 0，Softmax 后权重更倾向于不那么相似的通道，从而降低冗余、突出互补信息
+        )  # (B, C, C), most channel "distances" > 0, softmax emphasizes less similar channels, reducing redundancy and highlighting complementary info
 
         proj_value = proj_query  # (B, C, N)
         out = torch.bmm(attention, proj_value)  # (B, C, N)
-        out = out.view(B, C, H, W)  # 恢复空间维度
+        out = out.view(B, C, H, W)  # Restore spatial dims
 
-        out = self.gamma * out + x  # 残差连接
+        out = self.gamma * out + x  # Residual connection
         return out
 
 
@@ -486,34 +488,34 @@ class PAM_Module(nn.Module):
     """
     Position Attention Module (PAM)
     --------------------------------
-    实现论文 “Dual Attention Network for Scene Segmentation” 中的空间自注意力。
+    Implements spatial self-attention as in "Dual Attention Network for Scene Segmentation".
 
-    参数
+    Args
     ----
     in_dim : int
-        输入特征的通道数 C。
+        Number of input feature channels C.
 
-    前向输入
+    Forward input
     -------
     x : torch.Tensor
-        形状 (B, C, H, W) 的特征图。
+        Feature map of shape (B, C, H, W).
 
-    返回
+    Returns
     ----
     out : torch.Tensor
-        位置重加权后的特征图，形状同输入。
+        Position re-weighted feature map, same shape as input.
     attention : torch.Tensor
-        (B, H*W, H*W) 的空间注意力权重，可选返回。
+        Spatial attention weights (B, H*W, H*W), optional return.
     """
 
     def __init__(self, in_dim: int) -> None:
         super().__init__()
         self.channel_in = in_dim
 
-        # query / key 1×1 卷积降到 C/8 通道，减小计算量
+        # query/key 1x1 conv reduces to C/8 channels for efficiency
         self.query_conv = nn.Conv2d(in_dim, in_dim // 8, kernel_size=1)
         self.key_conv: nn.Conv2d = nn.Conv2d(in_dim, in_dim // 8, kernel_size=1)
-        # value 保持原始通道数
+        # value keeps original channel count
         self.value_conv = nn.Conv2d(in_dim, in_dim, kernel_size=1)
 
         self.gamma: Parameter = Parameter(torch.zeros(1))
@@ -528,39 +530,39 @@ class PAM_Module(nn.Module):
         # (B, C/8, N)
         proj_key = self.key_conv(x).view(B, -1, N)
 
-        # 空间相似度 (B, N, N)
+        # Spatial similarity (B, N, N)
         energy = torch.bmm(proj_query, proj_key)
         attention = self.softmax(energy)
 
-        # 值映射 (B, C, N)
+        # Value mapping (B, C, N)
         proj_value = self.value_conv(x).view(B, C, N)
 
-        # 加权求和并恢复形状
+        # Weighted sum and restore shape
         out = torch.bmm(proj_value, attention.permute(0, 2, 1))  # (B, C, N)
         out = out.view(B, C, H, W)
 
-        out = self.gamma * out + x  # 残差连接
+        out = self.gamma * out + x  # Residual connection
         return out
 
 
 class Classifier_Module(nn.Module):
     """
     Classifier Module with Multi-scale Dilation Convolutions
-    多尺度膨胀卷积分类器模块：通过若干个相同输入/输出通道的卷积层，使用不同的膨胀率和填充率来提取多尺度特征，扩大感受野。
-    各分支并行处理输入特征图，最后将所有分支的输出相加得到最终输出，得到多尺度上下文信息的输出。
+    Multi-scale dilated convolution classifier module: uses several convolution layers with the same input/output channels but different dilation and padding rates to extract multi-scale features and enlarge the receptive field.
+    Each branch processes the input feature map in parallel, and the outputs are summed to obtain the final output with multi-scale context information.
     """
 
     def __init__(self, dilation_series, padding_series, NumLabels, input_channel):
         """
         Args:
-            dilation_series: 膨胀卷积的膨胀率列表
-            padding_series: 膨胀卷积的填充率列表
-            NumLabels: 输出通道数
-            input_channel: 输入通道数
+            dilation_series: Dilation rates for dilated convolution
+            padding_series: Padding rates for dilated convolution
+            NumLabels: Number of output channels
+            input_channel: Number of input channels
         """
         super(Classifier_Module, self).__init__()
         self.conv2d_list = nn.ModuleList()  # type: List[nn.Conv2d]
-        # 向卷积层列表中添加多个卷积层，每个卷积层使用不同的膨胀率和填充率
+        # Add multiple conv layers to the list, each with different dilation and padding
         for d, p in zip(dilation_series, padding_series):
             self.conv2d_list.append(nn.Conv2d(input_channel, NumLabels, kernel_size=3, stride=1, padding=p, dilation=d, bias=True))
         for m in self.conv2d_list:
@@ -569,11 +571,12 @@ class Classifier_Module(nn.Module):
     def forward(self, x):
         """
         Args:
-            x: 输入特征图，形状为 (B, C, H, W)，B为批大小，C为通道数，H和W为特征图的高度和宽度
+            x: Input feature map, shape (B, C, H, W), B is batch size, C is channels, H and W are height and width
         Returns:
-            out: 输出特征图，形状为 (B, NumLabels, H, W)"""
-        out = self.conv2d_list[0](x)  # 第一个卷积层的输出
-        # 对于后续的卷积层，将它们的输出与第一个卷积层的输出相加
+            out: Output feature map, shape (B, NumLabels, H, W)
+        """
+        out = self.conv2d_list[0](x)  # Output of the first conv layer
+        # For subsequent conv layers, add their output to the first
         for i in range(len(self.conv2d_list) - 1):
             out += self.conv2d_list[i + 1](x)
         return out  # out.shape = (B, NumLabels, H, W)
@@ -583,19 +586,19 @@ class Classifier_Module(nn.Module):
 class CALayer(nn.Module):
     """
     Channel Attention Layer (CALayer)
-    为输入特征图的每个通道生成一个标量权重，以通道注意力的方式突出有用特征、抑制冗余信息。
-    该层通过全局平均池化将特征图压缩为通道描述符，然后通过两层卷积生成通道权重。
+    Generates a scalar weight for each channel of the input feature map, highlighting useful features and suppressing redundant information via channel attention.
+    This layer compresses the feature map to a channel descriptor by global average pooling, then generates channel weights through two convolution layers.
     """
 
     def __init__(self, channel, reduction=16):
         """
         Args:
-            channel: 输入特征图的通道数
-            reduction: 通道压缩比例，默认为16
+            channel: Number of input channels
+            reduction: Channel reduction ratio, default 16
         """
         super(CALayer, self).__init__()
         # global average pooling: feature --> point
-        self.avg_pool = nn.AdaptiveAvgPool2d(1)  # (1, 1)  # 将每个通道的特征图压缩为一个点，得到通道描述符，即通道的全局信息
+        self.avg_pool = nn.AdaptiveAvgPool2d(1)  # (1, 1)  # Compress each channel's feature map to a single value (global descriptor)
         # feature channel downscale and upscale --> channel weight
         self.conv_du = nn.Sequential(
             nn.Conv2d(channel, channel // reduction, 1, padding=0, bias=True),
@@ -606,11 +609,11 @@ class CALayer(nn.Module):
 
     def forward(self, x):
         """
-        通道重加权
+        Channel re-weighting
         Args:
-            x: 输入特征图，形状为 (B, C, H, W)，B为批大小，C为通道数，H和W为特征图的高度和宽度
+            x: Input feature map, shape (B, C, H, W)
         Returns:
-            x*y: 重加权后的特征图，形状同输入
+            x*y: Re-weighted feature map, same shape as input
         """
         y = self.avg_pool(x)
         y = self.conv_du(y)
@@ -621,55 +624,55 @@ class CALayer(nn.Module):
 class RCAB(nn.Module):
     """
     Residual Channel Attention Block (RCAB)
-    参考Image Super-Resolution Using Very DeepResidual Channel Attention Networks
-    实现了残差通道注意力块，包含两个卷积层和一个通道注意力层。
-    输入特征图经过两个卷积层和一个通道注意力层后，输出与输入特征图相加，形成残差连接。
+    Reference: Image Super-Resolution Using Very Deep Residual Channel Attention Networks
+    Implements a residual channel attention block with two convolution layers and a channel attention layer.
+    The input feature map passes through two conv layers and a channel attention layer, then is added to the input as a residual connection.
     """
 
     def __init__(self, n_feat, kernel_size=3, reduction=16, bias=True, bn=False, act=nn.ReLU(True), res_scale=1):
         """
         Args:
-            n_feat: 输入特征图的通道数
-            kernel_size: 卷积核大小，默认为3
-            reduction: 通道压缩比例，默认为16
-            bias: 是否使用偏置，默认为True
-            bn: 是否使用批归一化，默认为False
-            act: 激活函数，默认为ReLU
-            res_scale: 残差缩放系数，默认为1
+            n_feat: Number of input channels
+            kernel_size: Convolution kernel size, default 3
+            reduction: Channel reduction ratio, default 16
+            bias: Whether to use bias, default True
+            bn: Whether to use batch normalization, default False
+            act: Activation function, default ReLU
+            res_scale: Residual scaling factor, default 1
         """
         super(RCAB, self).__init__()
         modules_body = []
-        # 堆叠两个卷积层和一个通道注意力层（可选批归一化+激活函数）
+        # Stack two conv layers and a channel attention layer (optional BN + activation)
         for i in range(2):
             modules_body.append(self.default_conv(n_feat, n_feat, kernel_size, bias=bias))
             if bn:
                 modules_body.append(nn.BatchNorm2d(n_feat))
-            if i == 0:  # 第一个卷积层后添加激活函数
+            if i == 0:  # Add activation after the first conv layer
                 modules_body.append(act)
-        modules_body.append(CALayer(n_feat, reduction))  # 在两个卷积层后添加通道注意力层
-        self.body = nn.Sequential(*modules_body)  # 将所有层组合成一个序列，*表示解包列表，相当于(nn.Conv2d, nn.BatchNorm2d, nn.ReLU, CALayer)
-        self.res_scale = res_scale  # 残差缩放系数，用于控制残差连接的强度
+        modules_body.append(CALayer(n_feat, reduction))  # Add channel attention after two conv layers
+        self.body = nn.Sequential(*modules_body)  # Compose all layers into a sequence
+        self.res_scale = res_scale  # Residual scaling factor for controlling residual strength
 
     def default_conv(self, in_channels, out_channels, kernel_size, bias=True):
         """
-        默认卷积层，输出特征图的通道数与输入特征图相同，使用padding保持输出尺寸不变。
+        Default convolution layer, output channels same as input, uses padding to keep output size unchanged.
         Args:
-            in_channels: 输入特征图的通道数
-            out_channels: 输出特征图的通道数
-            kernel_size: 卷积核大小
-            bias: 是否使用偏置，默认为True
+            in_channels: Number of input channels
+            out_channels: Number of output channels
+            kernel_size: Kernel size
+            bias: Whether to use bias (default True)
         Returns:
-            nn.Conv2d: 卷积层
+            nn.Conv2d: Convolution layer
         """
         return nn.Conv2d(in_channels, out_channels, kernel_size, padding=(kernel_size // 2), bias=bias)
 
     def forward(self, x):
         """
-        前向传播函数
+        Forward function
         Args:
-            x: 输入特征图，形状为 (B, C, H, W)，B为批大小，C为通道数，H和W为特征图的高度和宽度
+            x: Input feature map, shape (B, C, H, W)
         Returns:
-            res: 残差连接后的特征图，形状同输入
+            res: Feature map after residual connection, same shape as input
         """
         res = self.body(x)
         # res = self.body(x).mul(self.res_scale)
@@ -680,18 +683,18 @@ class RCAB(nn.Module):
 class BasicConv2d(nn.Module):
     """
     Basic Convolutional Layer with Batch Normalization
-    将一个卷积层和一个批归一化层封装在一起，形成一个基本的卷积模块。
+    Wraps a convolution layer and a batch normalization layer into a basic conv module.
     """
 
     def __init__(self, in_planes, out_planes, kernel_size, stride=1, padding=0, dilation=1):
         """
         Args:
-            in_planes: 输入特征图的通道数
-            out_planes: 输出特征图的通道数
-            kernel_size: 卷积核大小
-            stride: 步幅，默认为1
-            padding: 填充，默认为0
-            dilation: 膨胀率，默认为1
+            in_planes: Number of input channels
+            out_planes: Number of output channels
+            kernel_size: Kernel size
+            stride: Stride (default 1)
+            padding: Padding (default 0)
+            dilation: Dilation rate (default 1)
         """
         super(BasicConv2d, self).__init__()
         self.conv_bn = nn.Sequential(
@@ -702,18 +705,18 @@ class BasicConv2d(nn.Module):
                 stride=stride,
                 padding=padding,
                 dilation=dilation,
-                bias=False,  # 不使用偏置，因为后面有批归一化层
+                bias=False,  # No bias since followed by batch normalization
             ),
             nn.BatchNorm2d(out_planes),
         )
 
     def forward(self, x):
         """
-        前向传播函数
+        Forward function
         Args:
-            x: 输入特征图，形状为 (B, C, H, W)，B为批大小，C为通道数，H和W为特征图的高度和宽度
+            x: Input feature map, shape (B, C, H, W)
         Returns:
-            x: 输出特征图，形状同输入
+            x: Output feature map, same shape as input
         """
         x = self.conv_bn(x)
         return x
@@ -722,35 +725,36 @@ class BasicConv2d(nn.Module):
 class Triple_Conv(nn.Module):
     """
     Triple Convolutional Layer
-    将三个卷积层封装在一起，形成一个三重卷积模块。
+    Wraps three convolution layers into a triple conv module.
     """
 
     def __init__(self, in_channel, out_channel):
         """
         Args:
-            in_channel: 输入特征图的通道数
-            out_channel: 输出特征图的通道数
+            in_channel: Number of input channels
+            out_channel: Number of output channels
         """
         super(Triple_Conv, self).__init__()
         self.reduce = nn.Sequential(
-            BasicConv2d(in_channel, out_channel, 1),  # 1x1卷积用于通道数变换
-            BasicConv2d(out_channel, out_channel, 3, padding=1),  # 3x3卷积用于特征提取
-            BasicConv2d(out_channel, out_channel, 3, padding=1),  # 再次3x3卷积用于进一步特征提取
+            BasicConv2d(in_channel, out_channel, 1),  # 1x1 conv for channel reduction
+            BasicConv2d(out_channel, out_channel, 3, padding=1),  # 3x3 conv for feature extraction
+            BasicConv2d(out_channel, out_channel, 3, padding=1),  # Another 3x3 conv for further feature extraction
         )
 
     def forward(self, x):
         """
-        前向传播函数
+        Forward function
         Args:
-            x: 输入特征图，形状为 (B, C, H, W)，B为批大小，C为通道数，H和W为特征图的高度和宽度
+            x: Input feature map, shape (B, C, H, W)
         Returns:
-            self.reduce(x): 输出特征图，形状同输入"""
+            self.reduce(x): Output feature map, same shape as input
+        """
         return self.reduce(x)
 
 
 class Saliency_feat_encoder(nn.Module):
     """
-    It merges features from a backbone with latent variables and applies
+    Merges features from a backbone with latent variables and applies
     attention mechanisms to produce initial and refined saliency maps.
     """
 
@@ -758,22 +762,24 @@ class Saliency_feat_encoder(nn.Module):
     def __init__(self, channel, latent_dim):
         """
         Args:
-            channel: 通道数
-            latent_dim: 潜在空间维度
+            channel: Number of channels
+            latent_dim: Latent space dimension
         """
         super(Saliency_feat_encoder, self).__init__()
-        self.resnet = B2_ResNet()  # 基于ResNet构建特征提取主干
+        self.resnet = B2_ResNet()  # Backbone feature extractor based on ResNet
         # self.resnet=res2net50_v1b_26w_4s(pretrained=True)
         # self.relu = nn.ReLU(inplace=True)
         self.upsample8 = nn.Upsample(
             scale_factor=8, mode="bilinear", align_corners=True
-        )  # 上采样，scale_factor=8表示将特征图的尺寸扩大8倍，用于恢复到原始输入图像的尺寸
+        )  # Upsample, scale_factor=8 means enlarging feature map 8x to restore original input size
         self.dropout = nn.Dropout(0.3)
-        # 构建两个多尺度膨胀卷积分类器
+        # Build two multi-scale dilated convolution classifiers
         self.layer5 = self._make_pred_layer(Classifier_Module, [6, 12, 18, 24], [6, 12, 18, 24], channel, 2048)
-        self.layer6 = self._make_pred_layer(Classifier_Module, [6, 12, 18, 24], [6, 12, 18, 24], 1, channel * 3)  # 将通道数变为1，用于初始显著性预测
+        self.layer6 = self._make_pred_layer(
+            Classifier_Module, [6, 12, 18, 24], [6, 12, 18, 24], 1, channel * 3
+        )  # Change channels to 1 for initial saliency prediction
 
-        # 下采样后各层统一降到channel通道数，对ResNet的第2/3/4层输出（256/512/1024通道）分别做1x1卷积降维到channel通道数和两个3x3卷积层特征提取
+        # After downsampling, unify all layers to 'channel' channels; for ResNet's 2nd/3rd/4th outputs (256/512/1024 channels), use 1x1 conv to reduce to 'channel', then two 3x3 convs for feature extraction
         self.conv2_1 = nn.Conv2d(512, channel, kernel_size=1, padding=0)
         self.conv2_2 = nn.Conv2d(channel, channel, kernel_size=3, padding=1)
         self.conv2_3 = nn.Conv2d(channel, channel, kernel_size=3, padding=1)
@@ -784,44 +790,44 @@ class Saliency_feat_encoder(nn.Module):
         self.conv4_2 = nn.Conv2d(channel, channel, kernel_size=3, padding=1)
         self.conv4_3 = nn.Conv2d(channel, channel, kernel_size=3, padding=1)
 
-        # 预留的多支路特征融合降维卷积
+        # Reserved multi-branch feature fusion and dimensionality reduction conv
         self.conv_feat = nn.Conv2d(32 * 5, channel, kernel_size=3, padding=1)
 
-        # 4倍上采样和2倍上采样，用于多层次特征融合时的尺寸对齐
+        # 4x and 2x upsampling for size alignment in multi-level feature fusion
         self.upsample4 = nn.Upsample(scale_factor=4, mode="bilinear", align_corners=True)
         self.upsample2 = nn.Upsample(scale_factor=2, mode="bilinear", align_corners=True)
 
-        # 空间注意力
+        # Spatial attention
         self.pam_attention5 = PAM_Module(channel)
         self.pam_attention4 = PAM_Module(channel)
         self.pam_attention3 = PAM_Module(channel)
         self.pam_attention2 = PAM_Module(channel)
         self.pam_attention1 = PAM_Module(channel)
-        # 通道注意力
+        # Channel attention
         self.cam_attention4 = CAM_Module(channel)
         self.cam_attention3 = CAM_Module(channel)
         self.cam_attention2 = CAM_Module(channel)
 
-        self.racb_layer = RCAB(channel * 4)  # 残差通道注意力块，输入特征图的通道数为channel * 4
+        self.racb_layer = RCAB(channel * 4)  # Residual channel attention block, input channels = channel * 4
 
-        # 多尺度特征融合卷积层，为ResNet的第4/3/2层输出特征图分别做特征融合，用于精细预测分支
+        # Multi-scale feature fusion conv layers, for ResNet's 4th/3rd/2nd outputs, used in refined prediction branch
         self.conv4 = self._make_pred_layer(Classifier_Module, [3, 6, 12, 18], [3, 6, 12, 18], channel, 2048)
         self.conv3 = self._make_pred_layer(Classifier_Module, [3, 6, 12, 18], [3, 6, 12, 18], channel, 1024)
         self.conv2 = self._make_pred_layer(Classifier_Module, [3, 6, 12, 18], [3, 6, 12, 18], channel, 512)
         self.conv1 = self._make_pred_layer(Classifier_Module, [3, 6, 12, 18], [3, 6, 12, 18], channel, 256)
 
-        # 残差通道注意力块，输入特征图的通道数为channel * 2/3/4
+        # Residual channel attention blocks, input channels = channel * 2/3/4
         self.racb_43 = RCAB(channel * 2)
         self.racb_432 = RCAB(channel * 3)
         self.racb_4321 = RCAB(channel * 4)
-        # 三重卷积层，输入特征图的通道数为2 * channel/3 * channel/4 * channel
+        # Triple conv layers, input channels = 2*channel/3*channel/4*channel
         self.conv43 = Triple_Conv(2 * channel, channel)
         self.conv432 = Triple_Conv(3 * channel, channel)
         self.conv4321 = Triple_Conv(4 * channel, channel)
 
-        self.HA = HA()  # 引入Holistic Attention模块，将初始显著性图与特征图融合
+        self.HA = HA()  # Holistic Attention module, fuses initial saliency map with features
 
-        # 第二路特征融合分支，完整复制一套融合、注意力、融合、分类器，用于细化显著性
+        # Second feature fusion branch, a full set of fusion, attention, fusion, classifier for refinement
         self.conv4_2 = self._make_pred_layer(Classifier_Module, [3, 6, 12, 18], [3, 6, 12, 18], channel, 2048)
         self.conv3_2 = self._make_pred_layer(Classifier_Module, [3, 6, 12, 18], [3, 6, 12, 18], channel, 1024)
         self.conv2_2 = self._make_pred_layer(Classifier_Module, [3, 6, 12, 18], [3, 6, 12, 18], channel, 512)
@@ -837,44 +843,44 @@ class Saliency_feat_encoder(nn.Module):
         self.conv432_2 = Triple_Conv(3 * channel, channel)
         self.conv4321_2 = Triple_Conv(4 * channel, channel)
 
-        self.spatial_axes = [2, 3]  # 用于tile中指定空间维度的索引
+        self.spatial_axes = [2, 3]  # Indices for spatial dimensions in tile
 
         self.conv_depth1 = BasicConv2d(
             3 + latent_dim, 3, kernel_size=3, padding=1
-        )  # 将输入的RGB图像和潜在变量z合并后，经过一个3x3卷积层，输出通道数为3，作为ResNet的输入
+        )  # Concatenate input RGB image and latent z, then 3x3 conv to 3 channels for ResNet input
 
         self.layer7 = self._make_pred_layer(
             Classifier_Module, [6, 12, 18, 24], [6, 12, 18, 24], 1, channel * 4
-        )  # 最终多尺度分类器，输出通道数为1，用于生成精细显著性图
+        )  # Final multi-scale classifier, output 1 channel for refined saliency map
 
         if self.training:
             self.initialize_weights()
 
     def _make_pred_layer(self, block, dilation_series, padding_series, NumLabels, input_channel):
         """
-        创建一个多尺度膨胀卷积分类器模块
+        Create a multi-scale dilated convolution classifier module
         Args:
-            block: 分类器模块类
-            dilation_series: 膨胀率列表
-            padding_series: 填充率列表
-            NumLabels: 输出通道数
-            input_channel: 输入特征图的通道数
+            block: Classifier module class
+            dilation_series: List of dilation rates
+            padding_series: List of padding rates
+            NumLabels: Number of output channels
+            input_channel: Number of input channels
         Returns:
-            block: 分类器模块实例
+            block: Classifier module instance
         """
         return block(dilation_series, padding_series, NumLabels, input_channel)
 
     def tile(self, a, dim, n_tile):
         """
-        This function is taken form PyTorch forum and mimics the behavior of tf.tile.
+        This function is taken from PyTorch forum and mimics the behavior of tf.tile.
         Source: https://discuss.pytorch.org/t/how-to-tile-a-tensor/13853/3
-        用于在指定维度上重复张量 a n_tile 次。
+        Used to repeat tensor a n_tile times along the specified dimension.
         Args:
-            a (torch.Tensor): 输入张量
-            dim (int): 指定的维度
-            n_tile (int): 重复次数
+            a (torch.Tensor): Input tensor
+            dim (int): Specified dimension
+            n_tile (int): Number of repetitions
         Returns:
-            torch.Tensor: 重复后的张量
+            torch.Tensor: Tiled tensor
         """
         init_dim = a.size(dim)
         repeat_idx = [1] * a.dim()
@@ -885,22 +891,23 @@ class Saliency_feat_encoder(nn.Module):
 
     def forward(self, x, z):
         """
-        前向传播函数
+        Forward function
         Args:
-            x: 输入特征图，形状为 (B, C, H, W)，B为批大小，C为通道数，H和W为特征图的高度和宽度
-            z: 潜在变量，形状为 (B, latent_dim)
+            x: Input feature map, shape (B, C, H, W)
+            z: Latent variable, shape (B, latent_dim)
         Returns:
-            sal_init: 初始显著性图，形状为 (B, 1, H, W)
-            sal_ref: 精细显著性图，形状为 (B, 1, H, W)"""
+            sal_init: Initial saliency map, shape (B, 1, H, W)
+            sal_ref: Refined saliency map, shape (B, 1, H, W)
+        """
 
-        z = torch.unsqueeze(z, 2)  # 在H轴前添加一个维度
-        z = self.tile(z, 2, x.shape[self.spatial_axes[0]])  # 沿H轴重复z，使其与输入特征图x的高度相同
-        z = torch.unsqueeze(z, 3)  # 在W轴前添加一个维度
-        z = self.tile(z, 3, x.shape[self.spatial_axes[1]])  # 沿W轴重复z，使其与输入特征图x的宽度相同，维度为 (B, latent_dim, H, W)
-        x = torch.cat((x, z), 1)  # 与RGB图像x在通道维度上拼接，形成一个新的输入特征图，形状为 (B, C + latent_dim, H, W)
-        x = self.conv_depth1(x)  # 将拼接后的特征图通过一个3x3卷积层，输出通道数为3，作为ResNet的输入
+        z = torch.unsqueeze(z, 2)  # Add a dimension before H axis
+        z = self.tile(z, 2, x.shape[self.spatial_axes[0]])  # Tile z along H to match input feature map height
+        z = torch.unsqueeze(z, 3)  # Add a dimension before W axis
+        z = self.tile(z, 3, x.shape[self.spatial_axes[1]])  # Tile z along W to match input feature map width, shape (B, latent_dim, H, W)
+        x = torch.cat((x, z), 1)  # Concatenate with RGB image along channel dim, shape (B, C + latent_dim, H, W)
+        x = self.conv_depth1(x)  # 3x3 conv to 3 channels for ResNet input
 
-        # ResNet特征提取
+        # ResNet feature extraction
         x = self.resnet.conv1(x)
         x = self.resnet.bn1(x)
         x = self.resnet.relu(x)
@@ -910,7 +917,7 @@ class Saliency_feat_encoder(nn.Module):
         x3 = self.resnet.layer3_1(x2)  # 1024 x 16 x 16
         x4 = self.resnet.layer4_1(x3)  # 2048 x 8 x 8
 
-        # 特征融合和注意力机制
+        # Feature fusion and attention mechanisms
         conv1_feat = self.conv1(x1)
         conv2_feat = self.conv2(x2)
         conv2_feat1 = self.pam_attention2(conv2_feat)
@@ -926,7 +933,7 @@ class Saliency_feat_encoder(nn.Module):
         conv4_feat = conv4_feat1 + conv4_feat2
         conv4_feat = self.upsample2(conv4_feat)
 
-        # 同时处理conv4_feat和conv3_feat，生成初始显著性图，多层融合
+        # Process conv4_feat and conv3_feat simultaneously, generate initial saliency map, multi-layer fusion
         conv43 = torch.cat((conv4_feat, conv3_feat), 1)
         conv43 = self.racb_43(conv43)
         conv43 = self.conv43(conv43)
@@ -940,10 +947,10 @@ class Saliency_feat_encoder(nn.Module):
         # conv4321 = self.racb_4321(conv4321)
         # conv4321 = self.conv4321(conv4321)
 
-        sal_init = self.layer6(conv432)  #  # 初始显著性图，形状为 (B, 1, H, W)
+        sal_init = self.layer6(conv432)  # Initial saliency map, shape (B, 1, H, W)
 
-        # 第二路特征融合分支，完整复制一套融合、注意力、融合、分类器，用于细化显著性
-        x2_2 = self.HA(sal_init.sigmoid(), x2)  # 用初始显著性指导中层特征
+        # Second feature fusion branch, complete copy of fusion, attention, fusion, classifier for saliency refinement
+        x2_2 = self.HA(sal_init.sigmoid(), x2)  # Use initial saliency to guide mid-level features
         x3_2 = self.resnet.layer3_2(x2_2)  # 1024 x 16 x 16
         x4_2 = self.resnet.layer4_2(x3_2)  # 2048 x 8 x 8
 
@@ -981,20 +988,20 @@ class Saliency_feat_encoder(nn.Module):
 
     def initialize_weights(self):
         """
-        初始化ResNet的权重
+        Initialize ResNet weights
         """
-        res50 = models.resnet50(weights=models.ResNet50_Weights.DEFAULT)  # 加载预训练的ResNet50模型
+        res50 = models.resnet50(weights=models.ResNet50_Weights.DEFAULT)  # Load pretrained ResNet50 model
         pretrained_dict = res50.state_dict()
         all_params = {}
         for k, v in self.resnet.state_dict().items():
-            if k in pretrained_dict.keys():  # 直接映射：如果自定义 ResNet 中的层名与预训练模型中的层名完全匹配，直接复制权重
+            if k in pretrained_dict.keys():  # Direct mapping: if the custom ResNet layer name matches the pretrained model, copy weights directly
                 v = pretrained_dict[k]
                 all_params[k] = v
-            elif "_1" in k:  # 对于包含"_1"的层名，去除"_1"后缀来匹配原始层名
+            elif "_1" in k:  # For layers with "_1" in the name, remove "_1" to match the original layer name
                 name = k.split("_1")[0] + k.split("_1")[1]
                 v = pretrained_dict[name]
                 all_params[k] = v
-            elif "_2" in k:  # 对于包含"_2"的层名，去除"_2"后缀来匹配原始层名
+            elif "_2" in k:  # For layers with "_2" in the name, remove "_2" to match the original layer name
                 name = k.split("_2")[0] + k.split("_2")[1]
                 v = pretrained_dict[name]
                 all_params[k] = v

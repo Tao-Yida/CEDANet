@@ -5,13 +5,15 @@ from utils import generate_model_name
 from dataloader import get_dataset_name_from_path
 from dataloader import get_train_val_loaders
 import numpy as np
-import imageio  # 替换scipy.misc
+import imageio  # Replace scipy.misc
 import cv2
 from torchvision import transforms
 
-# 配置参数（可根据需要修改）
-MODEL_PATH = "/home/ytao/Thesis/models/full-supervision/ijmond-limited-test/ijmond_data_test/ijmond_data_test_best_model.pth"  # 你的模型权重目录
-DATASET_PATH = "data/ijmond_camera/SMOKE5K-full/citizen_constraint"  # 数据集路径
+# Configuration parameters (can be modified as needed)
+MODEL_PATH = (
+    "/home/ytao/Thesis/models/full-supervision/ijmond-limited-test/ijmond_data_test/ijmond_data_test_best_model.pth"  # model weights directory
+)
+DATASET_PATH = "data/ijmond_camera/SMOKE5K-full/citizen_constraint"  # Dataset path
 BATCH_SIZE = 2
 TRAINSIZE = 352
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -19,16 +21,16 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def visualize_prediction_init(pred):
     """
-    可视化预测结果
+    Visualize prediction results
     Args:
         pred: Predicted saliency map, size: [batch_size, channels, height, width]
     """
-    # 遍历每个batch中的图像
+    # Extract the prediction result of the kk-th image
     for kk in range(pred.shape[0]):
-        pred_edge_kk = pred[kk, :, :, :]  # 提取第kk个图像的预测结果
+        pred_edge_kk = pred[kk, :, :, :]  # Extract the prediction result of the kk-th image
         pred_edge_kk = pred_edge_kk.detach().cpu().numpy().squeeze()
-        pred_edge_kk *= 255.0  # 将预测结果缩放到0-255范围
-        pred_edge_kk = pred_edge_kk.astype(np.uint8)  # 转换为uint8类型
+        pred_edge_kk *= 255.0  # Scale the prediction result to the range 0-255
+        pred_edge_kk = pred_edge_kk.astype(np.uint8)  # Convert to uint8 type
         save_path = "./temp/"
         name = "{:02d}_init.png".format(kk)
         os.makedirs(save_path, exist_ok=True)
@@ -109,17 +111,17 @@ def visualize_prior_ref(pred):
         imageio.imwrite(save_path + name, pred_edge_kk)
 
 
-# 加载模型
+# Load model
 print("Loading model...")
 generator = Generator(channel=32, latent_dim=3)
-# 直接加载指定权重
+# Directly load specified weights
 assert os.path.exists(MODEL_PATH), f"Model weights not found: {MODEL_PATH}"
 print(f"Using weights: {MODEL_PATH}")
 generator.load_state_dict(torch.load(MODEL_PATH, map_location=DEVICE))
 generator.to(DEVICE)
 generator.eval()
 
-# 加载数据
+# Load data
 image_root = os.path.join(DATASET_PATH, "img/")
 gt_root = os.path.join(DATASET_PATH, "gt/")
 trans_map_root = os.path.join(DATASET_PATH, "trans/")
@@ -127,16 +129,16 @@ train_loader, _ = get_train_val_loaders(
     image_root, gt_root, trans_map_root, batchsize=BATCH_SIZE, trainsize=TRAINSIZE, val_split=0.1, aug=False, freeze=True, random_seed=42
 )
 
-# 推理与可视化
+# Inference and visualization
 with torch.no_grad():
     for i, pack in enumerate(train_loader):
         images, gts, trans = pack
         images = images.to(DEVICE)
         gts = gts.to(DEVICE)
         trans = trans.to(DEVICE)
-        # 前向推理
+        # Forward inference
         pred_post_init, pred_post_ref, pred_prior_init, pred_prior_ref, _ = generator(images, gts)
-        # 可视化
+        # Visualize
         visualize_prediction_init(pred_post_init)
         visualize_prediction_ref(pred_post_ref)
         visualize_prior_init(pred_prior_init)
@@ -144,7 +146,7 @@ with torch.no_grad():
         visualize_gt(gts)
         visualize_original_img(images)
         print(f"Batch {i} visualized.")
-        # 只可视化一个batch，可根据需要去掉break
+        # Only visualize one batch, remove break if needed
         break
 
 print("Visualization complete. Results saved in ./temp/")

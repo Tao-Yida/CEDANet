@@ -53,9 +53,9 @@ def l2_regularisation(m: nn.Module) -> torch.Tensor:
         else:
             l2_reg = l2_reg + W.norm(2)
 
-    # 如果模块没有参数，返回零张量
+    # If the module has no parameters, return a zero tensor
     if l2_reg is None:
-        # 创建一个标量零张量，确保在正确的设备上
+        # Create a scalar zero tensor, ensuring it's on the correct device
         return torch.tensor(0.0, device=next(m.parameters(), torch.tensor(0.0)).device)
 
     return l2_reg
@@ -91,7 +91,7 @@ class AvgMeter(object):
 
 
 class EarlyStopping:
-    """早停策略类"""
+    """Early stopping strategy class"""
 
     def __init__(self, patience=10, min_delta=0.0001, restore_best_weights=True):
         self.patience = patience
@@ -118,36 +118,36 @@ class EarlyStopping:
             self.counter = 0
 
     def save_checkpoint(self, model):
-        """保存最佳模型权重"""
+        """Save best model weights"""
         self.best_weights = model.state_dict().copy()
 
 
 def calculate_metrics(pred, gt, threshold=0.5):
     """
-    计算性能指标
+    Calculate performance metrics
     Args:
-        pred: 预测结果 [batch_size, 1, H, W]
-        gt: 真实标签 [batch_size, 1, H, W]
-        threshold: 二值化阈值
+        pred: Prediction results [batch_size, 1, H, W]
+        gt: Ground truth labels [batch_size, 1, H, W]
+        threshold: Binarization threshold
     Returns:
-        dict: 包含各种指标的字典
+        dict: Dictionary containing various metrics
     """
     with torch.no_grad():
-        # 二值化预测
+        # Binarize predictions
         pred_bin = (torch.sigmoid(pred) > threshold).float()
         gt_bin = gt
 
-        # 展平所有像素
+        # Flatten all pixels
         pred_flat = pred_bin.view(-1)
         gt_flat = gt_bin.view(-1)
 
-        # 计算混淆矩阵
+        # Calculate confusion matrix
         tp = ((pred_flat == 1) & (gt_flat == 1)).sum().item()
         tn = ((pred_flat == 0) & (gt_flat == 0)).sum().item()
         fp = ((pred_flat == 1) & (gt_flat == 0)).sum().item()
         fn = ((pred_flat == 0) & (gt_flat == 1)).sum().item()
 
-        # 计算指标，避免除零错误
+        # Calculate metrics, avoiding division by zero errors
         precision = tp / (tp + fp + 1e-8)
         recall = tp / (tp + fn + 1e-8)
         f1 = 2 * precision * recall / (precision + recall + 1e-8)
@@ -159,14 +159,14 @@ def calculate_metrics(pred, gt, threshold=0.5):
 
 def validate_model(generator, val_loader, device, structure_loss_fn):
     """
-    模型校验函数
+    Model validation function
     Args:
-        generator: 生成器模型
-        val_loader: 校验数据加载器
-        device: 计算设备
-        structure_loss_fn: 结构损失函数
+        generator: Generator model
+        val_loader: Validation data loader
+        device: Computing device
+        structure_loss_fn: Structure loss function
     Returns:
-        tuple: (平均损失, 指标字典)
+        tuple: (average loss, metrics dictionary)
     """
     generator.eval()
     val_loss = 0.0
@@ -176,21 +176,21 @@ def validate_model(generator, val_loader, device, structure_loss_fn):
         for images, gts, trans in val_loader:
             images, gts, trans = images.to(device), gts.to(device), trans.to(device)
 
-            # 前向传播（仅使用后验预测进行校验）
+            # Forward propagation (using only posterior prediction for validation)
             pred_post_init, pred_post_ref, _, _, _ = generator(images, gts)
 
-            # 计算损失
+            # Calculate loss
             sal_loss = 0.5 * (structure_loss_fn(pred_post_init, gts) + structure_loss_fn(pred_post_ref, gts))
             val_loss += sal_loss.item()
 
-            # 计算指标（使用初始后验预测）
+            # Calculate metrics (using initial posterior prediction)
             batch_metrics = calculate_metrics(pred_post_init, gts)
             for key in all_metrics:
                 all_metrics[key] += batch_metrics[key]
 
     val_loss /= len(val_loader)
 
-    # 计算总体指标
+    # Calculate overall metrics
     total = all_metrics["tp"] + all_metrics["tn"] + all_metrics["fp"] + all_metrics["fn"]
     precision = all_metrics["tp"] / (all_metrics["tp"] + all_metrics["fp"] + 1e-8)
     recall = all_metrics["tp"] / (all_metrics["tp"] + all_metrics["fn"] + 1e-8)
@@ -205,40 +205,40 @@ def validate_model(generator, val_loader, device, structure_loss_fn):
 
 def generate_model_name(dataset_name, pretrained_weights_path=None):
     """
-    根据数据集名称和预训练模型生成模型名称
+    Generate model name based on dataset name and pretrained model
     Args:
-        dataset_name: 数据集名称
-        pretrained_weights_path: 预训练权重路径，如果为None则表示从头训练
+        dataset_name: Dataset name
+        pretrained_weights_path: Pretrained weights path, None means training from scratch
     Returns:
-        str: 生成的模型名称
+        str: Generated model name
     """
     if pretrained_weights_path is None:
-        # 没有使用预训练模型，只使用数据集名称
+        # No pretrained model used, only use dataset name
         return dataset_name
     else:
-        # 使用了预训练模型，需要提取预训练模型名称
+        # Pretrained model used, need to extract pretrained model name
         pretrained_model_name = extract_pretrained_model_name(pretrained_weights_path)
         return f"{dataset_name}_from_{pretrained_model_name}"
 
 
 def extract_pretrained_model_name(pretrained_path):
     """
-    从预训练模型路径中提取模型名称
+    Extract model name from pretrained model path
     Args:
-        pretrained_path: 预训练模型路径
+        pretrained_path: Pretrained model path
     Returns:
-        str: 提取的模型名称
+        str: Extracted model name
     """
     if pretrained_path is None:
         return None
 
-    # 获取文件名（去掉路径）
+    # Get filename (remove path)
     filename = os.path.basename(pretrained_path)
 
-    # 去掉文件扩展名
+    # Remove file extension
     model_name = os.path.splitext(filename)[0]
 
-    # 去掉常见的后缀（按优先级排序）
+    # Remove common suffixes (ordered by priority)
     suffixes_to_remove = ["_no_pretrained_weights", "_pretrained_weights", "_weights", "_checkpoint", "_ckpt"]
 
     for suffix in suffixes_to_remove:
@@ -246,11 +246,11 @@ def extract_pretrained_model_name(pretrained_path):
             model_name = model_name[: -len(suffix)]
             break
 
-    # 限制长度并清理字符
-    if len(model_name) > 30:  # 缩短长度限制
+    # Limit length and clean characters
+    if len(model_name) > 30:  # Shorten length limit
         model_name = model_name[:30]
 
-    # 替换不安全的字符
+    # Replace unsafe characters
     model_name = re.sub(r"[^\w\-_.]", "_", model_name)
 
     return model_name
@@ -258,31 +258,31 @@ def extract_pretrained_model_name(pretrained_path):
 
 def generate_checkpoint_filename(epoch, model_name, pretrained_weights_path=None):
     """
-    生成检查点文件名
+    Generate checkpoint filename
     Args:
-        epoch: 当前epoch
-        model_name: 模型名称
-        pretrained_weights_path: 预训练权重路径
+        epoch: Current epoch
+        model_name: Model name
+        pretrained_weights_path: Pretrained weights path
     Returns:
-        str: 生成的检查点文件名
+        str: Generated checkpoint filename
     """
     if pretrained_weights_path is None:
-        # 从头训练
+        # Training from scratch
         return f"{model_name}_epoch_{epoch:03d}_from_scratch.pth"
     else:
-        # 使用预训练模型
+        # Using pretrained model
         pretrained_name = extract_pretrained_model_name(pretrained_weights_path)
         return f"{model_name}_epoch_{epoch:03d}_from_{pretrained_name}.pth"
 
 
 def generate_best_model_filename(model_name, pretrained_weights_path=None):
     """
-    生成最佳模型文件名
+    Generate best model filename
     Args:
-        model_name: 模型名称
-        pretrained_weights_path: 预训练权重路径
+        model_name: Model name
+        pretrained_weights_path: Pretrained weights path
     Returns:
-        str: 生成的最佳模型文件名
+        str: Generated best model filename
     """
     if pretrained_weights_path is None:
         return f"{model_name}_best_model.pth"

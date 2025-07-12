@@ -22,38 +22,38 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 def create_argparser():
     parser = argparse.ArgumentParser(description="Fully Supervised Training Script")
 
-    # ================================== 基础训练配置 ==================================
+    # Basic training configuration
     parser.add_argument("--epoch", type=int, default=50, help="number of training epochs")
     parser.add_argument("--batchsize", type=int, default=10, help="batch size for training")
     parser.add_argument("--trainsize", type=int, default=352, help="input image resolution (trainsize x trainsize)")
 
-    # ================================== 优化器配置 ==================================
+    # Optimizer configuration
     parser.add_argument("--lr_gen", type=float, default=5e-5, help="learning rate for generator")
     parser.add_argument("--beta", type=float, default=0.5, help="beta parameter for Adam optimizer")
     parser.add_argument("--decay_rate", type=float, default=0.9, help="learning rate decay factor for ReduceLROnPlateau")
     parser.add_argument("--decay_epoch", type=int, default=6, help="patience epochs for ReduceLROnPlateau scheduler")
 
-    # ================================== 模型架构配置 ==================================
+    # Model architecture configuration
     parser.add_argument("--gen_reduced_channel", type=int, default=32, help="reduced channel count in generator")
     parser.add_argument("--feat_channel", type=int, default=32, help="feature channel count for saliency features")
     parser.add_argument("--latent_dim", type=int, default=3, help="latent space dimension")
 
-    # ================================== 损失函数权重配置 ==================================
+    # Loss function weight configuration
     parser.add_argument("--reg_weight", type=float, default=1e-4, help="weight for L2 regularization")
     parser.add_argument("--lat_weight", type=float, default=10.0, help="weight for latent loss")
     parser.add_argument("--vae_loss_weight", type=float, default=0.4, help="weight for VAE loss component")
 
-    # ================================== 数据集路径配置 ==================================
+    # Dataset path configuration
     parser.add_argument("--dataset_path", type=str, default="data/ijmond_data/train", help="training dataset path")
     parser.add_argument("--pretrained_weights", type=str, default=None, help="path to pretrained model weights")
     parser.add_argument("--save_model_path", type=str, default="models/full-supervision", help="directory to save trained models")
 
-    # ================================== 验证和早停配置 ==================================
+    # Validation and early stopping configuration
     parser.add_argument("--val_split", type=float, default=0.1, help="fraction of dataset used for validation (0.0-1.0)")
     parser.add_argument("--patience", type=int, default=15, help="early stopping patience (epochs)")
     parser.add_argument("--min_delta", type=float, default=0.001, help="minimum improvement threshold for early stopping")
 
-    # ================================== 数据增强和可重现性配置 ==================================
+    # Data augmentation and reproducibility configuration
     parser.add_argument("--aug", action="store_true", default=False, help="enable data augmentation for training")
     parser.add_argument("--freeze", action="store_true", default=False, help="freeze randomness for reproducibility")
     parser.add_argument("--random_seed", type=int, default=42, help="random seed for reproducible results")
@@ -63,13 +63,13 @@ def create_argparser():
 
 def print_training_configuration(opt, device, dataset_name, model_name, original_save_path):
     """
-    打印训练配置信息
+    Print training configuration information
     """
     print("=" * 80)
     print("FULLY SUPERVISED TRAINING CONFIGURATION")
     print("=" * 80)
 
-    # ================================== 基础配置 ==================================
+    # Basic configuration
     print("📋 BASIC TRAINING SETTINGS")
     print("-" * 40)
     print(f"  Training Epochs: {opt.epoch}")
@@ -79,7 +79,7 @@ def print_training_configuration(opt, device, dataset_name, model_name, original
     print(f"  Dataset Name: {dataset_name}")
     print(f"  Model Name: {model_name}")
 
-    # ================================== 优化器配置 ==================================
+    # Optimizer configuration
     print("\n⚙️  OPTIMIZER SETTINGS")
     print("-" * 40)
     print(f"  Generator Learning Rate: {opt.lr_gen}")
@@ -87,21 +87,21 @@ def print_training_configuration(opt, device, dataset_name, model_name, original
     print(f"  LR Decay Factor: {opt.decay_rate}")
     print(f"  LR Patience (epochs): {opt.decay_epoch}")
 
-    # ================================== 模型架构配置 ==================================
+    # Model architecture configuration
     print("\n🏗️  MODEL ARCHITECTURE")
     print("-" * 40)
     print(f"  Generator Reduced Channels: {opt.gen_reduced_channel}")
     print(f"  Feature Channels: {opt.feat_channel}")
     print(f"  Latent Dimension: {opt.latent_dim}")
 
-    # ================================== 损失函数权重 ==================================
+    # Loss function weights
     print("\n📊 LOSS FUNCTION WEIGHTS")
     print("-" * 40)
     print(f"  L2 Regularization: {opt.reg_weight}")
     print(f"  Latent Loss: {opt.lat_weight}")
     print(f"  VAE Loss: {opt.vae_loss_weight}")
 
-    # ================================== 数据集配置 ==================================
+    # Dataset configuration
     print("\n📁 DATASET CONFIGURATION")
     print("-" * 40)
     print(f"  Dataset Path: {opt.dataset_path}")
@@ -109,74 +109,75 @@ def print_training_configuration(opt, device, dataset_name, model_name, original
     print(f"  Original Save Path: {original_save_path}")
     print(f"  Final Save Path: {opt.save_model_path}")
 
-    # ================================== 验证和早停配置 ==================================
+    # Validation and early stopping configuration
     print("\n✅ VALIDATION & EARLY STOPPING")
     print("-" * 40)
     print(f"  Validation Split: {opt.val_split}")
     print(f"  Early Stopping Patience: {opt.patience}")
     print(f"  Min Delta for Improvement: {opt.min_delta}")
 
-    # ================================== 数据增强配置 ==================================
+    # Data augmentation configuration
     print("\n🔀 DATA AUGMENTATION & REPRODUCIBILITY")
     print("-" * 40)
     print(f"  Data Augmentation: {opt.aug}")
     print(f"  Freeze Randomness: {opt.freeze}")
     print(f"  Random Seed: {opt.random_seed}")
     if opt.freeze and opt.aug:
-        print("  ⚠️  NOTE: Data augmentation disabled due to freeze mode")
+        print("  NOTE: Data augmentation disabled due to freeze mode")
 
     print("=" * 80)
 
 
 parser = create_argparser()
 
-# aug	freeze	效果	适用场景
-# ❌	❌	基础训练，无增强	快速测试
-# ✅	❌	正常训练，有增强	推荐训练
-# ❌	✅	调试模式，完全固定	调试模型
-# ✅	✅	调试模式，禁用增强	调试增强逻辑
+# aug  freeze  effect  usage scenario
+# False  False  basic training, no augmentation  quick test
+# True   False  normal training, with augmentation  recommended training
+# False  True   debug mode, fully fixed  model debugging
+# True   True   debug mode, augmentation disabled  debug augmentation logic
 
 
-# 所有超参数保存在opt中
+# All hyperparameters are stored in opt
 opt = parser.parse_args()
 
-# 获取数据集名称并生成模型名称
+# Get dataset name and generate model name
 dataset_name = get_dataset_name_from_path(opt.dataset_path)
 model_name = generate_model_name(dataset_name, opt.pretrained_weights)
 original_save_path = opt.save_model_path
 opt.save_model_path = os.path.join(original_save_path, model_name)
 
-# 打印训练配置
+# Print training configuration
 print_training_configuration(opt, device, dataset_name, model_name, original_save_path)
 print("\nData Augmentation & Reproducibility:")
 print("  - Data Augmentation: {}".format("Enabled" if opt.aug else "Disabled"))
 print("  - Freeze Mode: {}".format("Enabled" if opt.freeze else "Disabled"))
 print("  - Random Seed: {}".format(opt.random_seed))
 if opt.freeze:
-    print("  - [WARNING] Freeze mode enabled - all randomness frozen for debugging")
+    print("  Freeze mode enabled - all randomness frozen for debugging")
 if opt.freeze and opt.aug:
-    print("  - [INFO] Data augmentation will be disabled due to freeze mode")
+    print("  Data augmentation will be disabled due to freeze mode")
 print("==========================================\n")
 
-# build models
-generator = Generator(channel=opt.feat_channel, latent_dim=opt.latent_dim)  # 生成器模型
+# Build models
+generator = Generator(channel=opt.feat_channel, latent_dim=opt.latent_dim)  # Generator model
 
-# 如果有预训练权重，则加载预训练权重，否则使用随机初始化
+# Load pretrained weights if available, otherwise use random initialization
 if opt.pretrained_weights is not None:
     print(f"Load pretrained weights: {opt.pretrained_weights}")
     generator.load_state_dict(torch.load(opt.pretrained_weights))
 
-generator.to(device)  # 将生成器模型移动到计算设备上
-generator_params = generator.parameters()  # 获取生成器模型的参数，格式为可迭代对象
+generator.to(device)  # Move generator model to computation device
+generator_params = generator.parameters()  # Get generator model parameters as iterable
 generator_optimizer = torch.optim.Adam(
     generator_params, lr=opt.lr_gen, betas=(opt.beta, 0.999)
-)  # Adam优化器，betas的作用是控制一阶矩估计和二阶矩估计的衰减率
+)  # Adam optimizer, betas control decay rates of first and second moment estimates
 
+gt_root = os.path.join(opt.dataset_path, "gt/")  # data/ijmond_data/test/gt
 image_root = os.path.join(opt.dataset_path, "img/")  # data/ijmond_data/test/img
 gt_root = os.path.join(opt.dataset_path, "gt/")  # data/ijmond_data/test/gt
 trans_map_root = os.path.join(opt.dataset_path, "trans/")  # data/ijmond_data/test/trans
 
-# 获取数据加载器 - 使用新的数据增强和可重现性参数
+# Get data loaders - using new data augmentation and reproducibility parameters
 train_loader, val_loader = get_train_val_loaders(
     image_root,
     gt_root,
@@ -188,23 +189,23 @@ train_loader, val_loader = get_train_val_loaders(
     freeze=opt.freeze,
     random_seed=opt.random_seed,
 )
-# 计算数据集的总步数，训练集被分成多个batch进行训练
+# Calculate total steps of dataset, training set is divided into multiple batches for training
 total_step = len(train_loader)
 print(f"Training steps per epoch: {total_step}")
 print(f"Validation steps per epoch: {len(val_loader)}")
 
-# 初始化早停策略和最佳模型跟踪
+# Initialize early stopping strategy and best model tracking
 early_stopping = EarlyStopping(patience=opt.patience, min_delta=opt.min_delta, restore_best_weights=True)
 best_val_iou = 0.0
 best_epoch = 0
 
-# 学习率调度器 - 使用ReduceLROnPlateau调度器，根据损失自适应调整学习率
+# Learning rate scheduler - use ReduceLROnPlateau scheduler, adaptively adjust learning rate based on loss
 scheduler = lr_scheduler.ReduceLROnPlateau(
     generator_optimizer,
-    mode="min",  # 监控损失，当损失不再下降时减少学习率
-    factor=opt.decay_rate,  # 学习率衰减因子
-    patience=opt.decay_epoch,  # 等待多少个epoch后如果没有改善就减少学习率
-    min_lr=1e-7,  # 最小学习率
+    mode="min",  # Monitor loss, reduce learning rate when loss stops decreasing
+    factor=opt.decay_rate,  # Learning rate decay factor
+    patience=opt.decay_epoch,  # How many epochs to wait if no improvement before reducing learning rate
+    min_lr=1e-7,  # Minimum learning rate
 )
 print(f"Learning Rate Scheduler configured:")
 print(f"  - Type: ReduceLROnPlateau (adaptive based on validation loss)")
@@ -212,17 +213,17 @@ print(f"  - Patience (epochs to wait): {opt.decay_epoch}")
 print(f"  - Decay Factor: {opt.decay_rate}")
 print(f"  - Minimum LR: 1e-7")
 
-size_rates = [1]  # multi-scale training，尺度因子，这里设置为1表示不进行缩放
-lsc_loss = LocalSaliencyCoherence().to(device)  # 局部显著性一致性损失函数，在细粒度区域加强预测的一致性
-lsc_loss_kernels_desc_defaults = [{"weight": 0.1, "xy": 3, "trans": 0.1}]  # 用于计算核函数
-lsc_loss_radius = 2  # 邻域半径
-weight_lsc = 0.1  # 控制局部显著性一致性损失在总损失中的权重
+size_rates = [1]  # Multi-scale training, scale factor, set to 1 means no scaling
+lsc_loss = LocalSaliencyCoherence().to(device)  # Local saliency coherence loss function, strengthens prediction consistency in fine-grained regions
+lsc_loss_kernels_desc_defaults = [{"weight": 0.1, "xy": 3, "trans": 0.1}]  # Used for kernel function calculation
+lsc_loss_radius = 2  # Neighborhood radius
+weight_lsc = 0.1  # Controls the weight of local saliency coherence loss in total loss
 
 
 def structure_loss(pred, mask):
     """
-    结构损失，用于评估预测的显著性图与真实显著性图之间的差异
-    通过计算加权的二进制交叉熵损失和加权的IoU损失来实现
+    Structure loss, used to evaluate the difference between the predicted saliency map and the ground truth saliency map
+    Achieved by calculating weighted binary cross-entropy loss and weighted IoU loss
     Args:
         pred: predicted saliency map
         mask: ground truth saliency map
@@ -234,37 +235,39 @@ def structure_loss(pred, mask):
     """
     weight = 1 + 5 * torch.abs(
         F.avg_pool2d(mask, kernel_size=31, stride=1, padding=15) - mask
-    )  # 计算加权因子，在mask与其局部均值之间的差异越大，权重越大，从而更关注边缘或过渡区域
+    )  # Calculate weighting factor, the greater the difference between mask and its local mean, the greater the weight, thus focusing more on edge or transition regions
     weighted_bce_loss = F.binary_cross_entropy_with_logits(pred, mask, reduction="none")
-    weighted_bce_loss = (weight * weighted_bce_loss).sum(dim=(2, 3)) / weight.sum(dim=(2, 3))  # dim=(2, 3)表示在空间维度上进行求和，对应高度和宽度
+    weighted_bce_loss = (weight * weighted_bce_loss).sum(dim=(2, 3)) / weight.sum(
+        dim=(2, 3)
+    )  # dim=(2, 3) means summing over spatial dimensions, corresponding to height and width
 
     pred = torch.sigmoid(pred)
-    inter = ((pred * mask) * weight).sum(dim=(2, 3))  # 交集，只有在对应像素处两者都较高时（即都有较高置信度）乘积才大，反映了共同激活区域的强度
-    union = (((pred + mask - pred * mask)) * weight).sum(dim=(2, 3))  # 表示预测和真实各自的贡献
-    weighted_IoU = (inter + 1e-6) / (union + 1e-6)  # 加1e-6防止除0错误
-    weighted_IoU_loss = 1 - weighted_IoU  # IoU损失，IoU越高，损失越低
+    inter = ((pred * mask) * weight).sum(
+        dim=(2, 3)
+    )  # Intersection, only when both are high at corresponding pixels (i.e., both have high confidence), the product is large, reflecting the strength of the common activation region
+    union = (((pred + mask - pred * mask)) * weight).sum(dim=(2, 3))  # Represents the contribution of prediction and ground truth respectively
+    weighted_IoU = (inter + 1e-6) / (union + 1e-6)  # Add 1e-6 to prevent division by zero
+    weighted_IoU_loss = 1 - weighted_IoU  # IoU loss, the higher the IoU, the lower the loss
     return (weighted_bce_loss + weighted_IoU_loss).mean()
 
 
 def visualize_prediction_init(pred):
     """
-    可视化预测结果
+    Visualize prediction results
     Args:
         pred: Predicted saliency map, size: [batch_size, channels, height, width]
     """
-    # 遍历每个batch中的图像
     for kk in range(pred.shape[0]):
-        pred_edge_kk = pred[kk, :, :, :]  # 提取第kk个图像的预测结果
+        pred_edge_kk = pred[kk, :, :, :]  # Extract the prediction result of the kk-th image
         pred_edge_kk = pred_edge_kk.detach().cpu().numpy().squeeze()
-        pred_edge_kk *= 255.0  # 将预测结果缩放到0-255范围
-        pred_edge_kk = pred_edge_kk.astype(np.uint8)  # 转换为uint8类型
+        pred_edge_kk *= 255.0  # Scale prediction result to 0-255 range
+        pred_edge_kk = pred_edge_kk.astype(np.uint8)  # Convert to uint8 type
         save_path = "./temp/"
         name = "{:02d}_init.png".format(kk)
         misc.imsave(save_path + name, pred_edge_kk)
 
 
 def visualize_prediction_ref(pred):
-
     for kk in range(pred.shape[0]):
         pred_edge_kk = pred[kk, :, :, :]
         pred_edge_kk = pred_edge_kk.detach().cpu().numpy().squeeze()
@@ -276,7 +279,6 @@ def visualize_prediction_ref(pred):
 
 
 def visualize_gt(var_map):
-
     for kk in range(var_map.shape[0]):
         pred_edge_kk = var_map[kk, :, :, :]
         pred_edge_kk = pred_edge_kk.detach().cpu().numpy().squeeze()
@@ -310,7 +312,6 @@ def visualize_original_img(rec_img):
         cv2.imwrite(save_path + name, new_img)
 
 
-## linear annealing to avoid posterior collapse
 def linear_annealing(init, fin, step, annealing_steps):
     """
     Linear annealing of a parameter.
@@ -320,7 +321,7 @@ def linear_annealing(init, fin, step, annealing_steps):
         step: current step
         annealing_steps: total steps for annealing
     """
-    if annealing_steps == 0:  # 如果没有设置退火步数，则直接返回最终值
+    if annealing_steps == 0:  # If no annealing steps are set, return the final value directly
         return fin
     assert fin > init
     delta = fin - init
@@ -329,7 +330,7 @@ def linear_annealing(init, fin, step, annealing_steps):
 
 
 print("Let's go!")
-# 在训练开始前确保保存目录存在
+# Ensure the save directory exists before training starts
 save_path = opt.save_model_path
 if not os.path.exists(save_path):
     os.makedirs(save_path)
@@ -337,30 +338,32 @@ if not os.path.exists(save_path):
 
 for epoch in range(1, (opt.epoch + 1)):
     print("--" * 10 + "Epoch: {}/{}".format(epoch, opt.epoch) + "--" * 10)
-    # 移除此处的scheduler.step()，将在epoch结束后调用
+    # Remove scheduler.step() here, will be called at the end of the epoch
     generator.train()
     loss_record = AvgMeter()
 
-    # 训练阶段
+    # Training phase
     for i, pack in enumerate(train_loader, start=1):
         for rate in size_rates:
             generator_optimizer.zero_grad()
             images, gts, trans = pack
-            # 使用设备无关的.to(device)替代.cuda()
+            # Use device-agnostic .to(device) instead of .cuda()
             images = images.to(device)
             gts = gts.to(device)
             trans = trans.to(device)
-            # multi-scale training samples
-            trainsize = int(round(opt.trainsize * rate / 32) * 32)  # 将训练大小调整为32的倍数，兼容大多数网络（上下采样操作需要输入尺寸为32的倍数）
-            if rate != 1:  # 如果不是原始大小，则进行上采样
+            # Multi-scale training samples
+            trainsize = int(
+                round(opt.trainsize * rate / 32) * 32
+            )  # Adjust training size to a multiple of 32, compatible with most networks (up/down sampling operations require input size to be a multiple of 32)
+            if rate != 1:  # If not original size, upsample
                 images = F.interpolate(images, size=(trainsize, trainsize), mode="bilinear", align_corners=True)
                 gts = F.interpolate(gts, size=(trainsize, trainsize), mode="bilinear", align_corners=True)
                 trans = F.interpolate(trans, size=(trainsize, trainsize), mode="bilinear", align_corners=True)
 
             pred_post_init, pred_post_ref, pred_prior_init, pred_piror_ref, latent_loss = generator.forward(images, gts)
 
-            # re-scale data for crf loss
-            # 下采样至原来的0.3倍，方便计算CRF损失，提升计算速度
+            # Re-scale data for crf loss
+            # Downsample to 0.3x original size for CRF loss calculation, improving computation speed
             trans_scale = F.interpolate(trans, scale_factor=0.3, mode="bilinear", align_corners=True)
             images_scale = F.interpolate(images, scale_factor=0.3, mode="bilinear", align_corners=True)
             pred_prior_init_scale = F.interpolate(pred_prior_init, scale_factor=0.3, mode="bilinear", align_corners=True)
@@ -387,17 +390,17 @@ for epoch in range(1, (opt.epoch + 1)):
             )["loss"]
             loss_lsc_post = weight_lsc * (loss_lsc_1 + loss_lsc_2)
 
-            ## l2 regularizer the inference model
+            # l2 regularizer the inference model
             reg_loss = l2_regularisation(generator.xy_encoder) + l2_regularisation(generator.x_encoder) + l2_regularisation(generator.sal_encoder)
-            reg_loss = opt.reg_weight * reg_loss  # 对正则化损失进行加权，控制正则化损失在总损失中的权重
+            reg_loss = opt.reg_weight * reg_loss  # Weight the regularization loss, control the weight of regularization loss in total loss
             latent_loss = latent_loss
 
             sal_loss = 0.5 * (
                 structure_loss(pred_post_init, gts) + structure_loss(pred_post_ref, gts)
-            )  # 两个预测后验结果的结构损失，衡量预测结果与真实标签之间的差异，兼顾像素级和区域级的准确性
+            )  # Structure loss of two predicted posterior results, measures the difference between prediction and ground truth, considers both pixel-level and region-level accuracy
             anneal_reg = linear_annealing(
                 0, 1, epoch, opt.epoch
-            )  # 防止训练初期潜在空间崩塌（posterior collapse），让模型先关注重建，再逐步加强对潜在分布的约束
+            )  # Prevent posterior collapse in early training, let the model focus on reconstruction first, then gradually strengthen the constraint on latent distribution
             latent_loss = opt.lat_weight * anneal_reg * latent_loss
 
             loss_lsc_3 = lsc_loss(
@@ -418,11 +421,11 @@ for epoch in range(1, (opt.epoch + 1)):
             )["loss"]
             loss_lsc_prior = weight_lsc * (loss_lsc_3 + loss_lsc_4)
 
-            # 条件自分自编码器损失，包括显著性差异损失、潜在空间损失和后验一致性损失
+            # Conditional variational autoencoder loss, including saliency difference loss, latent space loss, and posterior consistency loss
             gen_loss_cvae = sal_loss + latent_loss + loss_lsc_post
             gen_loss_cvae = opt.vae_loss_weight * gen_loss_cvae
 
-            # 生成器的结构损失
+            # Generator structure loss
             gen_loss_gsnn = 0.5 * (structure_loss(pred_prior_init, gts) + structure_loss(pred_post_ref, gts))
             gen_loss_gsnn = (1 - opt.vae_loss_weight) * gen_loss_gsnn + loss_lsc_prior
             # total loss
@@ -433,30 +436,30 @@ for epoch in range(1, (opt.epoch + 1)):
             if rate == 1:
                 loss_record.update(gen_loss.data, opt.batchsize)
 
-        # 打印训练信息 - 基于百分比打印（25%, 50%, 75%, 100%）
+        # Print training info - print at 25%, 50%, 75%, 100%
         progress_points = [int(total_step * 0.25), int(total_step * 0.5), int(total_step * 0.75), total_step]
         if i in progress_points:
             progress_pct = (i / total_step) * 100
-            # 计算像素级混淆矩阵指标
+            # Calculate pixel-level confusion matrix metrics
             with torch.no_grad():
-                # 二值化预测，阈值0.5
+                # Binarize prediction, threshold 0.5
                 pred_bin = (torch.sigmoid(pred_post_init) > 0.5).float()
                 gt_bin = gts
-                # 展平所有像素
+                # Flatten all pixels
                 pred_flat = pred_bin.view(-1)
                 gt_flat = gt_bin.view(-1)
                 tp = ((pred_flat == 1) & (gt_flat == 1)).sum().item()
                 tn = ((pred_flat == 0) & (gt_flat == 0)).sum().item()
                 fp = ((pred_flat == 1) & (gt_flat == 0)).sum().item()
                 fn = ((pred_flat == 0) & (gt_flat == 1)).sum().item()
-            # 打印总损失及混淆矩阵
+            # Print total loss and confusion matrix
             print(
                 "{} Epoch [{:03d}/{:03d}], Step [{:04d}/{:04d}] ({:.0f}%), Gen Loss: {:.4f}, TP: {}, FP: {}, TN: {}, FN: {}".format(
                     datetime.now(), epoch, opt.epoch, i, total_step, progress_pct, loss_record.show(), tp, fp, tn, fn
                 )
             )
 
-    # 校验阶段
+    # Validation phase
     print("Starting validation...")
     val_loss, val_metrics = validate_model(generator, val_loader, device, structure_loss)
 
@@ -467,9 +470,9 @@ for epoch in range(1, (opt.epoch + 1)):
     print(f"  Recall: {val_metrics['recall']:.4f}")
     print(f"  Accuracy: {val_metrics['accuracy']:.4f}")
 
-    # 在验证后调用scheduler.step() - ReduceLROnPlateau需要传入监控的指标
+    # Call scheduler.step() after validation - ReduceLROnPlateau requires the monitored metric
     old_lr = generator_optimizer.param_groups[0]["lr"]
-    scheduler.step(val_loss)  # 使用验证损失更新学习率
+    scheduler.step(val_loss)  # Update learning rate using validation loss
     current_lr = generator_optimizer.param_groups[0]["lr"]
 
     if old_lr != current_lr:
@@ -477,30 +480,30 @@ for epoch in range(1, (opt.epoch + 1)):
     else:
         print(f"Epoch {epoch} completed. Learning rate: {current_lr:.6f}")
 
-    # 检查是否是最佳模型 - 使用IoU作为主要指标
+    # Check if this is the best model - use IoU as the main metric
     current_iou = val_metrics["iou"]
     current_f1 = val_metrics["f1"]
     if current_iou > best_val_iou:
         best_val_iou = current_iou
         best_epoch = epoch
-        # 保存最佳模型 - 使用动态文件名
+        # Save best model - use dynamic filename
         save_path = opt.save_model_path
         if not os.path.exists(save_path):
             os.makedirs(save_path)
         best_model_filename = generate_best_model_filename(model_name, opt.pretrained_weights)
         best_model_path = os.path.join(save_path, best_model_filename)
         torch.save(generator.state_dict(), best_model_path)
-        print(f"🎉 New best model saved! IoU: {current_iou:.4f}, F1: {current_f1:.4f}")
+        print(f"New best model saved! IoU: {current_iou:.4f}, F1: {current_f1:.4f}")
         print(f"   Saved as: {best_model_filename}")
 
-    # 早停检查 - 使用IoU
+    # Early stopping check - use IoU
     early_stopping(current_iou, generator)
     if early_stopping.early_stop:
         print(f"Early stopping triggered at epoch {epoch}")
         print(f"Best IoU score: {best_val_iou:.4f} at epoch {best_epoch}")
         break
 
-    # 定期保存检查点 - 使用动态文件名
+    # Periodically save checkpoints - use dynamic filename
     save_path = opt.save_model_path
     if not os.path.exists(save_path):
         os.makedirs(save_path)
@@ -510,7 +513,7 @@ for epoch in range(1, (opt.epoch + 1)):
         torch.save(generator.state_dict(), checkpoint_path)
         print(f"Checkpoint saved: {checkpoint_filename}")
 
-# 训练结束后的总结
+# Summary after training ends
 print("\n" + "=" * 50)
 print("Training completed!")
 print(f"Best validation IoU score: {best_val_iou:.4f} achieved at epoch {best_epoch}")

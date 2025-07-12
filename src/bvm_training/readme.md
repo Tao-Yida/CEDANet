@@ -1,134 +1,275 @@
-# Traing of BVM model
+# BVM Smoke Segmentation Project
 
-This repository contains code from the following two papers:
-1. [`Transmission-Guided Bayesian Generative Model for Smoke Segmentation`](https://arxiv.org/pdf/2303.00900)
-2. [`Local contrastive loss with pseudo-label based self-training for weakly-supervised medical image segmentation Paper`](https://arxiv.org/pdf/2112.09645)
+This repository contains the code and experiments for smoke segmentation using Bayesian Generative Models (BVM). The primary goal is to accurately segment smoke in camera footage by exploring and comparing fully-supervised, weakly-supervised, and domain adaptation (CEDANet) approaches.
 
+## 1. Environment Setup
 
-## Structure of file system
-```
-└── bvm_training # the root folder
-    ├── data # you can create a folder for storing the dataset (check in the next section)
-    ├── models # you can create a folder for storing the pretrained weights
-    ├── jobs # the folder contains all the jobs that run on snellius.
-    ├── output_jobs # the folder contains the logs of the trainings.
-    ├── trans_bvm # files for the training of the original model.
-    ├── trans_bvm_self_supervised # files for the training of the weakly-supervised version of the model.
-    ├── environment.yml # conda environment.
-    ├── make_video.py # creates a video based on the masks and the original frames.
-    └── tranmission_map.py # this file creates for all the transmitted images.
-```
-## Input folder
-In the case of SMOKE5K dataset, you can download the zip from the [`link`](https://drive.google.com/file/d/11TM8hsh9R6ZTvLAUzfD6eD051MbOufCi/view). Place the zip in a folder named "data" (or you can use a different name). The unziping of this file can be done in python by the transmission_map.py. After the file is unzipped, the folder structure will be the following:
+First, set up the Conda environment using the provided file.
 
-```
-└── data # the root folder of data
-    ├── SMOKE5K # dataset folder after unzip
-        └── SMOKE5K
-            ├── test # test images
-                ├── gt # masks
-                    ├── img1.png
-                    └── ... 
-                └── img # RGB images
-                    ├── img1.png
-                    └── ... 
-            └── train # train images
-                ├── gt # masks
-                    ├── img1.png
-                    └── ... 
-                ├── trans # transmission masks (only necessary in training)
-                    ├── img1.png
-                    └── ... 
-                └── img # RGB images
-                    ├── img1.png
-                    └── ... 
-    └── ijmond_data # custom dataset
-        ├── test # test images
-            ├── gt # masks
-                ├── img1.png
-                └── ... 
-            └── img # RGB images
-                ├── img1.png
-                └── ... 
-        └── train # train images
-            ├── gt # masks
-                ├── img1.png
-                └── ... 
-            ├── trans # transmission masks (only necessary in training)
-                ├── img1.png
-                └── ... 
-            └── img # RGB images
-                ├── img1.png
-                └── ..
-```
-You can add a new custom dataset as shown above, but keep the same folder structure as demonstrated. This mean that all instances of a sample (RGB image, mask, transmission map) should have the same name. Also, you should only use the "gt","trans" and "img" folder names to refer to the masks' folder, transmission maps' folder and RGB images' folder respectively.
-
-## Navigate to the main folder
-```
-cd bvm_training
+```bash
+conda env create -f environment.yml
+conda activate dl2024
 ```
 
-## Transmission estimation
-Before starting training you should creat the transmission maps for each RGB image of the dataset. To do this, use the following command for SMOKE5K dataset:
-```
-python transmission_map.py --dataset_name "SMOKE5K" --dataset_zip "data/SMOKE5K.zip" --output "data/SMOKE5K" --mode "train"
-```
-Or for a custom dataset:
-```
-python transmission_map.py --dataset_name "ijmond" --output "data/ijmond_data" --mode "train"
-```
-## Original Code
-For training and testing the original BVM model in the SMOKE5K dataset use the commands below:
-```
-python trans_bvm/train.py --dataset_path "data/SMOKE5K/SMOKE5K/train" --save_model_path "models/train_SMOKE5K"
-python trans_bvm/test.py
-```
-For training and testing the original BVM model in a custom dataset with pretrained weights use the commands below:
-```
-python trans_bvm/train.py --dataset_path "data/ijmond_data/train" --pretrained_weights "models/ucnet_trans3_baseline/Model_50_gen.pth" --save_model_path "models/finetune"
-python trans_bvm/test.py
-```
-For snellius, use:
-```
-sbatch jobs/train.job
-```
-When you use the argument "--pretrained_weights" in the train.py file and set a path for a pretrained model, the algorithm will load the pretrained weights and perform fine-tuning. If the argument is set to None, then the training will start from scratch. The argument "--save_model_path" is used to set the path where the weights will be stored during training.
-
-For testing, you should specify the folder where images are strored in the variable "dataset_path" inside the code (line 22) and the model you want to use (line 24).
-
-## Weakly-supervised
-For training and testing the weakly-supervised BVM model in the SMOKE5K dataset use the commands below:
-```
-python trans_bvm/train.py --contrastive_loss_weight 0.1 --labeled_dataset_path "data/SMOKE5K/SMOKE5K/train" --unlabeled_dataset_path "data/ijmond_data/train" --save_model_path "models/ss__no_samples_1000" --aug False --no_samples 1000
-python trans_bvm/test.py 
-```
-Below is the explanation of the arguments:
-1. contrastive_loss_weight: the weight for contrastive loss in the total summation of losses.
-2. labeled_dataset_path: the path for the dataset with known ground truth.
-3. unlabeled_dataset_path: the path for the dataset with pseudo labels (you can create the pseudo labels by running the python test.py in your data).
-4. save_model_path: the folder for storing the new weights.
-5. aug: if you want to have augmentations in the unlabeled set (because it is small).
-6. no_samples: the number of pixels that you want to use in the contrastive loss from each class.
-
-For snellius, use the following command by changing the arguments when necessary:
-```
-sbatch jobs/train.job
+For use on the Snellius cluster, you can load the necessary modules before activating the environment:
+```bash
+module purge
+module load 2024
+source ~/anaconda3/etc/profile.d/conda.sh
+conda activate dl2024
 ```
 
-## Evaluation
-In order to get the evaluation metrics you can use the eval.py from each trans_bvm version (the original and the weakly-supervised). eval_opacity.py is used to calculate the metrics for the high and low opacity smoke seperately.
+## 2. Directory Structure
 
-For the SMOKE5K dataset:
-```
-python trans_bvm/eval.py --dataset_path "./data/SMOKE5K/SMOKE5K/SMOKE5K/test/img" --gt_path "./data/SMOKE5K/SMOKE5K/SMOKE5K/test/gt" --save_path "./results/" --model_path "./models/finetune/Model_50_gen.pth"
+The project follows a structured layout for data, models, and results:
 
-python trans_bvm/eval_opacity.py --dataset_path "./data/SMOKE5K/SMOKE5K/SMOKE5K/test/img" --gt_path "./data/SMOKE5K/SMOKE5K/SMOKE5K/test/gt" --save_path "./results/" --model_path "./models/finetune/Model_50_gen.pth"
+```
+└── Thesis/
+    ├── data/
+    │   ├── ijmond_camera/      # Raw video data and generated pseudo-labels
+    │   ├── ijmond_data/        # Processed IJmond dataset (train/test splits)
+    │   └── SMOKE5K_Dataset/    # SMOKE5K dataset
+    ├── src/
+    │   └── bvm_training/       # Main source code directory
+    │       ├── CEDANet/
+    │       ├── trans_bvm/
+    │       ├── trans_bvm_self_supervised/
+    │       └── trans_bvm_self_supervised_thesis/
+    ├── logs_err/               # SLURM error logs
+    ├── logs_out/               # SLURM output logs
+    ├── models/                 # Trained model weights
+    │   ├── full-supervision/
+    │   ├── semi-supervision/
+    │   └── thesis/
+    ├── results/                # Prediction results for evaluation
+    ├── *.job                   # SLURM job scripts for training/inference
+    └── environment.yml         # Conda environment file
 ```
 
-For the custom dateset:
-```
-python trans_bvm/eval.py --dataset_path "./data/ijmond_data/test/img" --gt_path "./data/ijmond_data/test/gt" --save_path "./results/" --model_path "./models/finetune/Model_50_gen.pth"
+## 3. Data Preprocessing: Transmission Map Generation
 
-python trans_bvm/eval_opacity.py --dataset_path "./data/ijmond_data/test/img" --gt_path "./data/ijmond_data/test/gt" --save_path "./results/" --model_path "./models/finetune/Model_50_gen.pth"
+Before starting any training, you must generate transmission maps for your image datasets. This is a crucial preprocessing step.
+
+**Run the `transmission_map.py` script for your dataset:**
+```bash
+# For a custom dataset like IJmond
+python src/bvm_training/transmission_map.py --dataset_name "ijmond" --output "data/ijmond_data" --mode "train"
+
+# For SMOKE5K dataset (if starting from the ZIP file)
+python src/bvm_training/transmission_map.py --dataset_name "SMOKE5K" --dataset_zip "data/SMOKE5K.zip" --output "data/SMOKE5K" --mode "train"
 ```
-For the weakly-supervised model you can use the same exactly commands.
+
+## 4. General Workflow
+
+The core workflow for training models, especially for weakly-supervised and domain adaptation tasks, involves three main stages:
+
+1.  **Pseudo-Label Generation (Inference)**: Use a pre-trained model to run inference on unlabeled data (e.g., videos) to generate pseudo-labels. This creates a new labeled dataset.
+2.  **Training**: Train a new model on the dataset containing the generated pseudo-labels.
+3.  **Testing**: Evaluate the performance of the newly trained model on a test set.
+
+---
+
+## 5. Fully-Supervised BVM
+
+This model is trained on a fully labeled dataset.
+
+### Step 1: Pseudo-Label Generation (Optional)
+
+You can use pre-trained fully-supervised models to generate pseudo-labels from raw videos. This is useful for data expansion or creating new datasets.
+
+**Python Execution:**
+```bash
+# Example: Generate labels using a model pre-trained on SMOKE5K
+python src/bvm_training/trans_bvm_self_supervised_thesis/inference.py \
+    --videos_path "data/ijmond_camera/videos" \
+    --output_path "data/ijmond_camera/SMOKE5K-full" \
+    --pretrained_weights "models/full-supervision/SMOKE5K-supervised/SMOKE5K_Dataset_SMOKE5K_train/SMOKE5K_Dataset_SMOKE5K_train_best_model.pth" \
+    --context_frames 2 \
+    --threshold 0.6 \
+    --constraint_type none
+```
+The generated pseudo-labels and corresponding images will be saved in subdirectories under the `--output_path`.
+
+**Job File Execution (Snellius):**
+The `inference_full.job` script contains commands to run inference with multiple models and constraint types (`none`, `citizen`, `expert`).
+```bash
+sbatch inference_full.job
+```
+
+### Step 2: Training
+
+Train the BVM model on a labeled dataset (e.g., `ijmond_data` or `SMOKE5K`).
+
+**Key Training Parameters:**
+*   `--epoch`: Number of training epochs.
+*   `--batchsize`: Number of samples per batch.
+*   `--lr_gen`: Learning rate for the generator.
+*   `--dataset_path`: Path to the training dataset.
+*   `--save_model_path`: Directory to save the trained models.
+*   `--patience`: Patience for early stopping.
+
+**Python Execution:**
+```bash
+# Example: Train on the IJmond dataset from scratch
+python src/bvm_training/trans_bvm/train.py \
+    --epoch 100 \
+    --dataset_path "data/ijmond_data/train" \
+    --save_model_path "models/full-supervision/ijmond-custom-train" \
+    --random_seed 15 \
+    --aug \
+    --patience 40
+```
+
+**Job File Execution (Snellius):**
+Modify `train_bvm.job` to set the correct paths and parameters, then run:
+```bash
+sbatch train_bvm.job
+```
+
+### Step 3: Testing
+
+Evaluate the trained model on a test set.
+
+**Configuration:**
+**Note:** Before running, you must manually edit the `src/bvm_training/trans_bvm/test.py` script to set the following variables:
+*   `dataset_path`: Path to the test dataset images.
+*   `model_path`: Path to the trained `.pth` model file.
+
+**Python Execution:**
+```bash
+# First, edit the paths inside the script, then run:
+python src/bvm_training/trans_bvm/test.py
+```
+The prediction results (mask images) will be saved to a subdirectory within the `results/` folder, named after the model.
+
+---
+
+## 6. Weakly-Supervised BVM
+
+This approach uses a combination of labeled and unlabeled (or pseudo-labeled) data.
+
+### Step 1: Pseudo-Label Generation
+
+Generate pseudo-labels using a self-supervised model. These labels will be used for training the weakly-supervised model.
+
+**Python Execution:**
+```bash
+# Example: Generate labels with a self-supervised model
+python src/bvm_training/trans_bvm_self_supervised/inference.py \
+    --videos_path "data/ijmond_camera/videos" \
+    --output_path "data/ijmond_camera/SMOKE5K-self" \
+    --pretrained_weights "models/weak-supervision/SMOKE5K_Dataset_SMOKE5K_train_ssl_SMOKE5K_Dataset_SMOKE5K_weak_supervision/SMOKE5K_Dataset_SMOKE5K_train_ssl_SMOKE5K_Dataset_SMOKE5K_weak_supervision_best_model.pth" \
+    --threshold 0.7 \
+    --constraint_type none
+```
+The generated pseudo-labels (`pl`), transmission maps (`trans`), and original images (`img`) will be saved in subdirectories under the `--output_path`.
+
+**Job File Execution (Snellius):**
+The `train_bvm_weakly.job` script (named for its training purpose, but runs inference) can be used to generate pseudo-labels.
+```bash
+sbatch train_bvm_weakly.job
+```
+
+### Step 2: Training
+
+Train the model using both a labeled dataset and the generated pseudo-labels.
+
+**Key Training Parameters:**
+*   `--labeled_dataset_path`: Path to the dataset with ground truth labels.
+*   `--unlabeled_dataset_path`: Path to the dataset with generated pseudo-labels.
+*   `--save_model_path`: Directory to save the new model.
+*   `--contrastive_loss_weight`: Weight for the contrastive loss component.
+
+**Python Execution:**
+```bash
+python src/bvm_training/trans_bvm_self_supervised/train.py \
+    --labeled_dataset_path "data/SMOKE5K_Dataset/SMOKE5K_train" \
+    --unlabeled_dataset_path "data/ijmond_camera/SMOKE5K-self/non_constraint" \
+    --save_model_path "models/semi-supervision/my_weakly_model" \
+    --contrastive_loss_weight 0.1 \
+    --epoch 100
+```
+
+### Step 3: Testing
+
+Evaluate the trained weakly-supervised model.
+
+**Configuration:**
+**Note:** Before running, you must manually edit the `src/bvm_training/trans_bvm_self_supervised/test.py` script to set the following variables:
+*   `dataset_path`: Path to the test dataset images.
+*   `model_path`: Path to the trained weakly-supervised `.pth` model file.
+
+**Python Execution:**
+```bash
+# First, edit the paths inside the script, then run:
+python src/bvm_training/trans_bvm_self_supervised/test.py
+```
+The prediction results will be saved to a subdirectory within the `results/` folder.
+
+---
+
+## 7. CEDANet (Domain Adaptation)
+
+This is the thesis model, which adapts a model from a source domain (e.g., SMOKE5K) to a target domain (e.g., IJmond).
+
+### Step 1: Pseudo-Label Generation
+
+This step is implicitly handled by the training script, which adapts the model to the target domain. No separate pseudo-label generation script is needed beforehand.
+
+### Step 2: Training
+
+Train the CEDANet model for domain adaptation.
+
+**Key Training Parameters:**
+*   `--source_dataset_path`: Path to the source domain training data (e.g., SMOKE5K).
+*   `--target_dataset_path`: Path to the target domain training data (e.g., IJmond).
+*   `--save_model_path`: Directory to save the adapted model.
+*   `--use_ldconv`: Flag to enable LD-Conv module.
+*   `--use_attention_pool`: Flag to enable attention pooling.
+
+**Python Execution:**
+```bash
+python src/bvm_training/CEDANet/train.py \
+    --source_dataset_path "data/SMOKE5K_Dataset/SMOKE5K_train" \
+    --target_dataset_path "data/ijmond_data/train" \
+    --save_model_path "models/thesis/my_domain_adaptation_model" \
+    --use_ldconv \
+    --use_attention_pool \
+    --epoch 100
+```
+
+### Step 3: Testing
+
+Test the final domain-adapted model on the target domain's test set.
+
+**Python Execution:**
+```bash
+python src/bvm_training/CEDANet/test.py \
+    --model_path "models/thesis/my_domain_adaptation_model/my_domain_adaptation_model_best.pth" \
+    --test_dataset ijmond \
+    --use_ldconv \
+    --use_attention_pool
+```
+The prediction results will be saved under `results/thesis/ijmond/`, in a folder named after the tested model.
+
+**Job File Execution (Snellius):**
+Modify `test_thesis.job` to point to your trained model, then run:
+```bash
+sbatch test_thesis.job
+```
+
+---
+
+## 8. Advanced Evaluation (Smoke Opacity)
+
+To evaluate how well the model's predictions correlate with different smoke opacity levels (thick vs. thin smoke), use the `eval_opacity.py` script. This requires a ground truth dataset with ternary labels (e.g., 0 for background, 128 for thin smoke, 255 for thick smoke).
+
+**Configuration:**
+The script requires you to configure the prediction and ground truth directories inside the file. Specifically, modify the `pred_dir` and `gt_dir` variables.
+
+**Python Execution:**
+```bash
+# First, edit paths in the script, then run:
+python src/bvm_training/CEDANet/eval_opacity.py
+```
+The script will compute and save detailed statistics, including per-class IoU, Recall, and F1-scores, to a text file in the `logs_tri/` directory.
