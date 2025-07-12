@@ -18,7 +18,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 def argparser():
-    parser = argparse.ArgumentParser(description="Semi-Supervised Training Script")
+    parser = argparse.ArgumentParser(description="Weakly-Supervised Training Script")
 
     # ================================== 基础训练配置 ==================================
     parser.add_argument("--epoch", type=int, default=50, help="number of training epochs")
@@ -53,7 +53,7 @@ def argparser():
         "--unlabeled_dataset_path", type=str, default="data/SMOKE5K_Dataset/SMOKE5K/weak_supervision", help="path to unlabeled dataset"
     )
     parser.add_argument("--pretrained_weights", type=str, default=None, help="path to pretrained model weights")
-    parser.add_argument("--save_model_path", type=str, default="models/semi-supervision", help="directory to save trained models")
+    parser.add_argument("--save_model_path", type=str, default="models/weak-supervision", help="directory to save trained models")
 
     # ================================== 验证和早停配置 ==================================
     parser.add_argument("--val_split", type=float, default=0.2, help="fraction of labeled data used for validation (0.0-1.0)")
@@ -636,7 +636,7 @@ for epoch in range(1, opt.epoch + 1):
 
 # 训练结束后的总结
 print("\n" + "=" * 50)
-print("Semi-Supervised Training completed!")
+print("Weakly-Supervised Training completed!")
 print(f"Best training loss: {best_train_loss:.4f} achieved at epoch {best_epoch}")
 best_model_filename = generate_best_model_filename(model_name, opt.pretrained_weights)
 print(f"Best model saved at: {os.path.join(opt.save_model_path, best_model_filename)}")

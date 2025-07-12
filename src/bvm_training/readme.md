@@ -2,7 +2,7 @@
 
 This repository contains code from the following two papers:
 1. [`Transmission-Guided Bayesian Generative Model for Smoke Segmentation`](https://arxiv.org/pdf/2303.00900)
-2. [`Local contrastive loss with pseudo-label based self-training for semi-supervised medical image segmentation Paper`](https://arxiv.org/pdf/2112.09645)
+2. [`Local contrastive loss with pseudo-label based self-training for weakly-supervised medical image segmentation Paper`](https://arxiv.org/pdf/2112.09645)
 
 
 ## Structure of file system
@@ -13,7 +13,7 @@ This repository contains code from the following two papers:
     ├── jobs # the folder contains all the jobs that run on snellius.
     ├── output_jobs # the folder contains the logs of the trainings.
     ├── trans_bvm # files for the training of the original model.
-    ├── trans_bvm_self_supervised # files for the training of the semi-supervised version of the model.
+    ├── trans_bvm_self_supervised # files for the training of the weakly-supervised version of the model.
     ├── environment.yml # conda environment.
     ├── make_video.py # creates a video based on the masks and the original frames.
     └── tranmission_map.py # this file creates for all the transmitted images.
@@ -96,8 +96,8 @@ When you use the argument "--pretrained_weights" in the train.py file and set a 
 
 For testing, you should specify the folder where images are strored in the variable "dataset_path" inside the code (line 22) and the model you want to use (line 24).
 
-## Semi-supervised
-For training and testing the semi-supervised BVM model in the SMOKE5K dataset use the commands below:
+## Weakly-supervised
+For training and testing the weakly-supervised BVM model in the SMOKE5K dataset use the commands below:
 ```
 python trans_bvm/train.py --contrastive_loss_weight 0.1 --labeled_dataset_path "data/SMOKE5K/SMOKE5K/train" --unlabeled_dataset_path "data/ijmond_data/train" --save_model_path "models/ss__no_samples_1000" --aug False --no_samples 1000
 python trans_bvm/test.py 
@@ -116,7 +116,7 @@ sbatch jobs/train.job
 ```
 
 ## Evaluation
-In order to get the evaluation metrics you can use the eval.py from each trans_bvm version (the original and the semi-supervised). eval_opacity.py is used to calculate the metrics for the high and low opacity smoke seperately.
+In order to get the evaluation metrics you can use the eval.py from each trans_bvm version (the original and the weakly-supervised). eval_opacity.py is used to calculate the metrics for the high and low opacity smoke seperately.
 
 For the SMOKE5K dataset:
 ```
@@ -131,4 +131,4 @@ python trans_bvm/eval.py --dataset_path "./data/ijmond_data/test/img" --gt_path 
 
 python trans_bvm/eval_opacity.py --dataset_path "./data/ijmond_data/test/img" --gt_path "./data/ijmond_data/test/gt" --save_path "./results/" --model_path "./models/finetune/Model_50_gen.pth"
 ```
-For the semi-supervised model you can use the same exactly commands.
+For the weakly-supervised model you can use the same exactly commands.

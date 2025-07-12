@@ -12,7 +12,7 @@ import glob
 import pandas as pd
 
 """
-自监督模型视频伪标签生成器 (Semi-Supervised Video Pseudo Label Generator)
+自监督模型视频伪标签生成器 (Weakly-Supervised Video Pseudo Label Generator)
 ============================================================================
 
 此脚本专为自监督模型设计，用于从视频文件中生成伪标签：
@@ -33,7 +33,7 @@ import pandas as pd
 ```
 python inference.py --videos_path ../../data/videos \
                    --output_path ../../data/ijmond_camera \
-                   --pretrained_weights ../../models/semi_model.pth \
+                   --pretrained_weights ../../models/weakly_model.pth \
                    --num_filters 16 \
                    --sampling_rate 5 \
                    --context_frames 2 \
@@ -66,7 +66,7 @@ def arg_parse():
     parser.add_argument(
         "--pretrained_weights",
         type=str,
-        default="../../../models/semi-supervision/SMOKE5K_Dataset_SMOKE5K_train_ssl_SMOKE5K_Dataset_SMOKE5K_weak_supervision/SMOKE5K_Dataset_SMOKE5K_train_ssl_SMOKE5K_Dataset_SMOKE5K_weak_supervision_best_model.pth",
+        default="../../../models/weak-supervision/SMOKE5K_Dataset_SMOKE5K_train_ssl_SMOKE5K_Dataset_SMOKE5K_weak_supervision/SMOKE5K_Dataset_SMOKE5K_train_ssl_SMOKE5K_Dataset_SMOKE5K_weak_supervision_best_model.pth",
         help="自监督预训练权重路径",
     )
     parser.add_argument("--sampling_rate", type=int, default=1, help="帧采样率")
@@ -638,8 +638,7 @@ def generate_transmission_maps(output_path, saved_files):
 
         # 加载原始图像
         img_path = os.path.join(img_dir, f"{filename}.jpg")
-        
-        
+
         if not os.path.exists(img_path):
             img_path = os.path.join(img_dir, f"{filename}.png")
             if not os.path.exists(img_path):
@@ -874,7 +873,7 @@ def main():
     print(f"\n自监督模型伪标签生成完成统计:")
     print(f"  处理的视频: {processed_videos}")
     print(f"  跳过的视频: {skipped_videos}")
-    print(f"  模型类型: 自监督 (Semi-Supervised)")
+    print(f"  模型类型: 自监督 (Weakly-Supervised)")
     print(f"  约束类型: {opt.constraint_type}")
     print(f"  输出目录: {final_output_path}")
     print(f"  伪标签质量: {'✅ 全部为纯二值' if is_all_binary else '⚠️ 存在非二值标签'}")
