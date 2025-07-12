@@ -20,14 +20,12 @@ module load 2024
 source ~/anaconda3/etc/profile.d/conda.sh
 source activate dl2024 || { echo "Failed to activate Conda env"; exit 1; }
 
-# Switch to project root directory
-cd "$(dirname "$0")/.."
 
 # Create log directories
 mkdir -p logs_out logs_err
 
 # Run inference script
-python src/bvm_training/trans_bvm_weakly_supervised_thesis/inference.py \
+python ../src/bvm_training/trans_bvm_weakly_supervised_thesis/inference.py \
 --videos_path "data/ijmond_camera/videos" \
 --output_path "data/ijmond_camera/SMOKE5K-full" \
 --pretrained_weights "models/full-supervision/SMOKE5K-supervised/SMOKE5K_Dataset_SMOKE5K_train/SMOKE5K_Dataset_SMOKE5K_train_best_model.pth" \
