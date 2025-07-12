@@ -20,17 +20,15 @@ module load 2024
 source ~/anaconda3/etc/profile.d/conda.sh
 source activate dl2024 || { echo "Failed to activate Conda env"; exit 1; }
 
-# Switch to project root directory
-cd "$(dirname "$0")/.."
 
 # Create log directories
 mkdir -p logs_out logs_err
 
 # Run full supervision training script
-python src/bvm_training/trans_bvm/train.py \
---epoch 300 \
---dataset_path "data/SMOKE5K_Dataset/SMOKE5K/train" \
---save_model_path "models/full-supervision/SMOKE5K-supervised" \
+python ../src/bvm_training/trans_bvm/train.py \
+--epoch 1 \
+--dataset_path "../data/SMOKE5K_Dataset/SMOKE5K/train" \
+--save_model_path "../models/full-supervision/SMOKE5K-supervised" \
 --random_seed 42 \
 --aug \
 --patience 40 \

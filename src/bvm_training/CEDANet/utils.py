@@ -198,25 +198,6 @@ def validate_model(generator, val_loader, device, structure_loss_fn):
     return val_loss, metrics
 
 
-def generate_model_name(labeled_dataset_name, unlabeled_dataset_name, pretrained_weights_path=None):
-    """
-    Generate model name based on labeled and unlabeled dataset names and pretrained model (semi-supervised version)
-    Args:
-        labeled_dataset_name: labeled dataset name
-        unlabeled_dataset_name: unlabeled dataset name
-        pretrained_weights_path: pretrained weights path, if None means training from scratch
-    Returns:
-        str: generated model name
-    """
-    if pretrained_weights_path is None:
-        # No pretrained model used, use both dataset names
-        return f"{labeled_dataset_name}_ssl_{unlabeled_dataset_name}"
-    else:
-        # Pretrained model used, need to extract pretrained model name
-        pretrained_model_name = extract_pretrained_model_name(pretrained_weights_path)
-        return f"{labeled_dataset_name}_ssl_{unlabeled_dataset_name}_from_{pretrained_model_name}"
-
-
 def extract_pretrained_model_name(pretrained_path):
     """
     Extract model name from pretrained model path
@@ -250,25 +231,6 @@ def extract_pretrained_model_name(pretrained_path):
     model_name = re.sub(r"[^\w\-_.]", "_", model_name)
 
     return model_name
-
-
-def generate_checkpoint_filename(epoch, model_name, pretrained_weights_path=None):
-    """
-    Generate checkpoint filename
-    Args:
-        epoch: current epoch
-        model_name: model name
-        pretrained_weights_path: pretrained weights path
-    Returns:
-        str: generated checkpoint filename
-    """
-    if pretrained_weights_path is None:
-        # Training from scratch
-        return f"{model_name}_epoch_{epoch:03d}_from_scratch.pth"
-    else:
-        # Using pretrained model
-        pretrained_name = extract_pretrained_model_name(pretrained_weights_path)
-        return f"{model_name}_epoch_{epoch:03d}_from_{pretrained_name}.pth"
 
 
 def generate_best_model_filename(model_name, pretrained_weights_path=None):

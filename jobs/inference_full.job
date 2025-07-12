@@ -27,7 +27,7 @@ cd "$(dirname "$0")/.."
 mkdir -p logs_out logs_err
 
 # Run inference script
-python src/bvm_training/trans_bvm_self_supervised_thesis/inference.py \
+python src/bvm_training/trans_bvm_weakly_supervised_thesis/inference.py \
 --videos_path "data/ijmond_camera/videos" \
 --output_path "data/ijmond_camera/SMOKE5K-full" \
 --pretrained_weights "models/full-supervision/SMOKE5K-supervised/SMOKE5K_Dataset_SMOKE5K_train/SMOKE5K_Dataset_SMOKE5K_train_best_model.pth" \

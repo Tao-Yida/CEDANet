@@ -18,8 +18,6 @@ module load 2024
 source ~/anaconda3/etc/profile.d/conda.sh
 source activate dl2024 || { echo "Failed to activate Conda env"; exit 1; }
 
-# Switch to project root directory
-cd "$(dirname "$0")/.."
 
 # Create log directories
 mkdir -p logs_out logs_err
@@ -28,14 +26,14 @@ mkdir -p logs_out logs_err
 #
 # Experiment config: SMOKE5K labeled data (full training) + ijmond pseudo-labeled data (train + target domain validation)
 # Key change: Validation is performed on the target domain (ijmond) instead of the source domain (SMOKE5K)
-python src/bvm_training/trans_bvm_self_supervised/train.py \
---epoch 100 \
+python ../src/bvm_training/trans_bvm_weakly_supervised/train.py \
+--epoch 1 \
 --batchsize 8 \
 --trainsize 352 \
 --lr_gen 5e-5 \
---labeled_dataset_path "data/SMOKE5K_Dataset/SMOKE5K/train" \
---unlabeled_dataset_path "data/ijmond_camera/SMOKE5K-full/non_constraint" \
---save_model_path "models/semi-supervision/SMOKE5K-ijmond-camera-on-SMOKE5K" \
+--labeled_dataset_path "../data/SMOKE5K_Dataset/SMOKE5K/train" \
+--unlabeled_dataset_path "../data/ijmond_camera/SMOKE5K-full/non_constraint" \
+--save_model_path "../models/semi-supervision/SMOKE5K-ijmond-camera-on-SMOKE5K" \
 --no_samples 500 \
 --aug \
 --enable_validation \
