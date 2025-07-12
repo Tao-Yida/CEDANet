@@ -194,15 +194,15 @@ class Generator(nn.Module):
 
     def reparametrize(self, mu, logvar):
         """
-        通过重参数化技巧从潜在空间分布中采样
+        Sample from the latent space distribution using the reparameterization trick.
         Args:
-            mu: 潜在空间均值
-            logvar: 潜在空间对数方差
+            mu: Mean of the latent space
+            logvar: Log variance of the latent space
         Returns:
-            采样得到的潜在空间向量
+            Latent vector sampled from the distribution
         """
         std = logvar.mul(0.5).exp_()
-        eps = torch.randn_like(std)  # 使用torch.randn_like自动匹配设备和数据类型
+        eps = torch.randn_like(std)  # Use torch.randn_like to automatically match device and dtype
         return eps.mul(std).add_(mu)
 
     def forward(self, x, y=None, training=True):
@@ -367,12 +367,13 @@ class RCAB(nn.Module):
 
 
 class BasicConv2d(nn.Module):
-    '''
+    """
     A basic convolutional block with Conv2d followed by BatchNorm2d.
     This is used to simplify the construction of convolutional layers in the network.
-    '''
+    """
+
     def __init__(self, in_planes, out_planes, kernel_size, stride=1, padding=0, dilation=1):
-        '''
+        """
         Args:
             in_planes (int): Number of input channels.
             out_planes (int): Number of output channels.
@@ -380,7 +381,7 @@ class BasicConv2d(nn.Module):
             stride (int or tuple, optional): Stride of the convolution. Default is 1.
             padding (int or tuple, optional): Zero-padding added to both sides of the input. Default is 0.
             dilation (int or tuple, optional): Spacing between kernel elements.
-        '''
+        """
         super(BasicConv2d, self).__init__()
         self.conv_bn = nn.Sequential(
             nn.Conv2d(in_planes, out_planes, kernel_size=kernel_size, stride=stride, padding=padding, dilation=dilation, bias=False),
@@ -478,7 +479,7 @@ class Saliency_feat_encoder(nn.Module):
         self.conv43_2 = Triple_Conv(2 * channel, channel)
         self.conv432_2 = Triple_Conv(3 * channel, channel)
         self.conv4321_2 = Triple_Conv(4 * channel, channel)
-        self.spatial_axes = [2, 3] # spatial dimensions (height, width)
+        self.spatial_axes = [2, 3]  # spatial dimensions (height, width)
         self.conv_depth1 = BasicConv2d(3 + latent_dim, 3, kernel_size=3, padding=1)
         self.layer7 = self._make_pred_layer(Classifier_Module, [6, 12, 18, 24], [6, 12, 18, 24], 1, channel * 4)
 

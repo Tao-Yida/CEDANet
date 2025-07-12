@@ -27,7 +27,7 @@ mkdir -p logs_out logs_err
 # Run weaklysupervised training script
 #
 # Experiment config: SMOKE5K labeled data (full training) + ijmond pseudo-labeled data (train + target domain validation)
-# 🎯 Key change: Validation is performed on the target domain (ijmond) instead of the source domain (SMOKE5K)
+# Key change: Validation is performed on the target domain (ijmond) instead of the source domain (SMOKE5K)
 python src/bvm_training/trans_bvm_weakly_supervised/train.py \
 --epoch 100 \
 --batchsize 8 \

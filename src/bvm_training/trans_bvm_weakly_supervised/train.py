@@ -279,7 +279,7 @@ def print_training_configuration(opt, device, labeled_dataset_name, unlabeled_da
     print("=" * 80)
 
     # ================================== Basic Configuration ==================================
-    print("📋 BASIC TRAINING SETTINGS")
+    print(" BASIC TRAINING SETTINGS")
     print("-" * 40)
     print(f"  Training Epochs: {opt.epoch}")
     print(f"  Batch Size: {opt.batchsize}")
@@ -288,7 +288,7 @@ def print_training_configuration(opt, device, labeled_dataset_name, unlabeled_da
     print(f"  Model Name: {model_name}")
 
     # ================================== Optimizer Configuration ==================================
-    print("\n⚙️  OPTIMIZER SETTINGS")
+    print("\n️  OPTIMIZER SETTINGS")
     print("-" * 40)
     print(f"  Generator Learning Rate: {opt.lr_gen}")
     print(f"  Adam Beta: {opt.beta}")
@@ -297,14 +297,14 @@ def print_training_configuration(opt, device, labeled_dataset_name, unlabeled_da
     print(f"  LR Patience (epochs): {opt.decay_epoch}")
 
     # ================================== Model Architecture Configuration ==================================
-    print("\n🏗️  MODEL ARCHITECTURE")
+    print("\n️  MODEL ARCHITECTURE")
     print("-" * 40)
     print(f"  Feature Channels: {opt.feat_channel}")
     print(f"  Latent Dimension: {opt.latent_dim}")
     print(f"  Contrastive Layer Filters: {opt.num_filters}")
 
     # ================================== Loss Function Weights ==================================
-    print("\n📊 LOSS FUNCTION WEIGHTS")
+    print("\n LOSS FUNCTION WEIGHTS")
     print("-" * 40)
     print(f"  L2 Regularization: {opt.reg_weight}")
     print(f"  Latent Loss: {opt.lat_weight}")
@@ -312,7 +312,7 @@ def print_training_configuration(opt, device, labeled_dataset_name, unlabeled_da
     print(f"  Contrastive Loss: {opt.contrastive_loss_weight}")
 
     # ================================== WEAKLY-Supervised Learning Configuration ==================================
-    print("\n🎯 WEAKLY-SUPERVISED LEARNING")
+    print("\n WEAKLY-SUPERVISED LEARNING")
     print("-" * 40)
     print(f"  Contrastive Pixel Matching: {'Inter-image' if opt.inter else 'Intra-image'}")
     print(f"  Contrastive Sample Count: {opt.no_samples}")
@@ -366,9 +366,9 @@ if opt.pretrained_weights is not None:
     try:
         checkpoint = torch.load(opt.pretrained_weights, map_location=device)
         generator.load_state_dict(checkpoint)
-        print("✅ Pretrained weights loaded successfully")
+        print(" Pretrained weights loaded successfully")
     except Exception as e:
-        print(f"❌ Failed to load pretrained weights: {e}")
+        print(f" Failed to load pretrained weights: {e}")
         print("Continuing with random initialization...")
 
 generator.to(device)

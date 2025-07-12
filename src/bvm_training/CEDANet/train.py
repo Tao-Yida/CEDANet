@@ -203,7 +203,7 @@ def print_training_configuration(opt, device, model_name):
     print("=" * 80)
 
     # ================================== Basic Configuration ==================================
-    print("📋 BASIC TRAINING SETTINGS")
+    print(" BASIC TRAINING SETTINGS")
     print("-" * 40)
     print(f"  Training Epochs: {opt.epoch}")
     print(f"  Batch Size: {opt.batchsize}")
@@ -212,7 +212,7 @@ def print_training_configuration(opt, device, model_name):
     print(f"  Model Name: {model_name}")
 
     # ================================== Optimizer Configuration ==================================
-    print("\n⚙️  OPTIMIZER SETTINGS")
+    print("\n️  OPTIMIZER SETTINGS")
     print("-" * 40)
     print(f"  Learning Rate: {opt.lr_gen}")
     print(f"  Adam Beta: {opt.beta}")
@@ -221,14 +221,14 @@ def print_training_configuration(opt, device, model_name):
     print(f"  LR Patience (epochs): {opt.decay_epoch}")
 
     # ================================== Model Architecture Configuration ==================================
-    print("\n🏗️  MODEL ARCHITECTURE")
+    print("\n️  MODEL ARCHITECTURE")
     print("-" * 40)
     print(f"  Feature Channels: {opt.feat_channel}")
     print(f"  Latent Dimension: {opt.latent_dim}")
     print(f"  Contrastive Layer Filters: {opt.num_filters}")
 
     # ================================== Loss Function Weights ==================================
-    print("\n📊 LOSS FUNCTION WEIGHTS")
+    print("\n LOSS FUNCTION WEIGHTS")
     print("-" * 40)
     print(f"  L2 Regularization: {opt.reg_weight}")
     print(f"  Latent Loss: {opt.lat_weight}")
@@ -238,7 +238,7 @@ def print_training_configuration(opt, device, model_name):
     print(f"  Pseudo Label Loss: {opt.pseudo_loss_weight}")
 
     # ================================== Domain Adaptation Settings ==================================
-    print("\n🔄 DOMAIN ADAPTATION SETTINGS")
+    print("\n DOMAIN ADAPTATION SETTINGS")
     print("-" * 40)
     print(f"  Number of Domains: {opt.num_domains}")
     print(f"  Gradient Reversal Lambda Max: {opt.lambda_grl_max}")
@@ -247,13 +247,13 @@ def print_training_configuration(opt, device, model_name):
     print(f"  Pseudo Label Weight: {opt.pseudo_loss_weight}")
 
     # ================================== Semi-Supervised Learning ==================================
-    print("\n🎯 WEAKLY-SUPERVISED LEARNING")
+    print("\n WEAKLY-SUPERVISED LEARNING")
     print("-" * 40)
     print(f"  Contrastive Pixel Matching: {'Inter-image' if opt.inter else 'Intra-image'}")
     print(f"  Contrastive Sample Count: {opt.no_samples}")
 
     # ================================== Dataset Configuration ==================================
-    print("\n📁 DATASET CONFIGURATION")
+    print("\n DATASET CONFIGURATION")
     print("-" * 40)
     print(f"  Source Domain Path: {opt.source_dataset_path}")
     print(f"  Target Domain Path: {opt.target_dataset_path}")
@@ -261,7 +261,7 @@ def print_training_configuration(opt, device, model_name):
     print(f"  Model Save Path: {opt.save_model_path}")
 
     # ================================== Validation and Early Stopping ==================================
-    print("\n✅ VALIDATION & EARLY STOPPING")
+    print("\n VALIDATION & EARLY STOPPING")
     print("-" * 40)
     print(f"  Enable Validation: {opt.enable_validation}")
     print(f"  Validation Domain: Target Domain")
@@ -269,12 +269,12 @@ def print_training_configuration(opt, device, model_name):
     print(f"  Early Stopping Patience: {opt.patience}")
     print(f"  Min Delta for Improvement: {opt.min_delta}")
     if opt.enable_validation:
-        print("  📊 Validation Strategy: Target domain split for training/validation")
+        print("   Validation Strategy: Target domain split for training/validation")
         print("     - Source domain: Full dataset for training")
         print("     - Target domain: Split into training/validation sets")
 
     # ================================== Data Augmentation & Reproducibility ==================================
-    print("\n🔀 DATA AUGMENTATION & REPRODUCIBILITY")
+    print("\n DATA AUGMENTATION & REPRODUCIBILITY")
     print("-" * 40)
     print(f"  Data Augmentation (Both Domains): {opt.aug}")
     print(f"  Freeze Randomness: {opt.freeze}")
@@ -308,7 +308,7 @@ print_training_configuration(opt, device, model_name)
 
 
 # Data loaders
-print("\n🔄 LOADING DATASETS...")
+print("\n LOADING DATASETS...")
 
 
 # Load source domain data (always use all source data for training in domain adaptation)

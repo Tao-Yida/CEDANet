@@ -194,15 +194,15 @@ class Generator(nn.Module):
 
     def reparametrize(self, mu, logvar):
         """
-        通过重参数化技巧从潜在空间分布中采样
+        Sample from the latent space distribution using the reparameterization trick.
         Args:
-            mu: 潜在空间均值
-            logvar: 潜在空间对数方差
+            mu: Mean of the latent space
+            logvar: Log variance of the latent space
         Returns:
-            采样得到的潜在空间向量
+            Latent vector sampled from the distribution
         """
         std = logvar.mul(0.5).exp_()
-        eps = torch.randn_like(std)  # 使用torch.randn_like自动匹配设备和数据类型
+        eps = torch.randn_like(std)  # Use torch.randn_like to automatically match device and dtype
         return eps.mul(std).add_(mu)
 
     def forward(self, x, y=None, training=True):

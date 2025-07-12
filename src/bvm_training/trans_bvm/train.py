@@ -70,7 +70,7 @@ def print_training_configuration(opt, device, dataset_name, model_name, original
     print("=" * 80)
 
     # Basic configuration
-    print("📋 BASIC TRAINING SETTINGS")
+    print(" BASIC TRAINING SETTINGS")
     print("-" * 40)
     print(f"  Training Epochs: {opt.epoch}")
     print(f"  Batch Size: {opt.batchsize}")
@@ -80,7 +80,7 @@ def print_training_configuration(opt, device, dataset_name, model_name, original
     print(f"  Model Name: {model_name}")
 
     # Optimizer configuration
-    print("\n⚙️  OPTIMIZER SETTINGS")
+    print("\n️  OPTIMIZER SETTINGS")
     print("-" * 40)
     print(f"  Generator Learning Rate: {opt.lr_gen}")
     print(f"  Adam Beta: {opt.beta}")
@@ -88,21 +88,21 @@ def print_training_configuration(opt, device, dataset_name, model_name, original
     print(f"  LR Patience (epochs): {opt.decay_epoch}")
 
     # Model architecture configuration
-    print("\n🏗️  MODEL ARCHITECTURE")
+    print("\n️  MODEL ARCHITECTURE")
     print("-" * 40)
     print(f"  Generator Reduced Channels: {opt.gen_reduced_channel}")
     print(f"  Feature Channels: {opt.feat_channel}")
     print(f"  Latent Dimension: {opt.latent_dim}")
 
     # Loss function weights
-    print("\n📊 LOSS FUNCTION WEIGHTS")
+    print("\n LOSS FUNCTION WEIGHTS")
     print("-" * 40)
     print(f"  L2 Regularization: {opt.reg_weight}")
     print(f"  Latent Loss: {opt.lat_weight}")
     print(f"  VAE Loss: {opt.vae_loss_weight}")
 
     # Dataset configuration
-    print("\n📁 DATASET CONFIGURATION")
+    print("\n DATASET CONFIGURATION")
     print("-" * 40)
     print(f"  Dataset Path: {opt.dataset_path}")
     print(f"  Pretrained Weights: {opt.pretrained_weights or 'None'}")
@@ -110,14 +110,14 @@ def print_training_configuration(opt, device, dataset_name, model_name, original
     print(f"  Final Save Path: {opt.save_model_path}")
 
     # Validation and early stopping configuration
-    print("\n✅ VALIDATION & EARLY STOPPING")
+    print("\n VALIDATION & EARLY STOPPING")
     print("-" * 40)
     print(f"  Validation Split: {opt.val_split}")
     print(f"  Early Stopping Patience: {opt.patience}")
     print(f"  Min Delta for Improvement: {opt.min_delta}")
 
     # Data augmentation configuration
-    print("\n🔀 DATA AUGMENTATION & REPRODUCIBILITY")
+    print("\n DATA AUGMENTATION & REPRODUCIBILITY")
     print("-" * 40)
     print(f"  Data Augmentation: {opt.aug}")
     print(f"  Freeze Randomness: {opt.freeze}")

@@ -32,8 +32,8 @@ def _setup_reproducibility(freeze, random_seed, verbose=True):
 
         if verbose:
             print(f"[FREEZE MODE] All randomness frozen, seed={random_seed}, shuffle disabled")
-        return False  # 返回shuffle=False
-    return True  # 返回shuffle=True
+        return False
+    return True
 
 
 def _get_file_paths(image_root, gt_root, trans_map_root):
