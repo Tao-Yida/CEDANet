@@ -1,13 +1,9 @@
-# Repository contents
+# src Directory Contents
 
-## 1. Folder: samples_for_labelling
-This folder includes all the necessary code for sampling images. These images will be labeled in the next stage.
+This directory contains the source code for the project.
 
-## 2. Folder: oracle_evaluator
-This folder contains the files for the annotator tool that was used to label the sampled images from the previous step.
+## 1. Folder: bvm_training
+This folder contains the code for training the BVM (Bayesian Video Matting) model.
 
-## 3. Folder: bvm_training
-This folder contains the code for the training of bvm model for both versions; original and weakly-supervised.
-
-## 4. Folder: bvm_docker
-This folder contains the files used to build the Docker for running inference on the BVM model. Please refer to the readme file in the folder for more details.
+## 2. Script: download_videos.py
+This Python script is used to download videos from various sources. These videos can be used as input for the inference process in the CEDANet model.

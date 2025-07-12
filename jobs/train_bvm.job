@@ -1,0 +1,37 @@
+#!/bin/bash
+
+# ----------- SLURM 指令（保留必要部分） ------------
+#SBATCH --job-name=train_bvm_supervised
+#SBATCH --partition=gpu_mig
+#SBATCH --gres=gpu:1
+#SBATCH --time=24:00:00
+#SBATCH --mem=24G
+#SBATCH --cpus-per-task=6
+#SBATCH --output=../logs_out/train_bvm_supervised_%j.out
+#SBATCH --error=../logs_err/train_bvm_supervised_%j.err
+
+# ============================================================================
+# BVM 全监督训练脚本
+# ============================================================================
+
+# 加载执行环境
+module purge
+module load 2024
+source ~/anaconda3/etc/profile.d/conda.sh
+source activate dl2024 || { echo "Failed to activate Conda env"; exit 1; }
+
+# 切换到项目根目录
+cd "$(dirname "$0")/.."
+
+# 创建日志目录
+mkdir -p logs_out logs_err
+
+# 执行全监督训练脚本
+python src/bvm_training/trans_bvm/train.py \
+--epoch 300 \
+--dataset_path "data/SMOKE5K_Dataset/SMOKE5K/train" \
+--save_model_path "models/full-supervision/SMOKE5K-supervised" \
+--random_seed 42 \
+--aug \
+--patience 40 \
+--min_delta 0.0002

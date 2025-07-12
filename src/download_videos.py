@@ -176,7 +176,7 @@ def main(argv):
             return
 
     # Specify the path to the JSON file
-    json_file_path = "ijmond-camera-ai/samples_for_labelling/metadata_ijmond_jan_22_2024.json"
+    json_file_path = "src/samples_for_labelling/metadata_ijmond_jan_22_2024.json"
 
     # Specify the path that we want to store the videos and create it
     download_path = "data/ijmond_camera/videos/"
