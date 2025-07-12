@@ -116,7 +116,7 @@ def get_loader(
     random_seed=42,
 ):
     """
-    Create a single training data loader (for semi-supervised learning)
+    Create a single training data loader (for weakly-supervised learning)
     Args:
         image_root: Image root directory
         gt_root: Ground truth root directory

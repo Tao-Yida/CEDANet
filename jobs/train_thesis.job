@@ -1,14 +1,14 @@
 #!/bin/bash
 
 # ----------- SLURM directives (keep necessary parts) ------------
-#SBATCH --job-name=train_bvm_semi_supervised
+#SBATCH --job-name=train_bvm_weakly_supervised
 #SBATCH --partition=gpu_mig
 #SBATCH --gres=gpu:1
 #SBATCH --time=24:00:00
 #SBATCH --mem=24G
 #SBATCH --cpus-per-task=6
-#SBATCH --output=../logs_out/trans_bvm_semi_train_%j.out
-#SBATCH --error=../logs_err/trans_bvm_semi_train_%j.err
+#SBATCH --output=../logs_out/trans_bvm_weak_train_%j.out
+#SBATCH --error=../logs_err/trans_bvm_weak_train_%j.err
 
 
 
@@ -31,7 +31,7 @@ python ../src/bvm_training/trans_bvm_weakly_supervised/train.py \
 --lr_gen 5e-5 \
 --labeled_dataset_path "../data/SMOKE5K_Dataset/SMOKE5K/train" \
 --unlabeled_dataset_path "../data/ijmond_camera/SMOKE5K-full/non_constraint" \
---save_model_path "../models/semi-supervision/SMOKE5K-ijmond-camera-on-SMOKE5K" \
+--save_model_path "../models/weak-supervision/SMOKE5K-ijmond-camera-on-SMOKE5K" \
 --no_samples 500 \
 --aug \
 --enable_validation \

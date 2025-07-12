@@ -3,7 +3,7 @@
 
 """
 Domain Adaptive Training Script
-Integrates semi-supervised learning and domain adaptation functionality
+Integrates weakly-supervised learning and domain adaptation functionality
 """
 
 import torch
@@ -59,7 +59,7 @@ def argparser():
     parser.add_argument("--vae_loss_weight", type=float, default=0.6, help="weight for VAE loss component")
     parser.add_argument("--contrastive_loss_weight", type=float, default=1, help="weight for contrastive loss")
 
-    # ================================== Semi-Supervised Learning Configuration ==================================
+    # ================================== Weakly-Supervised Learning Configuration ==================================
     parser.add_argument("--inter", action="store_true", default=False, help="use inter-image pixel matching (vs intra-image)")
     parser.add_argument("--no_samples", type=int, default=500, help="number of pixels for contrastive loss sampling")
 
@@ -246,7 +246,7 @@ def print_training_configuration(opt, device, model_name):
     print(f"  Use AttentionPool2d in Discriminators: {opt.use_attention_pool}")
     print(f"  Pseudo Label Weight: {opt.pseudo_loss_weight}")
 
-    # ================================== Semi-Supervised Learning ==================================
+    # ================================== Weakly-Supervised Learning ==================================
     print("\n WEAKLY-SUPERVISED LEARNING")
     print("-" * 40)
     print(f"  Contrastive Pixel Matching: {'Inter-image' if opt.inter else 'Intra-image'}")

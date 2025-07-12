@@ -153,7 +153,7 @@ def calculate_metrics(pred, gt, threshold=0.5):
 
 def validate_model(generator, val_loader, device, structure_loss_fn):
     """
-    Model validation function (for semi-supervised models)
+    Model validation function (for weakly-supervised models)
     Args:
         generator: generator model
         val_loader: validation data loader
@@ -171,7 +171,7 @@ def validate_model(generator, val_loader, device, structure_loss_fn):
             images, gts, trans = images.to(device), gts.to(device), trans.to(device)
 
             # Forward pass (use only posterior prediction for validation)
-            # For semi-supervised models, Generator's forward returns multiple outputs
+            # For weakly-supervised models, Generator's forward returns multiple outputs
             pred_post_init, pred_post_ref, pred_prior_init, pred_prior_ref, latent_loss, out_post, out_prior = generator(images, gts)
 
             # Compute loss

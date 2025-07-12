@@ -7,7 +7,7 @@ This repository contains the code and experiments for smoke segmentation using B
 First, set up the Conda environment using the provided file.
 
 ```bash
-conda env create -f environment.yml
+conda env create -f dl2024_gpu.yml
 conda activate dl2024
 ```
 
@@ -24,7 +24,7 @@ conda activate dl2024
 The project follows a structured layout for data, models, and results:
 
 ```
-└── Thesis/
+└── root/
     ├── data/
     │   ├── ijmond_camera/      # Raw video data and generated pseudo-labels
     │   ├── ijmond_data/        # Processed IJmond dataset (train/test splits)
@@ -33,17 +33,20 @@ The project follows a structured layout for data, models, and results:
     │   └── bvm_training/       # Main source code directory
     │       ├── CEDANet/
     │       ├── trans_bvm/
-    │       ├── trans_bvm_weakly_supervised/
-    │       └── CEDANet/
+    │       └── trans_bvm_weakly_supervised/
+    ├── jobs/                   # SLURM job scripts for training/inference
     ├── logs_err/               # SLURM error logs
     ├── logs_out/               # SLURM output logs
+    ├── logs_tri/               # Tri-class evaluation logs
     ├── models/                 # Trained model weights
     │   ├── full-supervision/
     │   ├── weak-supervision/
-    │   └── thesis/
+    │   ├── thesis/
+    │   └── ucnet_trans3/
     ├── results/                # Prediction results for evaluation
-    ├── *.job                   # SLURM job scripts for training/inference
-    └── environment.yml         # Conda environment file
+    ├── temp/                   # Temporary files
+    ├── tools/                  # Additional tools
+    └── dl2024_gpu.yml          # Conda environment file
 ```
 
 ## 3. Data Preprocessing: Transmission Map Generation
@@ -93,7 +96,7 @@ The generated pseudo-labels and corresponding images will be saved in subdirecto
 **Job File Execution (Snellius):**
 The `inference_full.job` script contains commands to run inference with multiple models and constraint types (`none`, `citizen`, `expert`).
 ```bash
-sbatch inference_full.job
+sbatch jobs/inference_full.job
 ```
 
 ### Step 2: Training
@@ -121,9 +124,9 @@ python src/bvm_training/trans_bvm/train.py \
 ```
 
 **Job File Execution (Snellius):**
-Modify `train_bvm.job` to set the correct paths and parameters, then run:
+Modify `jobs/train_bvm.job` to set the correct paths and parameters, then run:
 ```bash
-sbatch train_bvm.job
+sbatch jobs/train_bvm.job
 ```
 
 ### Step 3: Testing
@@ -150,11 +153,11 @@ This approach uses a combination of labeled and unlabeled (or pseudo-labeled) da
 
 ### Step 1: Pseudo-Label Generation
 
-Generate pseudo-labels using a self-supervised model. These labels will be used for training the weakly-supervised model.
+Generate pseudo-labels using a weakly-supervised model. These labels will be used for training the weakly-supervised model.
 
 **Python Execution:**
 ```bash
-# Example: Generate labels with a self-supervised model
+# Example: Generate labels with a weakly-supervised model
 python src/bvm_training/trans_bvm_weakly_supervised/inference.py \
     --videos_path "data/ijmond_camera/videos" \
     --output_path "data/ijmond_camera/SMOKE5K-self" \
@@ -162,12 +165,12 @@ python src/bvm_training/trans_bvm_weakly_supervised/inference.py \
     --threshold 0.7 \
     --constraint_type none
 ```
-The generated pseudo-labels (`pl`), transmission maps (`trans`), and original images (`img`) will be saved in subdirectories under the `--output_path`.
+The generated pseudo-labels (`gt`), transmission maps (`trans`), and original images (`img`) will be saved in subdirectories under the `--output_path`.
 
 **Job File Execution (Snellius):**
-The `train_bvm_weakly.job` script (named for its training purpose, but runs inference) can be used to generate pseudo-labels.
+The `jobs/train_bvm_weak.job` script (named for its training purpose, but runs inference) can be used to generate pseudo-labels.
 ```bash
-sbatch train_bvm_weakly.job
+sbatch jobs/train_bvm_weak.job
 ```
 
 ### Step 2: Training
@@ -183,7 +186,7 @@ Train the model using both a labeled dataset and the generated pseudo-labels.
 **Python Execution:**
 ```bash
 python src/bvm_training/trans_bvm_weakly_supervised/train.py \
-    --labeled_dataset_path "data/SMOKE5K_Dataset/SMOKE5K_train" \
+    --labeled_dataset_path "data/SMOKE5K_Dataset/SMOKE5K/train" \
     --unlabeled_dataset_path "data/ijmond_camera/SMOKE5K-self/non_constraint" \
     --save_model_path "models/weak-supervision/my_weakly_model" \
     --contrastive_loss_weight 0.1 \
@@ -230,7 +233,7 @@ Train the CEDANet model for domain adaptation.
 **Python Execution:**
 ```bash
 python src/bvm_training/CEDANet/train.py \
-    --source_dataset_path "data/SMOKE5K_Dataset/SMOKE5K_train" \
+    --source_dataset_path "data/SMOKE5K_Dataset/SMOKE5K/train" \
     --target_dataset_path "data/ijmond_data/train" \
     --save_model_path "models/thesis/my_domain_adaptation_model" \
     --use_ldconv \
@@ -253,9 +256,9 @@ python src/bvm_training/CEDANet/test.py \
 The prediction results will be saved under `results/thesis/ijmond/`, in a folder named after the tested model.
 
 **Job File Execution (Snellius):**
-Modify `test_thesis.job` to point to your trained model, then run:
+Modify `jobs/test_thesis.job` to point to your trained model, then run:
 ```bash
-sbatch test_thesis.job
+sbatch jobs/test_thesis.job
 ```
 
 ---

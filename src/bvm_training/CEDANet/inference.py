@@ -2,7 +2,7 @@
 Video Pseudo Label Generator
 ===========================
 
-This script is used to generate pseudo labels from video files for semi-supervised learning:
+This script is used to generate pseudo labels from video files for weakly-supervised learning:
 1. Load pretrained model
 2. Extract frames from video
 3. Predict on extracted frames
@@ -57,7 +57,7 @@ def arg_parse():
     Returns:
         argparse.Namespace: Parsed arguments
     """
-    parser = argparse.ArgumentParser(description="Generate pseudo labels from video for semi-supervised learning")
+    parser = argparse.ArgumentParser(description="Generate pseudo labels from video for weakly-supervised learning")
     parser.add_argument("--testsize", type=int, default=352, help="Test image size")
     parser.add_argument("--latent_dim", type=int, default=3, help="Latent space dimension")
     parser.add_argument("--feat_channel", type=int, default=32, help="Feature channel number")

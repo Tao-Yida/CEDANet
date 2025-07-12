@@ -527,10 +527,10 @@ def save_results(predictions, selected_frames, video_name, output_path, start_id
     Output structure:
     output_path/
         ├── img/   # stores original images
-        └── pl/    # stores pseudo labels (binary: 0 and 255)
+        └── gt/    # stores pseudo labels (binary: 0 and 255)
     """
     img_dir = os.path.join(output_path, "img")
-    pl_dir = os.path.join(output_path, "pl")
+    pl_dir = os.path.join(output_path, "gt")
 
     # Create output directories
     os.makedirs(img_dir, exist_ok=True)
@@ -595,7 +595,7 @@ def generate_transmission_maps(output_path, saved_files):
     Output structure:
     output_path/
         ├── img/   # stores original images
-        ├── pl/    # stores pseudo labels
+        ├── gt/    # stores pseudo labels
         └── trans/ # stores transmission maps
     """
     img_dir = os.path.join(output_path, "img")
@@ -641,7 +641,7 @@ def clean_output_directories(output_path):
     Args:
         output_path: Output root path
     """
-    directories = ["img", "pl", "trans"]
+    directories = ["img", "gt", "trans"]
 
     for directory in directories:
         dir_path = os.path.join(output_path, directory)
@@ -666,7 +666,7 @@ def validate_pseudo_labels(output_path):
     Args:
         output_path: Output path
     """
-    pl_dir = os.path.join(output_path, "pl")
+    pl_dir = os.path.join(output_path, "gt")
     if not os.path.exists(pl_dir):
         print("Warning: Pseudo label directory does not exist")
         return
@@ -854,7 +854,7 @@ def main():
     print(f"  Pseudo label quality: {'All binary' if is_all_binary else 'Warning: non-binary labels exist'}")
     print("Directory structure:")
     print("  - img/    (original images)")
-    print("  - pl/     (pseudo labels - binary: 0 and 255)")
+    print("  - gt/     (pseudo labels - binary: 0 and 255)")
     print("  - trans/  (transmission maps)")
 
     if opt.constraint_type != "none":
