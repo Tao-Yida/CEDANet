@@ -7,3 +7,5 @@ train_curves/
 results/
 temp/
 logs_*
+.vscode/
+tools/
