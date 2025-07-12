@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# ----------- SLURM 指令（保留必要部分） ------------
+# ----------- SLURM directives (keep necessary parts) ------------
 #SBATCH --job-name=inference_full
 #SBATCH --partition=gpu_mig
 #SBATCH --gres=gpu:1
@@ -11,22 +11,22 @@
 #SBATCH --error=../logs_err/inference_full_%j.err
 
 # ============================================================================
-# 完整推理脚本
+# Full inference script
 # ============================================================================
 
-# 加载执行环境
+# Load execution environment
 module purge
 module load 2024
 source ~/anaconda3/etc/profile.d/conda.sh
 source activate dl2024 || { echo "Failed to activate Conda env"; exit 1; }
 
-# 切换到项目根目录
+# Switch to project root directory
 cd "$(dirname "$0")/.."
 
-# 创建日志目录
+# Create log directories
 mkdir -p logs_out logs_err
 
-# 执行推理脚本
+# Run inference script
 python src/bvm_training/trans_bvm_self_supervised_thesis/inference.py \
 --videos_path "data/ijmond_camera/videos" \
 --output_path "data/ijmond_camera/SMOKE5K-full" \

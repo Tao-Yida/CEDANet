@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# ----------- SLURM 指令（保留必要部分） ------------
+# ----------- SLURM directives (keep necessary parts) ------------
 #SBATCH --job-name=train_thesis
 #SBATCH --partition=gpu_h100
 #SBATCH --gres=gpu:1
@@ -11,22 +11,22 @@
 #SBATCH --error=../logs_err/train_thesis_domain_adapt_%j.err
 
 # ============================================================================
-# 域适应训练脚本
+# Domain adaptation training script
 # ============================================================================
 
-# 加载执行环境
+# Load execution environment
 module purge
 module load 2024
 source ~/anaconda3/etc/profile.d/conda.sh
 source activate dl2024 || { echo "Failed to activate Conda env"; exit 1; }
 
-# 切换到项目根目录
+# Switch to project root directory
 cd "$(dirname "$0")/.."
 
-# 创建日志目录
+# Create log directories
 mkdir -p logs_out logs_err
 
-# 执行域适应训练脚本
+# Run domain adaptation training script
 python src/bvm_training/trans_bvm_self_supervised_thesis/train.py \
 --epoch 100 \
 --domain_loss_weight 1.0 \

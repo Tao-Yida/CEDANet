@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# ----------- SLURM 指令（保留必要部分） ------------
+# ----------- SLURM directives (keep necessary parts) ------------
 #SBATCH --job-name=train_bvm_semi_supervised
 #SBATCH --partition=gpu_mig
 #SBATCH --gres=gpu:1
@@ -12,22 +12,22 @@
 
 
 
-# 加载执行环境
+# Load execution environment
 module purge
 module load 2024
 source ~/anaconda3/etc/profile.d/conda.sh
 source activate dl2024 || { echo "Failed to activate Conda env"; exit 1; }
 
-# 切换到项目根目录
+# Switch to project root directory
 cd "$(dirname "$0")/.."
 
-# 创建日志目录
+# Create log directories
 mkdir -p logs_out logs_err
 
-# 执行半监督训练脚本
+# Run semi-supervised training script
 #
-# 实验配置：SMOKE5K标注数据(完整训练) + ijmond伪标签数据(训练+目标域验证)
-# 🎯 关键修改：验证在目标域(ijmond)上进行，而非源域(SMOKE5K)
+# Experiment config: SMOKE5K labeled data (full training) + ijmond pseudo-labeled data (train + target domain validation)
+# 🎯 Key change: Validation is performed on the target domain (ijmond) instead of the source domain (SMOKE5K)
 python src/bvm_training/trans_bvm_self_supervised/train.py \
 --epoch 100 \
 --batchsize 8 \

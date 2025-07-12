@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# ----------- SLURM 指令（保留必要部分） ------------
+# ----------- SLURM directives (keep necessary parts) ------------
 #SBATCH --job-name=test_bvm_semi_supervised
 #SBATCH --partition=gpu_h100
 #SBATCH --gres=gpu:1
@@ -10,21 +10,21 @@
 #SBATCH --output=../logs_out/_crop_semi_test_%j.out
 #SBATCH --error=../logs_err/_crop_semi_test_%j.err
 
-# 加载执行环境
+# Load execution environment
 module purge
 module load 2024
 source ~/anaconda3/etc/profile.d/conda.sh
 source activate dl2024 || { echo "Failed to activate Conda env"; exit 1; }
 
-# 切换到项目根目录
+# Switch to project root directory
 cd "$(dirname "$0")/.."
 
-# 创建日志目录
+# Create log directories
 mkdir -p logs_out logs_err
 
-# 执行半监督模型测试
-# --model_path: 半监督训练后的模型路径
-# --test_dataset: 测试数据集 (smoke5k)
+# Run semi-supervised model test
+# --model_path: Path to the semi-supervised trained model
+# --test_dataset: Test dataset (smoke5k)
 python src/bvm_training/trans_bvm_self_supervised/test.py \
 --model_path models/semi-supervision/SMOKE5K-ijmond-camera-on-SMOKE5K/SMOKE5K_Dataset_SMOKE5K_train_ssl_ijmond_camera_SMOKE5K-full_citizen_constraint/SMOKE5K_Dataset_SMOKE5K_train_ssl_ijmond_camera_SMOKE5K-full_citizen_constraint_epoch_020_from_scratch.pth \
 --test_dataset ijmond \

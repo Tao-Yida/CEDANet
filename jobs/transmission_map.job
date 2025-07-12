@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# ----------- SLURM 指令配置 ------------
+# ----------- SLURM directive configuration ------------
 #SBATCH --job-name=transmission_map
 #SBATCH --partition=gpu_mig
 #SBATCH --gres=gpu:1
@@ -10,21 +10,21 @@
 #SBATCH --output=../logs_out/transmission_map_%j.out
 #SBATCH --error=../logs_err/transmission_map_%j.err
 
-# 创建输出日志目录
+# Create output log directories
 mkdir -p ../logs_out ../logs_err
 
-# 加载GPU计算环境
+# Load GPU computing environment
 module purge
 module load 2024
 source ~/anaconda3/etc/profile.d/conda.sh
 source activate dl2024 || { echo "Failed to activate Conda env"; exit 1; }
 
-# 切换到项目根目录
+# Switch to project root directory
 cd ..
 
-# 执行传输图生成任务
-# 参数说明：
-# --dataset_name: 数据集名称 (SMOKE5K)
-# --output: 输出目录路径
-# --mode: 监督模式 (weak_supervision)
+# Run transmission map generation task
+# Parameter description:
+# --dataset_name: Dataset name (SMOKE5K)
+# --output: Output directory path
+# --mode: Supervision mode (weak_supervision)
 python src/bvm_training/transmission_map.py --dataset_name "SMOKE5K" --output "data/SMOKE5K_Dataset" --mode "weak_supervision"
