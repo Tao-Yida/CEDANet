@@ -4,9 +4,8 @@ import torch.utils.model_zoo as model_zoo
 import math
 
 
-model_urls = {
-    'res2net50_v1b_26w_4s': 'https://shanghuagao.oss-cn-beijing.aliyuncs.com/res2net/res2net50_v1b_26w_4s-3cf99910.pth'
-}
+model_urls = {"res2net50_v1b_26w_4s": "https://shanghuagao.oss-cn-beijing.aliyuncs.com/res2net/res2net50_v1b_26w_4s-3cf99910.pth"}
+
 
 def res2net50_v1b_26w_4s(pretrained=False, **kwargs):
     """Constructs a Res2Net-50_v1b_26w_4s lib.
@@ -15,7 +14,7 @@ def res2net50_v1b_26w_4s(pretrained=False, **kwargs):
     """
     model = Res2Net(Bottle2neck, [3, 4, 6, 3], baseWidth=26, scale=4, **kwargs)
     if pretrained:
-        model_state = model_zoo.load_url(model_urls['res2net50_v1b_26w_4s'])
+        model_state = model_zoo.load_url(model_urls["res2net50_v1b_26w_4s"])
         model.load_state_dict(model_state)
 
     return model
@@ -34,7 +33,7 @@ class Res2Net(nn.Module):
             nn.Conv2d(32, 32, 3, 1, 1, bias=False),
             nn.BatchNorm2d(32),
             nn.ReLU(inplace=True),
-            nn.Conv2d(32, 64, 3, 1, 1, bias=False)
+            nn.Conv2d(32, 64, 3, 1, 1, bias=False),
         )
         self.bn1 = nn.BatchNorm2d(64)
         self.relu = nn.ReLU()
@@ -48,7 +47,7 @@ class Res2Net(nn.Module):
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
-                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+                nn.init.kaiming_normal_(m.weight, mode="fan_out", nonlinearity="relu")
             elif isinstance(m, nn.BatchNorm2d):
                 nn.init.constant_(m.weight, 1)
                 nn.init.constant_(m.bias, 0)
@@ -57,16 +56,13 @@ class Res2Net(nn.Module):
         downsample = None
         if stride != 1 or self.inplanes != planes * block.expansion:
             downsample = nn.Sequential(
-                nn.AvgPool2d(kernel_size=stride, stride=stride,
-                             ceil_mode=True, count_include_pad=False),
-                nn.Conv2d(self.inplanes, planes * block.expansion,
-                          kernel_size=1, stride=1, bias=False),
+                nn.AvgPool2d(kernel_size=stride, stride=stride, ceil_mode=True, count_include_pad=False),
+                nn.Conv2d(self.inplanes, planes * block.expansion, kernel_size=1, stride=1, bias=False),
                 nn.BatchNorm2d(planes * block.expansion),
             )
 
         layers = []
-        layers.append(block(self.inplanes, planes, stride, downsample=downsample,
-                            stype='stage', baseWidth=self.baseWidth, scale=self.scale))
+        layers.append(block(self.inplanes, planes, stride, downsample=downsample, stype="stage", baseWidth=self.baseWidth, scale=self.scale))
         self.inplanes = planes * block.expansion
         for i in range(1, blocks):
             layers.append(block(self.inplanes, planes, baseWidth=self.baseWidth, scale=self.scale))
@@ -76,7 +72,7 @@ class Res2Net(nn.Module):
     def forward(self, x):
         x = self.conv1(x)
         x = self.bn1(x)
-        x = self.relu(x)    # torch.Size([1, 64, 176, 176])
+        x = self.relu(x)  # torch.Size([1, 64, 176, 176])
         x = self.maxpool(x)
 
         l1 = self.layer1(x)  # torch.Size([1, 256, 88, 88])
@@ -84,9 +80,9 @@ class Res2Net(nn.Module):
         l3 = self.layer3(l2)
         l4 = self.layer4(l3)
 
-        #x = self.avgpool(x)
-        #x = x.view(x.size(0), -1)
-        #x = self.fc(x)
+        # x = self.avgpool(x)
+        # x = x.view(x.size(0), -1)
+        # x = self.fc(x)
 
         return l4, l3, l2, l1
 
@@ -94,8 +90,8 @@ class Res2Net(nn.Module):
 class Bottle2neck(nn.Module):
     expansion = 4
 
-    def __init__(self, inplanes, planes, stride=1, downsample=None, baseWidth=26, scale=4, stype='normal'):
-        """ Constructor
+    def __init__(self, inplanes, planes, stride=1, downsample=None, baseWidth=26, scale=4, stype="normal"):
+        """Constructor
         Args:
             inplanes: input channel dimensionality
             planes: output channel dimensionality
@@ -115,7 +111,7 @@ class Bottle2neck(nn.Module):
             self.nums = 1
         else:
             self.nums = scale - 1
-        if stype == 'stage':
+        if stype == "stage":
             self.pool = nn.AvgPool2d(kernel_size=3, stride=stride, padding=1)
         convs = []
         bns = []
@@ -143,7 +139,7 @@ class Bottle2neck(nn.Module):
 
         spx = torch.split(out, self.width, 1)
         for i in range(self.nums):
-            if i == 0 or self.stype == 'stage':
+            if i == 0 or self.stype == "stage":
                 sp = spx[i]
             else:
                 sp = sp + spx[i]
@@ -153,9 +149,9 @@ class Bottle2neck(nn.Module):
                 out = sp
             else:
                 out = torch.cat((out, sp), 1)
-        if self.scale != 1 and self.stype == 'normal':
+        if self.scale != 1 and self.stype == "normal":
             out = torch.cat((out, spx[self.nums]), 1)
-        elif self.scale != 1 and self.stype == 'stage':
+        elif self.scale != 1 and self.stype == "stage":
             out = torch.cat((out, self.pool(spx[self.nums])), 1)
 
         out = self.conv3(out)

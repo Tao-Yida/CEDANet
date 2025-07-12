@@ -80,7 +80,7 @@ def print_training_configuration(opt, device, dataset_name, model_name, original
     print(f"  Model Name: {model_name}")
 
     # Optimizer configuration
-    print("\n️  OPTIMIZER SETTINGS")
+    print("\n|  OPTIMIZER SETTINGS")
     print("-" * 40)
     print(f"  Generator Learning Rate: {opt.lr_gen}")
     print(f"  Adam Beta: {opt.beta}")
@@ -88,7 +88,7 @@ def print_training_configuration(opt, device, dataset_name, model_name, original
     print(f"  LR Patience (epochs): {opt.decay_epoch}")
 
     # Model architecture configuration
-    print("\n️  MODEL ARCHITECTURE")
+    print("\n|  MODEL ARCHITECTURE")
     print("-" * 40)
     print(f"  Generator Reduced Channels: {opt.gen_reduced_channel}")
     print(f"  Feature Channels: {opt.feat_channel}")

@@ -212,7 +212,7 @@ def print_training_configuration(opt, device, model_name):
     print(f"  Model Name: {model_name}")
 
     # ================================== Optimizer Configuration ==================================
-    print("\n️  OPTIMIZER SETTINGS")
+    print("\n|  OPTIMIZER SETTINGS")
     print("-" * 40)
     print(f"  Learning Rate: {opt.lr_gen}")
     print(f"  Adam Beta: {opt.beta}")
@@ -221,7 +221,7 @@ def print_training_configuration(opt, device, model_name):
     print(f"  LR Patience (epochs): {opt.decay_epoch}")
 
     # ================================== Model Architecture Configuration ==================================
-    print("\n️  MODEL ARCHITECTURE")
+    print("\n|  MODEL ARCHITECTURE")
     print("-" * 40)
     print(f"  Feature Channels: {opt.feat_channel}")
     print(f"  Latent Dimension: {opt.latent_dim}")

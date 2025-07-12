@@ -929,7 +929,7 @@ def main():
     print(f"  Skipped videos: {skipped_videos}")
     print(f"  Constraint type: {opt.constraint_type}")
     print(f"  Output directory: {final_output_path}")
-    print(f"  Pseudo label quality: {' All pure binary' if is_all_binary else '️ Non-binary labels exist'}")
+    print(f"  Pseudo label quality: {' All pure binary' if is_all_binary else ' Non-binary labels exist'}")
     print("Directory structure:")
     print("  - img/    (original images)")
     print("  - gt/     (pseudo labels - pure binary: 0 and 255)")
