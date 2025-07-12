@@ -12,14 +12,14 @@ from sklearn.metrics import mean_squared_error, mean_absolute_error
 
 
 def compute_mse(pred, gt):
-    """计算均方误差 (MSE)"""
+    """Compute Mean Squared Error (MSE)"""
     pred_norm = pred.astype(np.float32) / 255.0
     gt_norm = gt.astype(np.float32) / 255.0
     return mean_squared_error(gt_norm.flatten(), pred_norm.flatten())
 
 
 def compute_mae(pred, gt):
-    """计算平均绝对误差 (MAE)"""
+    """Compute Mean Absolute Error (MAE)"""
     pred_norm = pred.astype(np.float32) / 255.0
     gt_norm = gt.astype(np.float32) / 255.0
     return mean_absolute_error(gt_norm.flatten(), pred_norm.flatten())
@@ -37,17 +37,17 @@ parser.add_argument("--use_ldconv", action="store_true", default=False, help="us
 parser.add_argument("--use_attention_pool", action="store_true", default=False, help="use AttentionPool2d in domain discriminators")
 opt = parser.parse_args()
 
-# 根据测试数据集设置数据路径
+# Set data path according to the test dataset
 if opt.test_dataset == "ijmond":
     dataset_path = "data/ijmond_data/test/img/"
 elif opt.test_dataset == "smoke5k":
     dataset_path = "data/SMOKE5K_Dataset/SMOKE5K/test/img/"
 
-# 检测设备并设置
+# Detect and set device
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"Using device: {device}")
 
-# 构建域适应模型
+# Build domain adaptation model
 base_generator = Generator(channel=opt.feat_channel, latent_dim=opt.latent_dim, num_filters=16)
 model = create_domain_adaptive_model(
     base_generator=base_generator,
@@ -58,7 +58,7 @@ model = create_domain_adaptive_model(
     use_attention_pool=opt.use_attention_pool,
 )
 
-# 鲁棒的模型加载
+# Robust model loading
 print("Loading domain adapted model...")
 try:
     if device.type == "cuda":
@@ -66,9 +66,9 @@ try:
     else:
         checkpoint = torch.load(opt.model_path, map_location="cpu", weights_only=True)
 
-    # 检查是否为完整的检查点
+    # Check if it is a full checkpoint
     if "generator_state_dict" in checkpoint:
-        # 加载生成器权重
+        # Load generator weights
         generator_dict = checkpoint["generator_state_dict"]
         base_generator_dict = base_generator.state_dict()
         filtered_dict = {
@@ -77,10 +77,10 @@ try:
         base_generator.load_state_dict(filtered_dict, strict=False)
         print(f"Successfully loaded generator: {len(filtered_dict)}/{len(generator_dict)} parameters")
 
-        # 如果有域适应器权重，也尝试加载
+        # If there are domain adapter weights, try to load them as well
         if "domain_disc_smoke.weight" in checkpoint or "domain_disc_bg.weight" in checkpoint:
             try:
-                # 尝试加载完整的域适应模型权重
+                # Try to load the complete domain adaptation model weights
                 filtered_model_dict = {}
                 model_state_dict = model.state_dict()
                 for k, v in checkpoint.items():
@@ -91,18 +91,18 @@ try:
             except Exception as e:
                 print(f"Warning: Could not load domain adapter weights: {e}, using only generator")
     elif isinstance(checkpoint, dict) and "base_generator.sal_encoder.resnet.conv1.weight" in checkpoint:
-        # 检查点直接包含base_generator的完整权重
+        # Checkpoint directly contains the full weights of base_generator
         base_generator_dict = base_generator.state_dict()
         filtered_dict = {}
         for k, v in checkpoint.items():
-            # 移除 "base_generator." 前缀（如果存在）
+            # Remove the "base_generator." prefix (if present)
             clean_key = k.replace("base_generator.", "") if k.startswith("base_generator.") else k
             if clean_key in base_generator_dict and checkpoint[k].shape == base_generator_dict[clean_key].shape:
                 filtered_dict[clean_key] = v
         base_generator.load_state_dict(filtered_dict, strict=False)
         print(f"Successfully loaded base generator weights: {len(filtered_dict)}/{len(checkpoint)} parameters")
     else:
-        # 假设这是单纯的生成器权重
+        # Assume these are pure generator weights
         base_generator_dict = base_generator.state_dict()
         filtered_dict = {k: v for k, v in checkpoint.items() if k in base_generator_dict and checkpoint[k].shape == base_generator_dict[k].shape}
         base_generator.load_state_dict(filtered_dict, strict=False)
@@ -119,7 +119,7 @@ except Exception as e:
 model.to(device)
 model.eval()
 
-# 添加调试信息：检查模型结构
+# Add debug info: check model structure
 print(f"Domain adaptive model components:")
 print(f"  - Base generator parameters: {sum(p.numel() for p in model.base_generator.parameters())}")
 print(f"  - Domain discriminator (smoke) parameters: {sum(p.numel() for p in model.domain_disc_smoke.parameters())}")
@@ -127,7 +127,7 @@ print(f"  - Domain discriminator (bg) parameters: {sum(p.numel() for p in model.
 print(f"  - Total model parameters: {sum(p.numel() for p in model.parameters())}")
 print(f"  - Model is on device: {next(model.parameters()).device}")
 
-# 测试模型推理
+# Test model inference
 print("Testing model inference...")
 test_input = torch.randn(1, 3, opt.testsize, opt.testsize).to(device)
 try:
@@ -139,7 +139,7 @@ except Exception as e:
     print("Please check the model architecture compatibility")
     exit(1)
 
-# 初始化累积指标
+# Initialize cumulative metrics
 sum_TP = 0
 sum_FP = 0
 sum_FN = 0
@@ -162,11 +162,11 @@ def compute_energy(disc_score):
 
 
 for dataset in test_datasets:
-    # 从模型路径中提取模型信息
-    model_name = os.path.splitext(os.path.basename(opt.model_path))[0]  # 不带扩展名的文件名
-    model_dir = os.path.basename(os.path.dirname(opt.model_path))  # 父目录名
+    # Extract model info from model path
+    model_name = os.path.splitext(os.path.basename(opt.model_path))[0]  # File name without extension
+    model_dir = os.path.basename(os.path.dirname(opt.model_path))  # Parent directory name
 
-    # 构建保存路径，包含模型信息和域适应标识
+    # Build save path, including model info and domain adaptation identifier
     save_path = os.path.join("./results", "thesis", opt.test_dataset, model_dir, model_name, dataset)
 
     if not os.path.exists(save_path):
@@ -175,31 +175,31 @@ for dataset in test_datasets:
     image_root = os.path.join(dataset_path, dataset) if dataset else dataset_path
     print(f"Loading test data from: {image_root}")
 
-    # 检查路径是否存在
+    # Check if path exists
     if not os.path.exists(image_root):
         print(f"Warning: Path {image_root} does not exist, skipping...")
         continue
 
-    # 确定GT路径
+    # Determine GT path
     gt_root = None
     if opt.test_dataset == "ijmond":
         gt_root = os.path.join("data/ijmond_data/test/gt", dataset) if dataset else "data/ijmond_data/test/gt/"
     elif opt.test_dataset == "smoke5k":
         gt_root = os.path.join("data/SMOKE5K_Dataset/SMOKE5K/test/gt_", dataset) if dataset else "data/SMOKE5K_Dataset/SMOKE5K/test/gt_/"
 
-    # 检查GT路径是否存在
+    # Check if GT path exists
     if gt_root and not os.path.exists(gt_root):
         print(f"Warning: GT path {gt_root} does not exist, evaluation metrics will not be calculated")
         gt_root = None
 
-    # 初始化评价指标统计变量
+    # Initialize evaluation metric statistics variables
     sum_TP = 0
     sum_FP = 0
     sum_FN = 0
     sum_TN = 0
     total_images = 0
 
-    # 初始化额外的评估指标累积变量
+    # Initialize additional evaluation metric accumulation variables
     sum_mse = 0.0
     sum_mae = 0.0
 
@@ -209,36 +209,36 @@ for dataset in test_datasets:
         image, HH, WW, name = test_loader.load_data()
         image = image.to(device)
 
-        # 使用域适应模型进行预测
+        # Use domain adaptation model for prediction
         with torch.no_grad():
-            # 域适应模型的前向传播 - 推理模式下只返回最终的预测结果
+            # Forward pass of domain adaptation model - only returns final prediction in inference mode
             generator_pred = model(image, training=False)
-            # 在推理模式下，域适应模型调用基础生成器，只返回self.prob_pred
+            # In inference mode, the domain adaptation model calls the base generator and only returns self.prob_pred
 
         res = generator_pred
         res = F.interpolate(res, size=[WW, HH], mode="bilinear", align_corners=False)
         res = res.sigmoid().data.cpu().numpy().squeeze()
         res = 255 * (res - res.min()) / (res.max() - res.min() + 1e-8)
 
-        # 安全的文件保存
+        # Safe file saving
         save_file_path = os.path.join(save_path, name)
         try:
             cv2.imwrite(save_file_path, res)
         except Exception as e:
             print(f"Failed to save {save_file_path}: {e}")
 
-        # 计算评价指标（如果GT路径存在）
+        # Compute evaluation metrics (if GT path exists)
         if gt_root is not None:
             gt_path = os.path.join(gt_root, name)
             if os.path.exists(gt_path):
-                # 读取GT图像
+                # Read GT image
                 gt_mask = cv2.imread(gt_path, 0)
                 if gt_mask is not None:
-                    # 二值化GT和预测结果
+                    # Binarize GT and prediction
                     gt_bin = (gt_mask > 128).astype(np.uint8)
                     pred_bin = (res > 128).astype(np.uint8)
 
-                    # 计算TP, FP, FN, TN
+                    # Compute TP, FP, FN, TN
                     TP = np.logical_and(pred_bin, gt_bin).sum()
                     FP = np.logical_and(pred_bin, 1 - gt_bin).sum()
                     FN = np.logical_and(1 - pred_bin, gt_bin).sum()
@@ -249,7 +249,7 @@ for dataset in test_datasets:
                     sum_FN += FN
                     sum_TN += TN
 
-                    # 计算额外的评估指标
+                    # Compute additional evaluation metrics
                     mse = compute_mse(res, gt_mask)
                     mae = compute_mae(res, gt_mask)
 
@@ -260,28 +260,28 @@ for dataset in test_datasets:
             else:
                 print(f"Warning: GT file {gt_path} not found")
 
-    # 计算并保存评价指标
+    # Compute and save evaluation metrics
     if total_images > 0:
-        # 计算各项指标
+        # Compute metrics
         precision = sum_TP / (sum_TP + sum_FP + 1e-8)
         recall = sum_TP / (sum_TP + sum_FN + 1e-8)
         f1_score = 2 * precision * recall / (precision + recall + 1e-8)
         specificity = sum_TN / (sum_TN + sum_FP + 1e-8)
         accuracy = (sum_TP + sum_TN) / (sum_TP + sum_TN + sum_FP + sum_FN + 1e-8)
 
-        # IoU 计算
-        iou_positive = sum_TP / (sum_TP + sum_FP + sum_FN + 1e-8)  # 烟雾类 IoU
-        iou_negative = sum_TN / (sum_TN + sum_FN + sum_FP + 1e-8)  # 背景类 IoU
-        miou = (iou_positive + iou_negative) / 2  # 真正的 mIoU：两个类别 IoU 的平均
+        # IoU calculation
+        iou_positive = sum_TP / (sum_TP + sum_FP + sum_FN + 1e-8)  # Smoke class IoU
+        iou_negative = sum_TN / (sum_TN + sum_FN + sum_FP + 1e-8)  # Background class IoU
+        miou = (iou_positive + iou_negative) / 2  # True mIoU: average of two class IoUs
 
-        # Dice 系数（与 F1-Score 等价）
+        # Dice coefficient (equivalent to F1-Score)
         dice = 2 * sum_TP / (2 * sum_TP + sum_FP + sum_FN + 1e-8)
 
-        # 计算平均额外指标
+        # Compute mean additional metrics
         mean_mse = sum_mse / total_images
         mean_mae = sum_mae / total_images
 
-        # 打印结果
+        # Print results
         print(f"\n=== Domain Adaptation Evaluation Results for {opt.test_dataset} dataset ===")
         print(f"Processed {total_images} images")
         print(f"Precision: {precision:.4f}")
@@ -297,7 +297,7 @@ for dataset in test_datasets:
         print(f"Mean MSE: {mean_mse:.6f}")
         print(f"Mean MAE: {mean_mae:.6f}")
 
-        # 混淆矩阵
+        # Confusion matrix
         confusion_matrix = f"""
 Confusion Matrix:
                 Predicted
@@ -307,7 +307,7 @@ Actual N    {sum_FP:8d} {sum_TN:8d}
 """
         print(confusion_matrix)
 
-        # 保存评价指标到txt文件
+        # Save evaluation metrics to txt file
         metrics_file = os.path.join(save_path, "evaluation_metrics.txt")
         with open(metrics_file, "w") as f:
             f.write(f"Domain Adaptation Evaluation Results for {opt.test_dataset} dataset\n")

@@ -106,7 +106,7 @@ class LDConv(nn.Module):
         self.num_param = num_param
         self.stride = stride
 
-        # 修复bias参数类型
+        # Fix bias parameter type
         use_bias = bias if bias is not None else False
         self.conv = nn.Sequential(
             nn.Conv2d(inc, outc, kernel_size=(num_param, 1), stride=(num_param, 1), bias=use_bias), nn.BatchNorm2d(outc), nn.SiLU()
@@ -206,7 +206,7 @@ class LDConv(nn.Module):
 class DomainDiscriminator(nn.Module):
     """
     Domain Discriminator for domain adaptation.
-    支持使用LDConv替换标准卷积的选项
+    Supports the option to use LDConv instead of standard convolution.
     """
 
     def __init__(self, in_channels, num_domains=2, use_ldconv=False, use_attention_pool=False):
@@ -222,18 +222,18 @@ class DomainDiscriminator(nn.Module):
         self.use_attention_pool = use_attention_pool
 
         if use_ldconv:
-            # 使用LDConv替换常规卷积，num_param=9近似3x3卷积
+            # Use LDConv to replace standard convolution, num_param=9 approximates 3x3 convolution
             self.conv1 = LDConv(in_channels, in_channels // 2, num_param=9, stride=1)
             self.conv2 = LDConv(in_channels // 2, in_channels // 4, num_param=9, stride=1)
         else:
-            # 原始卷积实现
+            # Original convolution implementation
             self.conv1 = nn.Conv2d(in_channels, in_channels // 2, 3, padding=1)
             self.conv2 = nn.Conv2d(in_channels // 2, in_channels // 4, 3, padding=1)
 
         self.fc = nn.Conv2d(in_channels // 4, num_domains, 1)
         self.relu = nn.ReLU()
 
-        # 池化层选择
+        # Pooling layer selection
         if use_attention_pool:
             self.pool = AttentionPool2d(1)
         else:
@@ -252,16 +252,16 @@ class DomainDiscriminator(nn.Module):
             x = x * category_mask
 
         x = self.conv1(x)
-        if not self.use_ldconv:  # LDConv已包含激活函数
+        if not self.use_ldconv:  # LDConv already includes activation function
             x = self.relu(x)
 
         x = self.conv2(x)
         if not self.use_ldconv:
             x = self.relu(x)
 
-        # 使用注意力池化或普通池化
+        # Use attention pooling or normal pooling
         if self.use_attention_pool and category_mask is not None:
-            # 设置注意力图并应用注意力池化
+            # Set attention map and apply attention pooling
             self.pool.set_attention(category_mask)
 
         x = self.pool(x)
@@ -270,17 +270,17 @@ class DomainDiscriminator(nn.Module):
 
 
 class DomainAdaptiveGenerator(nn.Module):
-    """领域自适应的生成器，集成了原有的Generator和域判别器"""
+    """Domain adaptive generator, integrating the original Generator and domain discriminator"""
 
     def __init__(self, base_generator, feat_channels=32, num_domains=2, domain_loss_weight=0.1, use_ldconv=False, use_attention_pool=False):
         """
         Args:
-            base_generator: 原有的生成器模型（Generator）
-            feat_channels: 特征图的通道数，用于域判别器
-            num_domains: 域判别器的域数量（通常为2，表示源域和目标域）
-            domain_loss_weight: 域判别损失的权重，用于平衡生成器和域判别器的损失
-            use_ldconv: 是否在域判别器中使用LDConv
-            use_attention_pool: 是否在域判别器中使用AttentionPool2d
+            base_generator: Original generator model (Generator)
+            feat_channels: Number of feature channels for domain discriminator
+            num_domains: Number of domains for domain discriminator (usually 2: source and target)
+            domain_loss_weight: Weight for domain discrimination loss, to balance generator and discriminator loss
+            use_ldconv: Whether to use LDConv in domain discriminator
+            use_attention_pool: Whether to use AttentionPool2d in domain discriminator
         """
         super().__init__()
         self.base_generator = base_generator
@@ -289,30 +289,30 @@ class DomainAdaptiveGenerator(nn.Module):
         self.use_ldconv = use_ldconv
         self.use_attention_pool = use_attention_pool
 
-        # 为烟雾区域和背景区域分别建立域判别器，支持LDConv和AttentionPool2d选项
+        # Build domain discriminators for smoke and background regions, supporting LDConv and AttentionPool2d options
         self.domain_disc_smoke = DomainDiscriminator(feat_channels, num_domains, use_ldconv=use_ldconv, use_attention_pool=use_attention_pool)
         self.domain_disc_bg = DomainDiscriminator(feat_channels, num_domains, use_ldconv=use_ldconv, use_attention_pool=use_attention_pool)
 
     def extract_features(self, x):
         """
-        从输入图像中提取特征图，用于域判别
+        Extract feature maps from input images for domain discrimination
         """
-        # 使用sal_encoder的ResNet backbone提取中间特征
+        # Use the ResNet backbone of sal_encoder to extract intermediate features
         with torch.no_grad():
             _, mux, logvarx = self.base_generator.x_encoder(x)
             z_noise = self.base_generator.reparametrize(mux, logvarx)
 
-        # 从sal_encoder中提取中间特征
+        # Extract intermediate features from sal_encoder
         features = self._extract_sal_features(x, z_noise)
         return features
 
     def _extract_sal_features(self, x: torch.Tensor, z):
         """
-        从sal_encoder中提取中间特征
+        Extract intermediate features from sal_encoder
         """
         sal_encoder = self.base_generator.sal_encoder
 
-        # 重建sal_encoder前向传播的前半部分
+        # Reconstruct the first half of the forward pass of sal_encoder
         z = torch.unsqueeze(z, 2)
         z = sal_encoder.tile(z, 2, x.shape[sal_encoder.spatial_axes[0]])
         z = torch.unsqueeze(z, 3)
@@ -320,7 +320,7 @@ class DomainAdaptiveGenerator(nn.Module):
         x_input = torch.cat((x, z), 1)
         x_input = sal_encoder.conv_depth1(x_input)
 
-        # 通过ResNet backbone
+        # Through ResNet backbone
         x = sal_encoder.resnet.conv1(x_input)
         x = sal_encoder.resnet.bn1(x)
         x = sal_encoder.resnet.relu(x)
@@ -329,7 +329,7 @@ class DomainAdaptiveGenerator(nn.Module):
         x2 = sal_encoder.resnet.layer2(x1)
         x3 = sal_encoder.resnet.layer3_1(x2)
 
-        # 使用x3作为域判别的特征，并调整通道数
+        # Use x3 as the feature for domain discrimination and adjust the number of channels
         if x3.size(1) != self.feat_channels:
             if not hasattr(self, "feature_adapter"):
                 self.feature_adapter = nn.Conv2d(x3.size(1), self.feat_channels, 1).to(x3.device)
@@ -342,60 +342,60 @@ class DomainAdaptiveGenerator(nn.Module):
     def forward(self, x, y=None, training=True, lambda_grl=1.0, source_domain=True):
         """
         Args:
-            x: 输入图像
-            y: 真实标签（训练时）
-            training: 是否为训练模式
-            lambda_grl: 梯度反转层的强度
-            source_domain: 是否为源域数据
+            x: Input image
+            y: Ground truth label (for training)
+            training: Whether in training mode
+            lambda_grl: Gradient reversal layer strength
+            source_domain: Whether the data is from source domain
         """
         if training:
             base_outputs = self.base_generator(x, y, training=True)
             sal_init_post, sal_ref_post, sal_init_prior, sal_ref_prior, latent_loss, output_post, output_prior = base_outputs
 
-            # 提取特征进行域判别
+            # Extract features for domain discrimination
             features = self.extract_features(x)
 
-            # 生成类别掩码用于域判别
+            # Generate class masks for domain discrimination
             seg_prob = torch.sigmoid(sal_ref_post)
             smoke_mask = (seg_prob > 0.5).float()
             bg_mask = 1.0 - smoke_mask
 
-            # 对特征图进行上采样以匹配掩码尺寸
+            # Upsample feature maps to match mask size
             if features.size(-1) != smoke_mask.size(-1):
                 features_upsampled = F.interpolate(features, size=smoke_mask.shape[-2:], mode="bilinear", align_corners=True)
             else:
                 features_upsampled = features
 
-            # 域判别
+            # Domain discrimination
             d_smoke = self.domain_disc_smoke(features_upsampled, smoke_mask, lambda_grl)
             d_bg = self.domain_disc_bg(features_upsampled, bg_mask, lambda_grl)
 
             return sal_init_post, sal_ref_post, sal_init_prior, sal_ref_prior, latent_loss, output_post, output_prior, d_smoke, d_bg
         else:
-            # 推理模式，只返回分割结果
+            # Inference mode, only return segmentation result
             return self.base_generator(x, y, training=False)
 
 
 def compute_domain_loss(d_smoke_src, d_bg_src, d_smoke_tgt, d_bg_tgt, batch_size):
-    """计算域判别损失"""
+    """Compute domain discrimination loss"""
     device = d_smoke_src.device
 
-    # 域标签：源域=0，目标域=1
+    # Domain labels: source domain=0, target domain=1
     label_src = torch.zeros(batch_size, dtype=torch.long, device=device)
     label_tgt = torch.ones(batch_size, dtype=torch.long, device=device)
 
-    # 交叉熵损失
+    # Cross-entropy loss
     criterion = nn.CrossEntropyLoss()
 
-    # 源域损失
+    # Source domain loss
     loss_d_smoke_src = criterion(d_smoke_src, label_src)
     loss_d_bg_src = criterion(d_bg_src, label_src)
 
-    # 目标域损失
+    # Target domain loss
     loss_d_smoke_tgt = criterion(d_smoke_tgt, label_tgt)
     loss_d_bg_tgt = criterion(d_bg_tgt, label_tgt)
 
-    # 总域损失
+    # Total domain loss
     domain_loss = (loss_d_smoke_src + loss_d_bg_src + loss_d_smoke_tgt + loss_d_bg_tgt) * 0.25
 
     return domain_loss, {
@@ -408,20 +408,20 @@ def compute_domain_loss(d_smoke_src, d_bg_src, d_smoke_tgt, d_bg_tgt, batch_size
 
 def compute_domain_accuracy(d_smoke_src, d_bg_src, d_smoke_tgt, d_bg_tgt):
     """
-    计算域判别准确率，用于监控域适应训练效果
-    理想情况下，准确率应该接近50%（域混淆成功）
+    Compute domain discrimination accuracy, used to monitor domain adaptation training effect
+    Ideally, the accuracy should be close to 50% (domain confusion successful)
     """
-    # 获取预测结果
+    # Get predictions
     pred_smoke_src = torch.argmax(d_smoke_src, dim=1)
     pred_bg_src = torch.argmax(d_bg_src, dim=1)
     pred_smoke_tgt = torch.argmax(d_smoke_tgt, dim=1)
     pred_bg_tgt = torch.argmax(d_bg_tgt, dim=1)
 
-    # 真实标签
+    # Ground truth labels
     label_src = torch.zeros_like(pred_smoke_src)
     label_tgt = torch.ones_like(pred_smoke_tgt)
 
-    # 计算准确率
+    # Compute accuracy
     acc_smoke_src = (pred_smoke_src == label_src).float().mean()
     acc_bg_src = (pred_bg_src == label_src).float().mean()
     acc_smoke_tgt = (pred_smoke_tgt == label_tgt).float().mean()
@@ -440,28 +440,28 @@ def compute_domain_accuracy(d_smoke_src, d_bg_src, d_smoke_tgt, d_bg_tgt):
 
 def log_domain_adaptation_stats(d_smoke_src, d_bg_src, d_smoke_tgt, d_bg_tgt, batch_size, epoch, step):
     """
-    记录域适应训练统计信息，用于证明域适应确实在工作
+    Log domain adaptation training statistics, used to demonstrate that domain adaptation is indeed working
     """
     domain_loss, domain_loss_dict = compute_domain_loss(d_smoke_src, d_bg_src, d_smoke_tgt, d_bg_tgt, batch_size)
     domain_acc_dict = compute_domain_accuracy(d_smoke_src, d_bg_src, d_smoke_tgt, d_bg_tgt)
 
-    # 计算域混淆程度 (理想值接近0.5)
+    # Calculate domain confusion degree (ideal value close to 0.5)
     confusion_score = abs(0.5 - domain_acc_dict["overall"])
 
-    print(f"\n域适应统计 [Epoch {epoch}, Step {step}]:")
-    print(f"   域判别准确率: {domain_acc_dict['overall']:.3f} (理想值~0.5)")
-    print(f"   域混淆得分: {confusion_score:.3f} (越小越好)")
-    print(f"   烟雾区域: 源域准确率={domain_acc_dict['smoke_src']:.3f}, 目标域准确率={domain_acc_dict['smoke_tgt']:.3f}")
-    print(f"   背景区域: 源域准确率={domain_acc_dict['bg_src']:.3f}, 目标域准确率={domain_acc_dict['bg_tgt']:.3f}")
-    print(f"   域损失: 总计={domain_loss.item():.4f}")
+    print(f"\nDomain adaptation stats [Epoch {epoch}, Step {step}]:")
+    print(f"   Domain discrimination accuracy: {domain_acc_dict['overall']:.3f} (ideal~0.5)")
+    print(f"   Domain confusion score: {confusion_score:.3f} (the smaller the better)")
+    print(f"   Smoke region: source accuracy={domain_acc_dict['smoke_src']:.3f}, target accuracy={domain_acc_dict['smoke_tgt']:.3f}")
+    print(f"   Background region: source accuracy={domain_acc_dict['bg_src']:.3f}, target accuracy={domain_acc_dict['bg_tgt']:.3f}")
+    print(f"   Domain loss: total={domain_loss.item():.4f}")
 
-    # 判断域适应效果
+    # Judge domain adaptation effect
     if domain_acc_dict["overall"] > 0.8:
-        print("   域判别器过于准确，可能需要增加GRL强度")
+        print("   Domain discriminator is too accurate, may need to increase GRL strength")
     elif domain_acc_dict["overall"] < 0.3:
-        print("   域判别器准确率过低，可能需要减少GRL强度")
+        print("   Domain discriminator accuracy is too low, may need to decrease GRL strength")
     elif 0.4 <= domain_acc_dict["overall"] <= 0.6:
-        print("   域混淆效果良好，域适应正在有效工作！")
+        print("   Good domain confusion, domain adaptation is working effectively!")
 
     return {
         "domain_loss": domain_loss.item(),
@@ -473,14 +473,14 @@ def log_domain_adaptation_stats(d_smoke_src, d_bg_src, d_smoke_tgt, d_bg_tgt, ba
 
 def create_domain_adaptive_model(base_generator, feat_channels=32, num_domains=2, domain_loss_weight=0.1, use_ldconv=False, use_attention_pool=False):
     """
-    创建领域自适应模型
+    Create domain adaptive model
     Args:
-        base_generator: 基础生成器
-        feat_channels: 特征通道数
-        num_domains: 域数量
-        domain_loss_weight: 域损失权重
-        use_ldconv: 是否使用LDConv (默认False，保持向后兼容)
-        use_attention_pool: 是否使用AttentionPool2d (默认False，保持向后兼容)
+        base_generator: Base generator
+        feat_channels: Number of feature channels
+        num_domains: Number of domains
+        domain_loss_weight: Domain loss weight
+        use_ldconv: Whether to use LDConv (default False, keep backward compatibility)
+        use_attention_pool: Whether to use AttentionPool2d (default False, keep backward compatibility)
     """
     model = DomainAdaptiveGenerator(
         base_generator=base_generator,

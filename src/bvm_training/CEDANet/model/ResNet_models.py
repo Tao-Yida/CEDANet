@@ -209,7 +209,9 @@ class Generator(nn.Module):
         if training:
             self.posterior, muxy, logvarxy = self.xy_encoder(torch.cat((x, y), 1))
             self.prior, mux, logvarx = self.x_encoder(x)
-            lattent_loss = torch.mean(self.kl_divergence(self.posterior, self.prior)) # Latent loss: the KL divergence between the posterior and prior distributions
+            lattent_loss = torch.mean(
+                self.kl_divergence(self.posterior, self.prior)
+            )  # Latent loss: the KL divergence between the posterior and prior distributions
             z_noise_post = self.reparametrize(muxy, logvarxy)
             z_noise_prior = self.reparametrize(mux, logvarx)
 

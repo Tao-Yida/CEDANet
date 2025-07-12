@@ -2,8 +2,8 @@
 # -*- coding: utf-8 -*-
 
 """
-领域自适应训练脚本
-整合半监督学习与领域自适应功能
+Domain Adaptive Training Script
+Integrates semi-supervised learning and domain adaptation functionality
 """
 
 import torch
@@ -34,36 +34,36 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 def argparser():
     parser = argparse.ArgumentParser(description="Domain Adaptive Training Script")
 
-    # ================================== 基础训练配置 ==================================
+    # ================================== Basic Training Configuration ==================================
     parser.add_argument("--epoch", type=int, default=50, help="number of training epochs")
     parser.add_argument("--batchsize", type=int, default=4, help="batch size for training")
     parser.add_argument("--trainsize", type=int, default=352, help="input image resolution (trainsize x trainsize)")
 
-    # ================================== 优化器配置 ==================================
+    # ================================== Optimizer Configuration ==================================
     parser.add_argument("--lr_gen", type=float, default=5e-5, help="learning rate for generator")
     parser.add_argument("--beta", type=float, default=0.5, help="beta parameter for Adam optimizer")
     parser.add_argument("--clip", type=float, default=0.5, help="gradient clipping threshold")
     parser.add_argument("--decay_rate", type=float, default=0.8, help="learning rate decay factor for ReduceLROnPlateau")
     parser.add_argument("--decay_epoch", type=int, default=12, help="patience epochs for ReduceLROnPlateau scheduler")
 
-    # ================================== 模型架构配置 ==================================
+    # ================================== Model Architecture Configuration ==================================
     parser.add_argument(
         "--feat_channel", type=int, default=32, help="feature channel count for saliency features (default: 32, lower for less memory)"
     )
     parser.add_argument("--latent_dim", type=int, default=8, help="latent space dimension (default: 4, lower for less memory)")
     parser.add_argument("--num_filters", type=int, default=8, help="number of filters for contrastive loss layer (default: 8, lower for less memory)")
 
-    # ================================== 损失函数权重配置 ==================================
+    # ================================== Loss Function Weight Configuration ==================================
     parser.add_argument("--reg_weight", type=float, default=1e-4, help="weight for L2 regularization")
     parser.add_argument("--lat_weight", type=float, default=2.0, help="weight for latent loss")
     parser.add_argument("--vae_loss_weight", type=float, default=0.6, help="weight for VAE loss component")
     parser.add_argument("--contrastive_loss_weight", type=float, default=1, help="weight for contrastive loss")
 
-    # ================================== 半监督学习配置 ==================================
+    # ================================== Semi-Supervised Learning Configuration ==================================
     parser.add_argument("--inter", action="store_true", default=False, help="use inter-image pixel matching (vs intra-image)")
     parser.add_argument("--no_samples", type=int, default=500, help="number of pixels for contrastive loss sampling")
 
-    # ================================== 领域自适应配置 ==================================
+    # ================================== Domain Adaptation Configuration ==================================
     parser.add_argument("--domain_loss_weight", type=float, default=0.5, help="weight for domain adaptation loss")
     parser.add_argument("--lambda_grl_max", type=float, default=1.0, help="maximum lambda for gradient reversal layer")
     parser.add_argument("--num_domains", type=int, default=2, help="number of domains (source=0, target=1)")
@@ -72,10 +72,10 @@ def argparser():
         "--use_attention_pool", action="store_true", default=False, help="use AttentionPool2d in domain discriminators (default: False, saves memory)"
     )
 
-    # ================================== 伪标签学习配置 ==================================
+    # ================================== Pseudo Label Learning Configuration ==================================
     parser.add_argument("--pseudo_loss_weight", type=float, default=0.5, help="weight for pseudo label supervision loss")
 
-    # ================================== 数据集路径配置 ==================================
+    # ================================== Dataset Path Configuration ==================================
     parser.add_argument(
         "--source_dataset_path", type=str, default="data/SMOKE5K_Dataset/SMOKE5K/train", help="source domain dataset path (with ground truth labels)"
     )
@@ -83,18 +83,18 @@ def argparser():
     parser.add_argument("--pretrained_weights", type=str, default=None, help="path to pretrained model weights")
     parser.add_argument("--save_model_path", type=str, default="models/domain_adapt", help="directory to save trained models")
 
-    # ================================== 验证和早停配置 ==================================
+    # ================================== Validation and Early Stopping Configuration ==================================
     parser.add_argument("--val_split", type=float, default=0.2, help="fraction of target data used for validation (0.0-1.0)")
     parser.add_argument("--patience", type=int, default=25, help="early stopping patience (epochs)")
     parser.add_argument("--min_delta", type=float, default=0.0001, help="minimum improvement threshold for early stopping")
     parser.add_argument("--enable_validation", action="store_true", default=True, help="enable validation on target data subset")
 
-    # ================================== 数据增强和可重现性配置 ==================================
+    # ================================== Data Augmentation and Reproducibility Configuration ==================================
     parser.add_argument("--aug", action="store_true", default=True, help="enable data augmentation for both source and target domain data")
     parser.add_argument("--freeze", action="store_true", default=False, help="freeze randomness for reproducibility")
     parser.add_argument("--random_seed", type=int, default=42, help="random seed for reproducible results")
 
-    # ================================== 训练技巧配置 ==================================
+    # ================================== Training Tricks Configuration ==================================
     parser.add_argument(
         "--accumulation_steps",
         type=int,
@@ -107,8 +107,8 @@ def argparser():
 
 def structure_loss(pred, mask):
     """
-    结构损失，用于评估预测的显著性图与真实显著性图之间的差异
-    通过计算加权的二进制交叉熵损失和加权的IoU损失来实现
+    Structure loss for evaluating the difference between predicted and ground truth saliency maps.
+    Implemented by computing weighted binary cross-entropy loss and weighted IoU loss.
     Args:
         pred: predicted saliency map
         mask: ground truth saliency map
@@ -117,15 +117,15 @@ def structure_loss(pred, mask):
     """
     weight = 1 + 5 * torch.abs(
         F.avg_pool2d(mask, kernel_size=31, stride=1, padding=15) - mask
-    )  # 计算加权因子，在mask与其局部均值之间的差异越大，权重越大，从而更关注边缘或过渡区域
+    )  # Calculate weighting factor: larger difference between mask and its local average means higher weight, focusing more on edge or transition areas
     weighted_bce_loss = F.binary_cross_entropy_with_logits(pred, mask, reduction="none")
     weighted_bce_loss = (weight * weighted_bce_loss).sum(dim=(2, 3)) / weight.sum(dim=(2, 3))
 
     pred = torch.sigmoid(pred)
-    inter = ((pred * mask) * weight).sum(dim=(2, 3))  # 交集
-    union = (((pred + mask - pred * mask)) * weight).sum(dim=(2, 3))  # 并集
-    weighted_IoU = (inter + 1e-6) / (union + 1e-6)  # 加1e-6防止除0错误
-    weighted_IoU_loss = 1 - weighted_IoU  # IoU损失，IoU越高，损失越低
+    inter = ((pred * mask) * weight).sum(dim=(2, 3))  # Intersection
+    union = (((pred + mask - pred * mask)) * weight).sum(dim=(2, 3))  # Union
+    weighted_IoU = (inter + 1e-6) / (union + 1e-6)  # Add 1e-6 to prevent division by zero
+    weighted_IoU_loss = 1 - weighted_IoU  # IoU loss: higher IoU means lower loss
     return (weighted_bce_loss + weighted_IoU_loss).mean()
 
 
@@ -142,12 +142,12 @@ def linear_annealing(init, fin, step, annealing_steps):
 
 def load_data(dataset_path, opt, aug=False, freeze=False):
     """
-    加载数据集
+    Load dataset
     Args:
-        dataset_path: 数据集路径
-        opt: 训练选项
-        aug: 是否启用数据增强
-        freeze: 是否冻结随机性
+        dataset_path: Dataset path
+        opt: Training options
+        aug: Whether to enable data augmentation
+        freeze: Whether to freeze randomness
     Returns:
         tuple: (train_loader, total_step)
     """
@@ -164,11 +164,11 @@ def load_data(dataset_path, opt, aug=False, freeze=False):
 
 def load_labeled_data_with_validation(dataset_path, opt, freeze=False):
     """
-    加载标注数据集并进行训练/验证分割（当启用校验时使用）
+    Load labeled dataset and perform train/validation split (used when validation is enabled)
     Args:
-        dataset_path: 标注数据集路径
-        opt: 训练选项
-        freeze: 是否冻结随机性
+        dataset_path: Labeled dataset path
+        opt: Training options
+        freeze: Whether to freeze randomness
     Returns:
         tuple: (train_loader, val_loader, train_step, val_step)
     """
@@ -176,7 +176,7 @@ def load_labeled_data_with_validation(dataset_path, opt, freeze=False):
     gt_root = os.path.join(dataset_path, "gt/")
     trans_map_root = os.path.join(dataset_path, "trans/")
 
-    # 使用训练/验证分割的数据加载器
+    # Use train/validation split data loaders
     train_loader, val_loader = get_train_val_loaders(
         image_root,
         gt_root,
@@ -184,7 +184,7 @@ def load_labeled_data_with_validation(dataset_path, opt, freeze=False):
         batchsize=opt.batchsize,
         trainsize=opt.trainsize,
         val_split=opt.val_split,
-        aug=opt.aug,  # 启用源域数据增强以提高泛化能力
+        aug=opt.aug,  # Enable source domain data augmentation to improve generalization
         freeze=freeze,
         random_seed=opt.random_seed,
     )
@@ -196,13 +196,13 @@ def load_labeled_data_with_validation(dataset_path, opt, freeze=False):
 
 def print_training_configuration(opt, device, model_name):
     """
-    打印训练配置信息
+    Print training configuration information
     """
     print("=" * 80)
     print("DOMAIN ADAPTIVE TRAINING CONFIGURATION")
     print("=" * 80)
 
-    # ================================== 基础配置 ==================================
+    # ================================== Basic Configuration ==================================
     print("📋 BASIC TRAINING SETTINGS")
     print("-" * 40)
     print(f"  Training Epochs: {opt.epoch}")
@@ -211,7 +211,7 @@ def print_training_configuration(opt, device, model_name):
     print(f"  Device: {device}")
     print(f"  Model Name: {model_name}")
 
-    # ================================== 优化器配置 ==================================
+    # ================================== Optimizer Configuration ==================================
     print("\n⚙️  OPTIMIZER SETTINGS")
     print("-" * 40)
     print(f"  Learning Rate: {opt.lr_gen}")
@@ -220,14 +220,14 @@ def print_training_configuration(opt, device, model_name):
     print(f"  LR Decay Factor: {opt.decay_rate}")
     print(f"  LR Patience (epochs): {opt.decay_epoch}")
 
-    # ================================== 模型架构配置 ==================================
+    # ================================== Model Architecture Configuration ==================================
     print("\n🏗️  MODEL ARCHITECTURE")
     print("-" * 40)
     print(f"  Feature Channels: {opt.feat_channel}")
     print(f"  Latent Dimension: {opt.latent_dim}")
     print(f"  Contrastive Layer Filters: {opt.num_filters}")
 
-    # ================================== 损失函数权重 ==================================
+    # ================================== Loss Function Weights ==================================
     print("\n📊 LOSS FUNCTION WEIGHTS")
     print("-" * 40)
     print(f"  L2 Regularization: {opt.reg_weight}")
@@ -237,7 +237,7 @@ def print_training_configuration(opt, device, model_name):
     print(f"  Domain Adaptation Loss: {opt.domain_loss_weight}")
     print(f"  Pseudo Label Loss: {opt.pseudo_loss_weight}")
 
-    # ================================== 域适应配置 ==================================
+    # ================================== Domain Adaptation Settings ==================================
     print("\n🔄 DOMAIN ADAPTATION SETTINGS")
     print("-" * 40)
     print(f"  Number of Domains: {opt.num_domains}")
@@ -246,13 +246,13 @@ def print_training_configuration(opt, device, model_name):
     print(f"  Use AttentionPool2d in Discriminators: {opt.use_attention_pool}")
     print(f"  Pseudo Label Weight: {opt.pseudo_loss_weight}")
 
-    # ================================== 半监督学习配置 ==================================
+    # ================================== Semi-Supervised Learning ==================================
     print("\n🎯 WEAKLY-SUPERVISED LEARNING")
     print("-" * 40)
     print(f"  Contrastive Pixel Matching: {'Inter-image' if opt.inter else 'Intra-image'}")
     print(f"  Contrastive Sample Count: {opt.no_samples}")
 
-    # ================================== 数据集配置 ==================================
+    # ================================== Dataset Configuration ==================================
     print("\n📁 DATASET CONFIGURATION")
     print("-" * 40)
     print(f"  Source Domain Path: {opt.source_dataset_path}")
@@ -260,7 +260,7 @@ def print_training_configuration(opt, device, model_name):
     print(f"  Pretrained Weights: {opt.pretrained_weights or 'None'}")
     print(f"  Model Save Path: {opt.save_model_path}")
 
-    # ================================== 验证和早停配置 ==================================
+    # ================================== Validation and Early Stopping ==================================
     print("\n✅ VALIDATION & EARLY STOPPING")
     print("-" * 40)
     print(f"  Enable Validation: {opt.enable_validation}")
@@ -273,82 +273,89 @@ def print_training_configuration(opt, device, model_name):
         print("     - Source domain: Full dataset for training")
         print("     - Target domain: Split into training/validation sets")
 
-    # ================================== 数据增强配置 ==================================
+    # ================================== Data Augmentation & Reproducibility ==================================
     print("\n🔀 DATA AUGMENTATION & REPRODUCIBILITY")
     print("-" * 40)
     print(f"  Data Augmentation (Both Domains): {opt.aug}")
     print(f"  Freeze Randomness: {opt.freeze}")
     print(f"  Random Seed: {opt.random_seed}")
     if opt.freeze and opt.aug:
-        print("  ⚠️  NOTE: Data augmentation disabled due to freeze mode")
+        print("  NOTE: Data augmentation disabled due to freeze mode")
 
     print("=" * 80)
 
 
 opt = argparser()
 
-# 设置随机种子
+# Set random seed
 torch.manual_seed(opt.random_seed)
 np.random.seed(opt.random_seed)
 if torch.cuda.is_available():
     torch.cuda.manual_seed(opt.random_seed)
 
-# 获取数据集名称并生成模型名称
+# Get dataset name and generate model name
 source_dataset_name = get_dataset_name_from_path(opt.source_dataset_path)
 target_dataset_name = get_dataset_name_from_path(opt.target_dataset_path)
 
-# 使用域适应专用的模型命名函数
+# Use domain adaptation-specific model naming function
 model_name = generate_domain_adaptation_model_name(source_dataset_name, target_dataset_name, opt.pretrained_weights)
 
 original_save_path = opt.save_model_path
 opt.save_model_path = os.path.join(original_save_path, model_name)
 
-# 打印训练配置
+# Print training configuration
 print_training_configuration(opt, device, model_name)
 
-# 数据加载器
+
+# Data loaders
 print("\n🔄 LOADING DATASETS...")
 
-# 加载源域数据 (always use all source data for training in domain adaptation)
+
+# Load source domain data (always use all source data for training in domain adaptation)
 source_train_loader, source_train_step = load_data(opt.source_dataset_path, opt, aug=opt.aug, freeze=opt.freeze)
-print(f"源域训练集: {source_train_step} batches (full dataset)")
+print(f"Source domain training set: {source_train_step} batches (full dataset)")
 
-# 加载目标域数据 (with or without validation split)
+
+# Load target domain data (with or without validation split)
 if opt.enable_validation:
-    # 启用校验模式：目标域分割为训练/验证集
+    # Validation mode enabled: target domain split into training/validation sets
     target_train_loader, val_loader, target_train_step, val_step = load_labeled_data_with_validation(opt.target_dataset_path, opt, freeze=opt.freeze)
-    print(f"目标域训练集: {target_train_step} batches")
-    print(f"目标域验证集: {val_step} batches")
+    print(f"Target domain training set: {target_train_step} batches")
+    print(f"Target domain validation set: {val_step} batches")
 
-    # 初始化早停策略 - 统一基于训练损失
+    # Initialize early stopping - unified based on training loss
     early_stopping = EarlyStopping(patience=opt.patience, min_delta=opt.min_delta, restore_best_weights=True)
     best_train_loss = float("inf")
     best_epoch = 0
     validation_enabled = True
 else:
-    # 非校验模式：使用所有目标域数据进行训练
+    # Non-validation mode: use all target domain data for training
     target_train_loader, target_train_step = load_data(opt.target_dataset_path, opt, aug=opt.aug, freeze=opt.freeze)
     val_loader = None
-    print(f"目标域训练集: {target_train_step} batches (full dataset)")
+    print(f"Target domain training set: {target_train_step} batches (full dataset)")
 
-    # 初始化早停策略 - 统一基于训练损失
+    # Initialize early stopping - unified based on training loss
     early_stopping = EarlyStopping(patience=opt.patience, min_delta=opt.min_delta, restore_best_weights=True)
     best_train_loss = float("inf")
     best_epoch = 0
     validation_enabled = False
 
-# 创建目标域数据的循环迭代器
+
+# Create cyclic iterator for target domain data
 target_train_iter = cycle(target_train_loader)  # continuously iterate over the target dataset
+
 
 # Use source data loader for main training loop
 train_loader = source_train_loader
 total_step = source_train_step
 
-# 模型构建
-print("构建模型...")
+
+# Model construction
+print("Building model...")
 base_generator = Generator(channel=opt.feat_channel, latent_dim=opt.latent_dim, num_filters=opt.num_filters)
 
-# 创建领域自适应模型
+
+# Create domain adaptive model
 model = create_domain_adaptive_model(
     base_generator=base_generator,
     feat_channels=opt.feat_channel,
@@ -360,26 +367,28 @@ model = create_domain_adaptive_model(
 
 model.to(device)
 
-# 加载预训练权重
+
+# Load pretrained weights
 if opt.pretrained_weights and os.path.exists(opt.pretrained_weights):
-    print(f"加载预训练权重: {opt.pretrained_weights}")
+    print(f"Loading pretrained weights: {opt.pretrained_weights}")
     checkpoint = torch.load(opt.pretrained_weights, map_location=device)
-    # 只加载base_generator的权重
+    # Only load base_generator weights
     if "generator_state_dict" in checkpoint:
         model.base_generator.load_state_dict(checkpoint["generator_state_dict"])
     else:
         model.base_generator.load_state_dict(checkpoint)
-    print("预训练权重加载完成")
+    print("Pretrained weights loaded")
 
-# 优化器和学习率调度器
+
+# Optimizer and learning rate scheduler
 optimizer = torch.optim.Adam(model.parameters(), lr=opt.lr_gen, betas=(opt.beta, 0.999))
-# 使用ReduceLROnPlateau调度器，根据损失自适应调整学习率
+# Use ReduceLROnPlateau scheduler, adaptively adjust learning rate based on loss
 scheduler = lr_scheduler.ReduceLROnPlateau(
     optimizer,
-    mode="min",  # 监控损失，当损失不再下降时减少学习率
-    factor=opt.decay_rate,  # 学习率衰减因子
-    patience=opt.decay_epoch,  # 等待多少个epoch后如果没有改善就减少学习率
-    min_lr=1e-7,  # 最小学习率
+    mode="min",  # Monitor loss, reduce learning rate when loss stops decreasing
+    factor=opt.decay_rate,  # Learning rate decay factor
+    patience=opt.decay_epoch,  # Number of epochs to wait before reducing learning rate if no improvement
+    min_lr=1e-7,  # Minimum learning rate
 )
 
 print(f"Learning Rate Scheduler configured:")
@@ -388,15 +397,17 @@ print(f"  - Patience (epochs to wait): {opt.decay_epoch}")
 print(f"  - Decay Factor: {opt.decay_rate}")
 print(f"  - Minimum LR: 1e-7")
 
-# 损失函数
+
+# Loss functions
 size_rates = [1]  # multi-scale training
-loss_lsc = LocalSaliencyCoherence().to(device)  # 局部显著性一致性损失函数
+loss_lsc = LocalSaliencyCoherence().to(device)  # Local saliency coherence loss function
 loss_lsc_kernels_desc_defaults = [{"weight": 0.1, "xy": 3, "trans": 0.1}]
 loss_lsc_radius = 2
 weight_lsc = 0.01
 
+
 print("Let's go!")
-# 在训练开始前确保保存目录存在
+# Ensure save directory exists before training starts
 save_path = opt.save_model_path
 if not os.path.exists(save_path):
     os.makedirs(save_path)
@@ -408,7 +419,7 @@ for epoch in range(1, opt.epoch + 1):
     loss_record = AvgMeter()
     print("Learning Rate: {}".format(optimizer.param_groups[0]["lr"]))
 
-    # 计算梯度反转层的lambda值（逐渐增加）
+    # Compute lambda for gradient reversal layer (gradually increase)
     p = float(epoch - 1) / opt.epoch
     lambda_grl = opt.lambda_grl_max * (2.0 / (1.0 + np.exp(-10 * p)) - 1)
 
@@ -417,7 +428,7 @@ for epoch in range(1, opt.epoch + 1):
         target_pack = next(target_train_iter)
 
         for rate in size_rates:
-            # 梯度累计：只在第一个rate时zero_grad
+            # Gradient accumulation: only zero_grad at the first rate
             if (i - 1) % opt.accumulation_steps == 0:
                 optimizer.zero_grad()
 
@@ -431,7 +442,7 @@ for epoch in range(1, opt.epoch + 1):
             # Unpack target domain data
             images_tgt, gts_tgt, trans_tgt = target_pack
             images_tgt = images_tgt.to(device)
-            gts_tgt = gts_tgt.to(device)  # 目标域伪标签，参与训练
+            gts_tgt = gts_tgt.to(device)  # Target domain pseudo labels, used for training
             trans_tgt = trans_tgt.to(device)
 
             ### Multi-scale training samples ############################
@@ -445,7 +456,7 @@ for epoch in range(1, opt.epoch + 1):
                 gts_tgt = F.interpolate(gts_tgt, size=(trainsize, trainsize), mode="bilinear", align_corners=True)
                 trans_tgt = F.interpolate(trans_tgt, size=(trainsize, trainsize), mode="bilinear", align_corners=True)
 
-            ### 源域前向传播 ############################
+            ### Source domain forward pass ############################
             src_outputs = model(images_src, gts_src, training=True, lambda_grl=lambda_grl, source_domain=True)
             (
                 sal_init_post_src,
@@ -459,8 +470,8 @@ for epoch in range(1, opt.epoch + 1):
                 d_bg_src,
             ) = src_outputs
 
-            ### 目标域前向传播 ############################
-            # 目标域数据用于域适应和伪标签监督学习
+            ### Target domain forward pass ############################
+            # Target domain data used for domain adaptation and pseudo label supervised learning
             tgt_outputs = model(images_tgt, gts_tgt, training=True, lambda_grl=lambda_grl, source_domain=False)
             (
                 sal_init_post_tgt,
@@ -474,24 +485,24 @@ for epoch in range(1, opt.epoch + 1):
                 d_bg_tgt,
             ) = tgt_outputs
 
-            ### 损失计算 ############################
+            ### Loss calculation ############################
 
-            # 1. 源域监督损失（结构损失）
+            # 1. Source domain supervised loss (structure loss)
             src_sal_loss = 0.5 * (structure_loss(sal_init_post_src, gts_src) + structure_loss(sal_ref_post_src, gts_src))
 
-            # 2. 目标域伪标签监督损失
+            # 2. Target domain pseudo label supervised loss
             tgt_sal_loss = 0.5 * (structure_loss(sal_init_post_tgt, gts_tgt) + structure_loss(sal_ref_post_tgt, gts_tgt))
 
-            # 总的分割损失
+            # Total segmentation loss
             sal_loss = src_sal_loss + opt.pseudo_loss_weight * tgt_sal_loss
 
-            # 3. 对比损失（源域和目标域）
+            # 3. Contrastive loss (source and target domain)
             cont_loss_src = intra_inter_contrastive_loss(output_post_src, gts_src, num_samples=opt.no_samples, margin=1.0, inter=opt.inter)
             cont_loss_tgt = intra_inter_contrastive_loss(output_post_tgt, gts_tgt, num_samples=opt.no_samples, margin=1.0, inter=opt.inter)
             cont_loss = cont_loss_src + opt.pseudo_loss_weight * cont_loss_tgt
 
-            # 4. LSC损失计算（源域 + 目标域）
-            # 源域LSC损失
+            # 4. LSC loss calculation (source + target domain)
+            # Source domain LSC loss
             trans_scale_src = F.interpolate(trans_src, scale_factor=0.3, mode="bilinear", align_corners=True)
             pred_prior_init_scale_src = F.interpolate(sal_init_prior_src, scale_factor=0.3, mode="bilinear", align_corners=True)
             pred_prior_ref_scale_src = F.interpolate(sal_ref_post_src, scale_factor=0.3, mode="bilinear", align_corners=True)
@@ -499,7 +510,7 @@ for epoch in range(1, opt.epoch + 1):
             pred_post_ref_scale_src = F.interpolate(sal_ref_post_src, scale_factor=0.3, mode="bilinear", align_corners=True)
             sample_src = {"trans": trans_scale_src}
 
-            # 源域LSC损失计算
+            # Source domain LSC loss calculation
             loss_lsc_1_src = loss_lsc(
                 torch.sigmoid(pred_post_init_scale_src),
                 loss_lsc_kernels_desc_defaults,
@@ -536,7 +547,7 @@ for epoch in range(1, opt.epoch + 1):
             )["loss"]
             loss_lsc_prior_src = weight_lsc * (loss_lsc_3_src + loss_lsc_4_src)
 
-            # 目标域LSC损失
+            # Target domain LSC loss
             trans_scale_tgt = F.interpolate(trans_tgt, scale_factor=0.3, mode="bilinear", align_corners=True)
             pred_prior_init_scale_tgt = F.interpolate(sal_init_prior_tgt, scale_factor=0.3, mode="bilinear", align_corners=True)
             pred_prior_ref_scale_tgt = F.interpolate(sal_ref_post_tgt, scale_factor=0.3, mode="bilinear", align_corners=True)
@@ -544,7 +555,7 @@ for epoch in range(1, opt.epoch + 1):
             pred_post_ref_scale_tgt = F.interpolate(sal_ref_post_tgt, scale_factor=0.3, mode="bilinear", align_corners=True)
             sample_tgt = {"trans": trans_scale_tgt}
 
-            # 目标域LSC损失计算
+            # Target domain LSC loss calculation
             loss_lsc_1_tgt = loss_lsc(
                 torch.sigmoid(pred_post_init_scale_tgt),
                 loss_lsc_kernels_desc_defaults,
@@ -581,11 +592,11 @@ for epoch in range(1, opt.epoch + 1):
             )["loss"]
             loss_lsc_prior_tgt = weight_lsc * (loss_lsc_3_tgt + loss_lsc_4_tgt)
 
-            # 总LSC损失
+            # Total LSC loss
             loss_lsc_post = loss_lsc_post_src + opt.pseudo_loss_weight * loss_lsc_post_tgt
             loss_lsc_prior = loss_lsc_prior_src + opt.pseudo_loss_weight * loss_lsc_prior_tgt
 
-            # 4. L2正则化损失
+            # 4. L2 regularization loss
             reg_loss = (
                 l2_regularisation(model.base_generator.xy_encoder)
                 + l2_regularisation(model.base_generator.x_encoder)
@@ -593,19 +604,19 @@ for epoch in range(1, opt.epoch + 1):
             )
             reg_loss = opt.reg_weight * reg_loss
 
-            # 5. 潜在损失（线性退火）
+            # 5. Latent loss (linear annealing)
             anneal_reg = linear_annealing(0, 1, epoch, opt.epoch)
             latent_loss = opt.lat_weight * anneal_reg * (latent_loss_src + latent_loss_tgt)
 
-            # 6. 域判别损失
+            # 6. Domain discrimination loss
             domain_loss, domain_loss_dict = compute_domain_loss(d_smoke_src, d_bg_src, d_smoke_tgt, d_bg_tgt, images_src.size(0))
             domain_loss = opt.domain_loss_weight * domain_loss
 
-            # VAE损失部分（包含源域和目标域）
+            # VAE loss part (includes source and target domain)
             gen_loss_cvae = sal_loss + latent_loss + loss_lsc_post
             gen_loss_cvae = opt.vae_loss_weight * gen_loss_cvae
 
-            # 结构损失部分（包含源域和目标域）
+            # Structure loss part (includes source and target domain)
             gen_loss_gsnn = 0.5 * (
                 structure_loss(sal_init_prior_src, gts_src)
                 + structure_loss(sal_ref_post_src, gts_src)
@@ -613,16 +624,16 @@ for epoch in range(1, opt.epoch + 1):
             )
             gen_loss_gsnn = (1 - opt.vae_loss_weight) * gen_loss_gsnn + loss_lsc_prior
 
-            ### 总损失 ###############################################
+            ### Total loss ###############################################
             total_loss = gen_loss_cvae + gen_loss_gsnn + reg_loss + domain_loss + opt.contrastive_loss_weight * cont_loss  # type: torch.Tensor
-            total_loss = total_loss / opt.accumulation_steps  # 梯度缩放
+            total_loss = total_loss / opt.accumulation_steps  # Gradient scaling
             total_loss.backward()
 
             # Gradient clipping
             if opt.clip > 0:
                 torch.nn.utils.clip_grad_norm_(model.parameters(), opt.clip)
 
-            # 累计到指定步数才step和清理缓存
+            # Only step and clear cache after accumulating to specified steps
             if (i % opt.accumulation_steps == 0) or (i == total_step):
                 optimizer.step()
                 if torch.cuda.is_available():
@@ -631,7 +642,7 @@ for epoch in range(1, opt.epoch + 1):
             if rate == 1:
                 loss_record.update(total_loss.data * opt.accumulation_steps, opt.batchsize)
 
-        # 打印训练信息 - 基于百分比打印（25%, 50%, 75%, 100%）
+        # Print training info - print at 25%, 50%, 75%, 100%
         progress_points = [int(total_step * 0.25), int(total_step * 0.5), int(total_step * 0.75), total_step]
         if i in progress_points:
             progress_pct = (i / total_step) * 100
@@ -652,17 +663,17 @@ for epoch in range(1, opt.epoch + 1):
                 )
             )
 
-            print(log_info)  # 在训练循环结束后调用scheduler.step() - ReduceLROnPlateau需要传入监控的指标
+            print(log_info)  # Call scheduler.step() after training loop ends - ReduceLROnPlateau requires the monitored metric
     old_lr = optimizer.param_groups[0]["lr"]
 
-    # 根据是否启用验证来选择监控的指标
+    # Choose monitoring metric based on whether validation is enabled
     if validation_enabled and val_loader is not None:
-        # 如果启用验证，稍后在验证后调用scheduler.step(val_loss)
+        # If validation is enabled, call scheduler.step(val_loss) after validation
         pass
     else:
-        # 如果未启用验证，使用训练损失
+        # If validation is not enabled, use training loss
         current_loss = loss_record.avg
-        # scheduler.step(current_loss)  # 注释：原本用训练损失调整学习率
+        # scheduler.step(current_loss)  # Note: originally used training loss to adjust learning rate
 
     current_lr = optimizer.param_groups[0]["lr"]
 
@@ -671,11 +682,11 @@ for epoch in range(1, opt.epoch + 1):
     else:
         print(f"Epoch {epoch} completed. Learning rate: {current_lr:.6f}")
 
-    # 校验和早停逻辑 - 统一基于校验损失（val_loss）
-    # current_train_loss = loss_record.avg  # 注释：原本用训练损失做早停
+    # Validation and early stopping logic - unified based on validation loss (val_loss)
+    # current_train_loss = loss_record.avg  # Note: originally used training loss for early stopping
 
     if validation_enabled and val_loader is not None:
-        # 启用校验模式：在目标域验证集上评估模型
+        # Validation mode enabled: evaluate model on target domain validation set
         print("Starting validation on target domain...")
         with torch.no_grad():
             val_loss, val_metrics = validate_model(model.base_generator, val_loader, device, structure_loss)
@@ -687,24 +698,24 @@ for epoch in range(1, opt.epoch + 1):
         print(f"  Recall: {val_metrics['recall']:.4f}")
         print(f"  Accuracy: {val_metrics['accuracy']:.4f}")
 
-        # 使用校验损失更新学习率调度器
+        # Update learning rate scheduler using validation loss
         scheduler.step(val_loss)
         new_lr = optimizer.param_groups[0]["lr"]
         if new_lr != current_lr:
             print(f"Learning rate adjusted based on validation loss: {current_lr:.6f} -> {new_lr:.6f}")
 
-        # 统一的模型保存和早停逻辑 - 基于校验损失
+        # Unified model saving and early stopping logic - based on validation loss
         current_val_loss = val_loss
         if current_val_loss < best_train_loss:
             best_train_loss = current_val_loss
             best_epoch = epoch
-            # 保存最佳模型
+            # Save best model
             best_model_filename = generate_best_model_filename(model_name, opt.pretrained_weights)
             torch.save(model.base_generator.state_dict(), os.path.join(opt.save_model_path, best_model_filename))
             print(f"New best model saved! Validation loss: {current_val_loss:.4f}")
             print(f"  Corresponding target validation IoU: {val_metrics['iou']:.4f}")
 
-        # ========== 新增：每5个epoch保存一次checkpoint ===========
+        # ========== New: save checkpoint every 5 epochs ===========
         if epoch % 5 == 0:
             checkpoint_filename = f"checkpoint_epoch_{epoch:03d}.pth"
             torch.save(model.base_generator.state_dict(), os.path.join(opt.save_model_path, checkpoint_filename))
@@ -717,7 +728,7 @@ for epoch in range(1, opt.epoch + 1):
             print(f"Best validation loss: {best_train_loss:.4f} achieved at epoch {best_epoch}")
             break
     else:
-        # 如果未启用验证，使用训练损失
+        # If validation is not enabled, use training loss
         current_train_loss = loss_record.avg
         # if current_train_loss < best_train_loss:
         #     best_train_loss = current_train_loss
@@ -731,7 +742,7 @@ for epoch in range(1, opt.epoch + 1):
         #     print(f"Best training loss: {best_train_loss:.4f} achieved at epoch {best_epoch}")
         #     break
 
-# 训练结束后的总结
+# Summary after training ends
 print("\n" + "=" * 50)
 print("Two-Domain Adaptive Training with Pseudo Labels completed!")
 print(f"Source Domain: {source_dataset_name} (Ground Truth Labels - Full Dataset)")

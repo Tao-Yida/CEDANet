@@ -38,31 +38,31 @@ def main():
     # Write to txt file
     out_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../logs_tri"))
     os.makedirs(out_dir, exist_ok=True)
-    
+
     NAME = os.path.join(out_dir, "golden_tri.txt")
 
-    print(f"预测文件夹: {pred_dir}")
-    print(f"标签文件夹: {gt_dir}")
-    print(f"预测图片数量: {len(pred_files)}")
-    print(f"标签图片数量: {len(gt_files)}")
+    print(f"Prediction folder: {pred_dir}")
+    print(f"Label folder: {gt_dir}")
+    print(f"Number of prediction images: {len(pred_files)}")
+    print(f"Number of label images: {len(gt_files)}")
     pairs = get_matched_pairs(pred_dir, gt_dir)
-    print(f"共找到{len(pairs)}组同名图片")
+    print(f"Found {len(pairs)} pairs of images with the same name")
     if len(pairs) == 0:
-        print("未找到任何同名图片，请检查文件名和路径！")
+        print("No matching images found, please check file names and paths!")
         return
-    # 新增统计变量
-    n_pred_fg_1 = 0  # 预测为前景且gt为一类
-    n_pred_fg_2 = 0  # 预测为前景且gt为二类
-    n_pred_fg_bg = 0  # 预测为前景且gt为背景
-    n_pred_fg_total = 0  # 预测为前景的总像素
-    n_gt_1 = 0  # gt一类总像素
-    n_gt_2 = 0  # gt二类总像素
-    n_gt_bg = 0  # gt背景总像素
-    n_gt_1_pred_fg = 0  # gt一类且被预测为前景
-    n_gt_2_pred_fg = 0  # gt二类且被预测为前景
-    n_gt_bg_pred_fg = 0  # gt背景且被预测为前景
+    # New statistics variables
+    n_pred_fg_1 = 0  # Predicted as foreground and gt is class 1
+    n_pred_fg_2 = 0  # Predicted as foreground and gt is class 2
+    n_pred_fg_bg = 0  # Predicted as foreground and gt is background
+    n_pred_fg_total = 0  # Total predicted foreground pixels
+    n_gt_1 = 0  # Total gt class 1 pixels
+    n_gt_2 = 0  # Total gt class 2 pixels
+    n_gt_bg = 0  # Total gt background pixels
+    n_gt_1_pred_fg = 0  # gt class 1 and predicted as foreground
+    n_gt_2_pred_fg = 0  # gt class 2 and predicted as foreground
+    n_gt_bg_pred_fg = 0  # gt background and predicted as foreground
 
-    # IoU 累加器
+    # IoU accumulators
     iou_1_sum = 0
     iou_2_sum = 0
     iou_bg_sum = 0
@@ -70,52 +70,52 @@ def main():
     n_img_2 = 0
     n_img_bg = 0
 
-    # MSE 和 F1 累加器
+    # MSE and F1 accumulators
     mse_1_sum = 0
     mse_2_sum = 0
     f1_1_sum = 0
     f1_2_sum = 0
 
     for pred_path, gt_path in pairs:
-        print(f"处理: pred={os.path.basename(pred_path)}, gt={os.path.basename(gt_path)}")
+        print(f"Processing: pred={os.path.basename(pred_path)}, gt={os.path.basename(gt_path)}")
         pred = cv2.imread(pred_path, 0)
         gt = cv2.imread(gt_path, 0)
         if pred is None or gt is None:
             print(f"Skip: {pred_path}, {gt_path}")
             continue
         pred_bin = (pred >= 127).astype(np.uint8)
-        # 三类掩码
+        # Three-class masks
         mask_pred_fg = pred_bin == 1
         mask_pred_bg = pred_bin == 0
         mask_gt_1 = gt == 255
         mask_gt_2 = (gt != 0) & (gt != 255)
         mask_gt_bg = gt == 0
-        # 预测为前景的像素中，gt的分布
+        # Distribution of gt in predicted foreground pixels
         n_pred_fg_1 += np.logical_and(mask_pred_fg, mask_gt_1).sum()
         n_pred_fg_2 += np.logical_and(mask_pred_fg, mask_gt_2).sum()
         n_pred_fg_bg += np.logical_and(mask_pred_fg, mask_gt_bg).sum()
         n_pred_fg_total += mask_pred_fg.sum()
-        # gt各类总像素
+        # Total pixels for each gt class
         n_gt_1 += mask_gt_1.sum()
         n_gt_2 += mask_gt_2.sum()
         n_gt_bg += mask_gt_bg.sum()
-        # gt各类中被预测为前景的像素
+        # Pixels in each gt class predicted as foreground
         n_gt_1_pred_fg += np.logical_and(mask_gt_1, mask_pred_fg).sum()
         n_gt_2_pred_fg += np.logical_and(mask_gt_2, mask_pred_fg).sum()
         n_gt_bg_pred_fg += np.logical_and(mask_gt_bg, mask_pred_fg).sum()
 
-        # IoU for 一类
+        # IoU for class 1
         if mask_gt_1.sum() > 0:
             inter_1 = np.logical_and(mask_pred_fg, mask_gt_1).sum()
             union_1 = np.logical_or(mask_pred_fg, mask_gt_1).sum()
             iou_1_sum += inter_1 / (union_1 + 1e-8)
 
-            # MSE for 一类 (高浓度烟雾区域：预测二元 vs GT=255)
-            pred_1_area = pred[mask_gt_1].astype(np.float32) / 255.0  # 预测在高浓度区域：0或1
-            gt_1_target = np.ones_like(pred_1_area)  # 高浓度区域目标应该是1(烟雾)
+            # MSE for class 1 (high concentration smoke area: binary prediction vs GT=255)
+            pred_1_area = pred[mask_gt_1].astype(np.float32) / 255.0  # Prediction in high concentration area: 0 or 1
+            gt_1_target = np.ones_like(pred_1_area)  # Target in high concentration area should be 1 (smoke)
             mse_1_sum += np.mean((pred_1_area - gt_1_target) ** 2)
 
-            # F1 for 一类
+            # F1 for class 1
             tp_1 = inter_1
             fp_1 = mask_pred_fg.sum() - tp_1
             fn_1 = mask_gt_1.sum() - tp_1
@@ -124,18 +124,18 @@ def main():
             f1_1_sum += 2 * precision_1 * recall_1 / (precision_1 + recall_1 + 1e-8)
 
             n_img_1 += 1
-        # IoU for 二类
+        # IoU for class 2
         if mask_gt_2.sum() > 0:
             inter_2 = np.logical_and(mask_pred_fg, mask_gt_2).sum()
             union_2 = np.logical_or(mask_pred_fg, mask_gt_2).sum()
             iou_2_sum += inter_2 / (union_2 + 1e-8)
 
-            # MSE for 二类 (低浓度烟雾区域：预测二元 vs 理想目标)
-            pred_2_area = pred[mask_gt_2].astype(np.float32) / 255.0  # 预测在低浓度区域：0或1
-            gt_2_target = np.ones_like(pred_2_area)  # 低浓度也应该被预测为1(烟雾)
+            # MSE for class 2 (low concentration smoke area: binary prediction vs ideal target)
+            pred_2_area = pred[mask_gt_2].astype(np.float32) / 255.0  # Prediction in low concentration area: 0 or 1
+            gt_2_target = np.ones_like(pred_2_area)  # Low concentration should also be predicted as 1 (smoke)
             mse_2_sum += np.mean((pred_2_area - gt_2_target) ** 2)
 
-            # F1 for 二类
+            # F1 for class 2
             tp_2 = inter_2
             fp_2 = mask_pred_fg.sum() - tp_2
             fn_2 = mask_gt_2.sum() - tp_2
@@ -144,7 +144,7 @@ def main():
             f1_2_sum += 2 * precision_2 * recall_2 / (precision_2 + recall_2 + 1e-8)
 
             n_img_2 += 1
-        # IoU for 背景
+        # IoU for background
         if mask_gt_bg.sum() > 0:
             inter_bg = np.logical_and(mask_pred_bg, mask_gt_bg).sum()
             union_bg = np.logical_or(mask_pred_bg, mask_gt_bg).sum()

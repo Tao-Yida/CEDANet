@@ -1,17 +1,17 @@
 """
-视频伪标签生成器 (Video Pseudo Label Generator)
-=============================================
+Video Pseudo Label Generator
+===========================
 
-此脚本用于从视频文件中生成伪标签，用于半监督学习：
-1. 读取预训练模型
-2. 从视频中提取帧
-3. 对提取的帧进行预测
-4. 选择每个视频中置信度最高的帧及其前后n帧（共2n+1帧）
-5. 输出原始图像和对应的伪标签
-6. 生成对应的透光率图
+This script is used to generate pseudo labels from video files for semi-supervised learning:
+1. Load pretrained model
+2. Extract frames from video
+3. Predict on extracted frames
+4. Select the frame with the highest confidence in each video and its n context frames before and after (2n+1 frames in total)
+5. Output original images and corresponding pseudo labels
+6. Generate corresponding transmission maps
 
-用法示例:
--------
+Usage Example:
+-------------
 ```
 python inference.py --videos_path ../../data/videos \
                     --output_path ../../data/ijmond_camera \
@@ -21,13 +21,13 @@ python inference.py --videos_path ../../data/videos \
                     --threshold 0.5
 ```
 
-输出结构:
--------
+Output Structure:
+----------------
 ```
 output_path/
-    ├── img/    # 存储原始图像 (命名为: 视频名_序号.jpg)
-    ├── gt/     # 存储伪标签 (命名为: 视频名_序号.png)
-    └── trans/  # 存储透光率图 (命名为: 视频名_序号.png)
+    ├── img/    # Store original images (named: videoName_index.jpg)
+    ├── gt/     # Store pseudo labels (named: videoName_index.png)
+    └── trans/  # Store transmission maps (named: videoName_index.png)
 ```
 """
 
@@ -44,7 +44,7 @@ from pathlib import Path
 import glob
 import pandas as pd
 
-# 添加父目录到系统路径，以便导入父目录的模块
+# Add parent directory to system path to import modules from parent directory
 sys.path.append(str(Path(__file__).parent.parent))
 from trans_bvm.model.ResNet_models import Generator
 from transmission_map import find_transmission_map
@@ -53,44 +53,44 @@ from smoothness import gradient_x, gradient_y, laplacian_edge
 
 def arg_parse():
     """
-    解析命令行参数
+    Parse command line arguments
     Returns:
-        argparse.Namespace: 解析后的参数
+        argparse.Namespace: Parsed arguments
     """
-    parser = argparse.ArgumentParser(description="从视频中生成伪标签用于半监督学习")
-    parser.add_argument("--testsize", type=int, default=352, help="测试图像大小")
-    parser.add_argument("--latent_dim", type=int, default=3, help="潜在空间维度")
-    parser.add_argument("--feat_channel", type=int, default=32, help="特征通道数")
-    parser.add_argument("--videos_path", type=str, default="../../../data/ijmond_camera/videos", help="视频文件路径")
-    parser.add_argument("--output_path", type=str, default="../../../data/ijmond_camera/pseudo_labels", help="伪标签输出路径")
+    parser = argparse.ArgumentParser(description="Generate pseudo labels from video for semi-supervised learning")
+    parser.add_argument("--testsize", type=int, default=352, help="Test image size")
+    parser.add_argument("--latent_dim", type=int, default=3, help="Latent space dimension")
+    parser.add_argument("--feat_channel", type=int, default=32, help="Feature channel number")
+    parser.add_argument("--videos_path", type=str, default="../../../data/ijmond_camera/videos", help="Video file path")
+    parser.add_argument("--output_path", type=str, default="../../../data/ijmond_camera/pseudo_labels", help="Pseudo label output path")
     parser.add_argument(
-        "--pretrained_weights", type=str, default="../../../models/finetune/Model_50_gen_no_pretrained_weights.pth", help="预训练权重路径"
+        "--pretrained_weights", type=str, default="../../../models/finetune/Model_50_gen_no_pretrained_weights.pth", help="Pretrained weights path"
     )
-    parser.add_argument("--sampling_rate", type=int, default=1, help="帧采样率")
-    parser.add_argument("--context_frames", type=int, default=2, help="高置信度帧前后的上下文帧数")
-    parser.add_argument("--threshold", type=float, default=0.5, help="伪标签置信度阈值")
+    parser.add_argument("--sampling_rate", type=int, default=1, help="Frame sampling rate")
+    parser.add_argument("--context_frames", type=int, default=2, help="Number of context frames before and after high-confidence frame")
+    parser.add_argument("--threshold", type=float, default=0.5, help="Pseudo label confidence threshold")
     parser.add_argument(
         "--constraint_type",
         type=str,
         choices=["none", "citizen", "expert"],
         default="none",
-        help="约束类型: none(无约束), citizen(市民约束), expert(专家约束)",
+        help="Constraint type: none (no constraint), citizen (citizen constraint), expert (expert constraint)",
     )
-    parser.add_argument("--video_labels_csv", type=str, default="../../../data/ijmond_camera/video_labels.csv", help="视频标签CSV文件路径")
+    parser.add_argument("--video_labels_csv", type=str, default="../../../data/ijmond_camera/video_labels.csv", help="Video label CSV file path")
     opt = parser.parse_args()
     return opt
 
 
 def load_video_labels(csv_path):
     """
-    加载视频标签CSV文件
+    Load video label CSV file
     Args:
-        csv_path: CSV文件路径
+        csv_path: CSV file path
     Returns:
-        dict: 视频标签字典，键为完整的文件名（包含后缀），值为标签信息
+        dict: Video label dictionary, key is full file name (with extension), value is label info
     """
     if not os.path.exists(csv_path):
-        print(f"警告: 视频标签文件不存在: {csv_path}")
+        print(f"Warning: Video label file does not exist: {csv_path}")
         return {}
 
     try:
@@ -102,62 +102,62 @@ def load_video_labels(csv_path):
             label_state = row["label_state"]
             label_state_admin = row["label_state_admin"]
 
-            # 直接使用完整的文件名作为键，不去除后缀
+            # Use the complete file name as the key directly, without removing the suffix
             video_labels[file_name] = {"label_state": label_state, "label_state_admin": label_state_admin}
 
-        print(f"加载了 {len(video_labels)} 个视频段的标签信息")
+        print(f"Loaded {len(video_labels)} video segment labels")
         return video_labels
 
     except Exception as e:
-        print(f"加载视频标签时出错: {e}")
+        print(f"Error loading video labels: {e}")
         return {}
 
 
 def get_video_constraint_info(video_name, video_labels, constraint_type):
     """
-    获取视频的约束信息
+    Get video constraint information
     Args:
-        video_name: 视频名称（完整文件名，包含后缀）
-        video_labels: 视频标签字典
-        constraint_type: 约束类型 ('none', 'citizen', 'expert')
+        video_name: Video name (complete file name, including suffix)
+        video_labels: Video label dictionary
+        constraint_type: Constraint type ('none', 'citizen', 'expert')
     Returns:
-        dict: 包含约束信息的字典
+        dict: Dictionary containing constraint information
     """
-    # 如果约束类型为none，直接返回无约束
+    # If constraint type is none, return no constraint
     if constraint_type == "none":
         return {"has_constraint": False, "constraint_confidence": 1.0, "expected_smoke": None, "constraint_strength": "none"}
 
-    # 如果视频不在标签字典中，返回无约束
+    # If video is not in label dictionary, return no constraint
     if video_name not in video_labels:
         return {"has_constraint": False, "constraint_confidence": 1.0, "expected_smoke": None, "constraint_strength": "none"}
 
-    # 根据约束类型选择标签列
+    # Select label column according to constraint type
     if constraint_type == "citizen":
         label_key = "label_state"
     elif constraint_type == "expert":
         label_key = "label_state_admin"
     else:
-        # 无效的约束类型
-        print(f"警告: 无效的约束类型 '{constraint_type}', 支持的类型: 'none', 'citizen', 'expert'")
+        # Invalid constraint type
+        print(f"Warning: Invalid constraint type '{constraint_type}', supported: 'none', 'citizen', 'expert'")
         return {"has_constraint": False, "constraint_confidence": 1.0, "expected_smoke": None, "constraint_strength": "none"}
 
     label_value = video_labels[video_name][label_key]
 
-    # 如果标签值为-1（无数据）或-2（坏视频），返回无约束
+    # If label value is -1 (no data) or -2 (bad video), return no constraint
     if label_value == -1 or label_value == -2:
         return {"has_constraint": False, "constraint_confidence": 1.0, "expected_smoke": None, "constraint_strength": "none"}
 
-    # 定义标签含义和约束强度（confidence与实际推理概率对应）
+    # Define label meanings and constraint strength (confidence corresponds to actual inference probability)
     label_meanings = {
-        47: {"smoke": True, "confidence": 0.9, "strength": "gold_positive"},  # 黄金标准正样本 -> 推理概率0.9
-        32: {"smoke": False, "confidence": 0.2, "strength": "gold_negative"},  # 黄金标准负样本 -> 推理概率0.2
-        23: {"smoke": True, "confidence": 0.8, "strength": "strong_positive"},  # 强正样本 -> 推理概率0.8
-        16: {"smoke": False, "confidence": 0.4, "strength": "strong_negative"},  # 强负样本 -> 推理概率0.4
-        19: {"smoke": True, "confidence": 0.7, "strength": "weak_positive"},  # 弱正样本 -> 推理概率0.7
-        20: {"smoke": False, "confidence": 0.5, "strength": "weak_negative"},  # 弱负样本 -> 推理概率0.5
-        5: {"smoke": True, "confidence": 0.65, "strength": "maybe_positive"},  # 可能正样本 -> 推理概率0.65
-        4: {"smoke": False, "confidence": 0.58, "strength": "maybe_negative"},  # 可能负样本 -> 推理概率0.58
-        3: {"smoke": None, "confidence": 0.0, "strength": "discord"},  # 有分歧 -> 无约束
+        47: {"smoke": True, "confidence": 0.9, "strength": "gold_positive"},  # Gold standard positive sample -> inference probability 0.9
+        32: {"smoke": False, "confidence": 0.2, "strength": "gold_negative"},  # Gold standard negative sample -> inference probability 0.2
+        23: {"smoke": True, "confidence": 0.8, "strength": "strong_positive"},  # Strong positive sample -> inference probability 0.8
+        16: {"smoke": False, "confidence": 0.4, "strength": "strong_negative"},  # Strong negative sample -> inference probability 0.4
+        19: {"smoke": True, "confidence": 0.7, "strength": "weak_positive"},  # Weak positive sample -> inference probability 0.7
+        20: {"smoke": False, "confidence": 0.5, "strength": "weak_negative"},  # Weak negative sample -> inference probability 0.5
+        5: {"smoke": True, "confidence": 0.65, "strength": "maybe_positive"},  # Maybe positive sample -> inference probability 0.65
+        4: {"smoke": False, "confidence": 0.58, "strength": "maybe_negative"},  # Maybe negative sample -> inference probability 0.58
+        3: {"smoke": None, "confidence": 0.0, "strength": "discord"},  # Disagreement -> no constraint
     }
 
     if label_value in label_meanings:
@@ -169,41 +169,41 @@ def get_video_constraint_info(video_name, video_labels, constraint_type):
             "constraint_strength": info["strength"],
         }
     else:
-        # 未知的标签值
-        print(f"警告: 未知的标签值 {label_value} 对于视频 {video_name}")
+        # Unknown label value
+        print(f"Warning: Unknown label value {label_value} for video {video_name}")
         return {"has_constraint": False, "constraint_confidence": 1.0, "expected_smoke": None, "constraint_strength": "none"}
 
 
 def extract_frames_from_video(video_path, output_folder, sampling_rate=1):
     """
-    从视频中提取帧
+    Extract frames from video
     Args:
-        video_path: 视频文件路径
-        output_folder: 输出文件夹
-        sampling_rate: 抽帧率，每隔多少帧提取一帧
+        video_path: Video file path
+        output_folder: Output folder
+        sampling_rate: Sampling rate, extract one frame every n frames
     Returns:
-        dict: 帧信息字典，包含帧路径和帧编号
+        dict: Frame info dictionary, contains frame path and frame index
     """
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
 
-    # 打开视频文件
+    # Open video file
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
-        print(f"错误: 无法打开视频文件 {video_path}")
+        print(f"Error: Cannot open video file {video_path}")
         return {}
 
     frame_infos = {}
     frame_count = 0
     saved_count = 0
 
-    print(f"从 {video_path} 中提取帧...")
+    print(f"Extracting frames from {video_path} ...")
     while True:
         ret, frame = cap.read()
         if not ret:
             break
 
-        # 根据采样率提取帧
+        # Extract frames according to sampling rate
         if frame_count % sampling_rate == 0:
             frame_filename = os.path.join(output_folder, f"frame_{frame_count:02d}.jpg")
             cv2.imwrite(frame_filename, frame)
@@ -212,9 +212,9 @@ def extract_frames_from_video(video_path, output_folder, sampling_rate=1):
 
         frame_count += 1
 
-    # 释放视频捕获对象
+    # Release video capture object
     cap.release()
-    print(f"共提取了 {saved_count} 帧，总帧数: {frame_count}")
+    print(f"Extracted {saved_count} frames, total frames: {frame_count}")
 
     return frame_infos
 
@@ -237,7 +237,7 @@ class InferenceDataset:
         image = self.rgb_loader(image_path)
         HH, WW = image.size
 
-        # 应用变换(将PIL图像转换为张量)
+        # Apply transform (convert PIL image to tensor)
         image_tensor = self.transform(image)
 
         return image_tensor, HH, WW, image_path
@@ -253,15 +253,15 @@ class InferenceDataset:
 
 def predict_frames(model, image_paths, testsize, device, constraint_info=None):
     """
-    预测多个图像帧，并应用视频标签约束
+    Predict multiple image frames and apply video label constraints
     Args:
-        model: 预训练模型
-        image_paths: 图像路径列表
-        testsize: 测试尺寸
-        device: 计算设备
-        constraint_info: 约束信息字典
+        model: Pretrained model
+        image_paths: List of image paths
+        testsize: Test size
+        device: Device
+        constraint_info: Constraint info dictionary
     Returns:
-        dict: 预测结果字典，键为图像路径，值为(预测结果, 置信度)
+        dict: Prediction result dictionary, key is image path, value is (prediction, confidence)
     """
     dataset = InferenceDataset(image_paths, testsize)
     predictions = {}
@@ -271,35 +271,35 @@ def predict_frames(model, image_paths, testsize, device, constraint_info=None):
         total = len(dataset)
         for idx in range(len(dataset)):
             if idx % 10 == 0:
-                print(f"预测进度: {idx}/{total} ({idx/total*100:.1f}%)")
+                print(f"Prediction progress: {idx}/{total} ({idx/total*100:.1f}%)")
 
             image, HH, WW, image_path = dataset[idx]
 
-            # 确保image是tensor并添加batch维度
+            # Ensure image is tensor and add batch dimension
             if not isinstance(image, torch.Tensor):
                 raise TypeError(f"Expected image to be torch.Tensor, got {type(image)}")
 
             image = image.unsqueeze(0).to(device)
 
-            # 前向传播
+            # Forward pass
             pred = model.forward(image, training=False)
 
-            # 上采样到原始尺寸
+            # Upsample to original size
             pred = F.interpolate(pred, size=[WW, HH], mode="bilinear", align_corners=False)
 
-            # Sigmoid激活
+            # Sigmoid activation
             pred_sigmoid = pred.sigmoid()
 
-            # 应用约束
+            # Apply constraint
             if constraint_info and constraint_info["has_constraint"]:
                 pred_sigmoid = apply_video_constraint(pred_sigmoid, constraint_info)
 
-            # 计算更可靠的置信度：均值与高于阈值像素比例的加权
+            # Compute more reliable confidence: weighted mean and proportion of pixels above threshold
             pred_np = pred_sigmoid.data.cpu().numpy().squeeze()
             foreground_ratio = (pred_np > 0.6).sum() / pred_np.size
             confidence = 0.85 * pred_np.mean() + 0.15 * foreground_ratio
 
-            # 保存预测结果和置信度
+            # Save prediction and confidence
             predictions[image_path] = (pred_np, confidence)
 
     return predictions
@@ -307,12 +307,12 @@ def predict_frames(model, image_paths, testsize, device, constraint_info=None):
 
 def apply_video_constraint(pred_sigmoid, constraint_info):
     """
-    根据视频标签约束调整预测结果，并设置相应的概率值
+    Adjust prediction according to video label constraint and set corresponding probability value
     Args:
-        pred_sigmoid: 预测结果张量
-        constraint_info: 约束信息字典
+        pred_sigmoid: Prediction tensor
+        constraint_info: Constraint info dictionary
     Returns:
-        torch.Tensor: 调整后的预测结果，用于后续二值化
+        torch.Tensor: Adjusted prediction for subsequent binarization
     """
     if not constraint_info["has_constraint"]:
         return pred_sigmoid
@@ -321,20 +321,20 @@ def apply_video_constraint(pred_sigmoid, constraint_info):
     constraint_confidence = constraint_info["constraint_confidence"]
     constraint_strength = constraint_info["constraint_strength"]
 
-    # 使用constraint_confidence作为约束概率值
+    # Use constraint_confidence as the constraint probability value
     if expected_smoke is False:
-        # "一定没有"区域：直接使用constraint_confidence
+        # "Definitely no" region: directly use constraint_confidence
         constraint_prob = constraint_confidence
-        # 负样本仍然以约束为主
+        # Negative samples are still mainly based on the constraint
         pred_sigmoid = pred_sigmoid * 0.4 + constraint_prob * 0.6
 
     elif expected_smoke is True:
-        # "一定有"或"可能有"区域：直接使用constraint_confidence
+        # "Definitely yes" or "maybe yes" region: directly use constraint_confidence
         constraint_prob = constraint_confidence
-        # 正样本更偏向模型预测
+        # Positive samples are more biased towards model prediction
         pred_sigmoid = pred_sigmoid * 0.8 + constraint_prob * 0.2
 
-    # 确保值在有效范围内
+    # Ensure the value is within a valid range
     pred_sigmoid = torch.clamp(pred_sigmoid, 0, 1)
 
     return pred_sigmoid
@@ -342,21 +342,21 @@ def apply_video_constraint(pred_sigmoid, constraint_info):
 
 def binarize_prediction(pred, threshold=0.6, constraint_info=None):
     """
-    将预测结果二值化，确保伪标签只有0和255两种值
-    使用统一的阈值0.6，约束效果通过概率值体现
+    Binarize prediction to ensure pseudo label has only 0 and 255 values
+    Use unified threshold 0.6, constraint effect is reflected by probability value
     Args:
-        pred: 预测结果数组 (numpy array, 0-1范围)
-        threshold: 统一的二值化阈值 (默认0.6)
-        constraint_info: 约束信息（保留参数以兼容调用，但不再用于调整阈值）
+        pred: Prediction array (numpy array, range 0-1)
+        threshold: Unified binarization threshold (default 0.6)
+        constraint_info: Constraint info (kept for compatibility, not used to adjust threshold)
     Returns:
-        numpy.ndarray: 二值化后的结果 (0或1)
+        numpy.ndarray: Binarized result (0 or 1)
     """
-    # 使用统一的阈值进行二值化
-    # 约束效果已经通过apply_video_constraint中的概率值设置体现：
-    # - 强正约束: 概率0.8-0.9 > 0.6 → 前景
-    # - 弱正约束: 概率0.7 > 0.6 → 前景
-    # - 弱负约束: 概率0.4 < 0.6 → 背景
-    # - 强负约束: 概率0.1-0.3 < 0.6 → 背景
+    # Use a unified threshold for binarization
+    # The effect of the constraint has already been reflected by the probability value set in apply_video_constraint:
+    # - Strong positive constraint: probability 0.8-0.9 > 0.6 → foreground
+    # - Weak positive constraint: probability 0.7 > 0.6 → foreground
+    # - Weak negative constraint: probability 0.4 < 0.6 → background
+    # - Strong negative constraint: probability 0.1-0.3 < 0.6 → background
 
     binary_result = (pred > threshold).astype(np.float32)
 
@@ -365,90 +365,90 @@ def binarize_prediction(pred, threshold=0.6, constraint_info=None):
 
 def analyze_prediction_distribution(pred, frame_path, constraint_info=None):
     """
-    分析预测结果的数值分布，用于调试
+    Analyze value distribution of prediction for debugging
     Args:
-        pred: 预测结果数组
-        frame_path: 帧路径
-        constraint_info: 约束信息
+        pred: Prediction array
+        frame_path: Frame path
+        constraint_info: Constraint info
     """
     min_val = pred.min()
     max_val = pred.max()
     mean_val = pred.mean()
     std_val = pred.std()
 
-    # 统计不同范围的像素数量
+    # Count number of pixels in different value ranges
     low_pixels = np.sum(pred < 0.3)
     mid_pixels = np.sum((pred >= 0.3) & (pred <= 0.7))
     high_pixels = np.sum(pred > 0.7)
     total_pixels = pred.size
 
     frame_name = os.path.basename(frame_path)
-    print(f"  帧 {frame_name}:")
-    print(f"    值域: [{min_val:.3f}, {max_val:.3f}], 均值: {mean_val:.3f}, 标准差: {std_val:.3f}")
+    print(f"  Frame {frame_name}:")
+    print(f"    Value range: [{min_val:.3f}, {max_val:.3f}], mean: {mean_val:.3f}, std: {std_val:.3f}")
     print(
-        f"    像素分布: 低值(<0.3):{low_pixels}({low_pixels/total_pixels*100:.1f}%), "
-        f"中值(0.3-0.7):{mid_pixels}({mid_pixels/total_pixels*100:.1f}%), "
-        f"高值(>0.7):{high_pixels}({high_pixels/total_pixels*100:.1f}%)"
+        f"    Pixel distribution: low(<0.3):{low_pixels}({low_pixels/total_pixels*100:.1f}%), "
+        f"mid(0.3-0.7):{mid_pixels}({mid_pixels/total_pixels*100:.1f}%), "
+        f"high(>0.7):{high_pixels}({high_pixels/total_pixels*100:.1f}%)"
     )
 
     if constraint_info and constraint_info["has_constraint"]:
-        print(f"    约束: {constraint_info['constraint_strength']}, 期望烟雾: {constraint_info['expected_smoke']}")
+        print(f"    Constraint: {constraint_info['constraint_strength']}, expected smoke: {constraint_info['expected_smoke']}")
 
 
 def calculate_mask_quality(pred_tensor):
     """
-    计算预测mask的质量分数
+    Calculate quality score of predicted mask
     Args:
-        pred_tensor: 预测结果张量 (torch.Tensor)
+        pred_tensor: Prediction tensor (torch.Tensor)
     Returns:
-        float: 质量分数，越低表示质量越好（平滑性越好）
+        float: Quality score, lower means better (smoother)
     """
-    # 确保输入是4D张量 (batch_size, channels, height, width)
+    # Ensure input is 4D tensor (batch_size, channels, height, width)
     if len(pred_tensor.shape) == 2:
         pred_tensor = pred_tensor.unsqueeze(0).unsqueeze(0)
     elif len(pred_tensor.shape) == 3:
         pred_tensor = pred_tensor.unsqueeze(0)
 
-    # 计算梯度幅度
+    # Compute gradient magnitude
     grad_x = gradient_x(pred_tensor)
     grad_y = gradient_y(pred_tensor)
     gradient_magnitude = torch.sqrt(grad_x**2 + grad_y**2 + 1e-8)
 
-    # 计算拉普拉斯边缘
+    # Compute Laplacian edge
     lap_edge = torch.abs(laplacian_edge(pred_tensor))
 
-    # 计算质量指标（值越小越好）
-    # 1. 梯度变化的平均值（边缘平滑性）
+    # Compute quality metrics (lower is better)
+    # 1. Mean gradient change (edge smoothness)
     gradient_score = gradient_magnitude.mean().item()
 
-    # 2. 拉普拉斯响应的平均值（整体平滑性）
+    # 2. Mean Laplacian response (overall smoothness)
     laplacian_score = lap_edge.mean().item()
 
-    # 3. 预测值的标准差（一致性）
+    # 3. Std of prediction values (consistency)
     consistency_score = pred_tensor.std().item()
 
-    # 综合质量分数（加权平均）
+    # Overall quality score (weighted average)
     quality_score = gradient_score * 0.4 + laplacian_score * 0.4 + consistency_score * 0.2
 
     return quality_score
 
 
-# --- 高置信度帧选择（含相似性约束） ---
+# --- High-confidence frame selection (with similarity constraint) ---
 def select_high_confidence_frames_with_similarity(predictions, frame_infos, context_frames=2, threshold=0.5):
     """
-    选择高置信度帧及其上下文帧，结合帧间mask相似性，提升伪标签时序一致性。
+    Select high-confidence frames and their context frames, combine mask similarity between frames to improve temporal consistency of pseudo labels.
     Args:
-        predictions: 预测结果字典
-        frame_infos: 帧信息字典
-        context_frames: 上下文帧数量
-        threshold: 置信度阈值
+        predictions: Prediction result dictionary
+        frame_infos: Frame info dictionary
+        context_frames: Number of context frames
+        threshold: Confidence threshold
     Returns:
-        list: 选择的帧路径列表
+        list: List of selected frame paths
     """
-    # 1. 按置信度排序，选出top-k作为候选中心帧
+    # 1. Sort by confidence, select top-k as candidate center frames
     sorted_preds = sorted(predictions.items(), key=lambda x: x[1][1], reverse=True)
     if not sorted_preds:
-        print("警告: 没有可用的帧")
+        print("Warning: No available frames")
         return []
     top_k = min(3, len(sorted_preds))
     candidate_centers = [frame_path for frame_path, _ in sorted_preds[:top_k]]
@@ -462,7 +462,7 @@ def select_high_confidence_frames_with_similarity(predictions, frame_infos, cont
     for center in candidate_centers:
         center_id = frame_infos[center]
         group = [center]
-        # 组内添加前后context帧
+        # Add context frames before and after in the group
         for i in range(1, context_frames + 1):
             prev_id = center_id - i
             next_id = center_id + i
@@ -472,22 +472,22 @@ def select_high_confidence_frames_with_similarity(predictions, frame_infos, cont
                 group.append(prevs[0])
             if nexts:
                 group.append(nexts[0])
-        # 只考虑实际存在的帧
+        # Only consider frames that actually exist
         group = [f for f in group if f in predictions]
         if len(group) < 2:
             continue
-        # 计算组内两两mask相似度均值
+        # Compute mean mask similarity within group
         sims = []
         for i in range(len(group)):
             for j in range(i + 1, len(group)):
                 sim = calculate_frame_similarity(predictions[group[i]][0], predictions[group[j]][0])
                 sims.append(sim)
         avg_sim = np.mean(sims) if sims else 0.0
-        # 组中心帧置信度
+        # Center frame confidence
         conf = predictions[center][1]
-        # 综合分数：相似性+置信度
+        # Overall score: similarity + confidence
         score = avg_sim * 0.2 + conf * 0.8
-        print(f"  候选中心帧 {os.path.basename(center)}: 置信度={conf:.3f}, 平均相似度={avg_sim:.3f}, 综合分数={score:.3f}")
+        print(f"  Candidate center frame {os.path.basename(center)}: confidence={conf:.3f}, avg similarity={avg_sim:.3f}, overall score={score:.3f}")
         if score > best_score:
             best_score = score
             best_group = group
@@ -496,8 +496,8 @@ def select_high_confidence_frames_with_similarity(predictions, frame_infos, cont
             best_sim = avg_sim
 
     if not best_group:
-        print("警告: 未找到有效的高置信度组，回退到置信度最高帧")
-        # 回退到原有逻辑
+        print("Warning: No valid high-confidence group found, fallback to highest confidence frame")
+        # Fallback to original logic
         fallback = sorted_preds[0][0]
         fallback_id = frame_infos[fallback]
         fallback_group = set([fallback])
@@ -510,182 +510,182 @@ def select_high_confidence_frames_with_similarity(predictions, frame_infos, cont
                 fallback_group.add(prevs[0])
             if nexts:
                 fallback_group.add(nexts[0])
-        print(f"选择了置信度最高帧 {os.path.basename(fallback)} 及其上下文帧，总共 {len(fallback_group)} 帧")
+        print(f"Selected highest confidence frame {os.path.basename(fallback)} and its context frames, total {len(fallback_group)} frames")
         return list(fallback_group)
 
     center_name = os.path.basename(best_center) if best_center is not None else "<None>"
-    print(f"选择最佳组中心帧: {center_name} (置信度={best_conf:.3f}, 平均相似度={best_sim:.3f})")
-    print(f"选择了最佳组中心帧及其上下文帧，总共 {len(set(best_group))} 帧")
+    print(f"Selected best group center frame: {center_name} (confidence={best_conf:.3f}, avg similarity={best_sim:.3f})")
+    print(f"Selected best group center frame and its context frames, total {len(set(best_group))} frames")
     return list(set(best_group))
 
 
-# 替换原有接口名，保证兼容
+# Replace the original interface name to ensure compatibility
 select_high_confidence_frames = select_high_confidence_frames_with_similarity
 
 
 def save_results(predictions, selected_frames, video_name, output_path, start_idx=0, constraint_info=None):
     """
-    保存选择的帧和伪标签（确保伪标签为纯二值）
+    Save selected frames and pseudo labels (ensure pseudo labels are pure binary)
     Args:
-        predictions: 预测结果字典，键为图像路径，值为(预测结果, 置信度)
-        selected_frames: 选择的帧路径列表
-        video_name: 视频名称，用于命名文件
-        output_path: 输出根路径
-        start_idx: 文件编号起始值，用于在多个视频间确保索引唯一性
-        constraint_info: 约束信息，用于二值化阈值调整
+        predictions: Prediction result dictionary, key is image path, value is (prediction, confidence)
+        selected_frames: List of selected frame paths
+        video_name: Video name, used for file naming
+        output_path: Output root path
+        start_idx: File index start value, to ensure unique index across multiple videos
+        constraint_info: Constraint info, used for binarization threshold adjustment
 
-    输出结构:
+    Output structure:
     output_path/
-        ├── img/   # 存储原始图像
-        └── gt/    # 存储伪标签（纯二值：0和255）
+        ├── img/   # Store original images
+        └── gt/    # Store pseudo labels (pure binary: 0 and 255)
     """
     img_dir = os.path.join(output_path, "img")
     gt_dir = os.path.join(output_path, "gt")
 
-    # 创建输出目录
+    # Create output directories
     os.makedirs(img_dir, exist_ok=True)
     os.makedirs(gt_dir, exist_ok=True)
 
-    # 记录保存的图像和标签信息
+    # Record saved image and label info
     saved_count = 0
-    saved_files = []  # 用于跟踪保存的文件名（不含扩展名）
+    saved_files = []  # Used to track saved file names (without extension)
 
-    print(f"正在保存 {len(selected_frames)} 帧的二值化伪标签...")
+    print(f"Saving binarized pseudo labels for {len(selected_frames)} frames ...")
 
     for idx, frame_path in enumerate(selected_frames, start=start_idx):
-        # 获取原始图像和预测结果
+        # Get original image and prediction
         pred, confidence = predictions[frame_path]
 
-        # 分析预测分布（调试用）
-        if idx == start_idx:  # 只分析第一帧，避免输出过多
+        # Analyze prediction distribution (for debugging)
+        if idx == start_idx:  # Only analyze the first frame to avoid excessive output
             analyze_prediction_distribution(pred, frame_path, constraint_info)
 
-        # 二值化预测结果（使用统一阈值0.6）
+        # Binarize prediction (use unified threshold 0.6)
         binary_pred = binarize_prediction(pred, threshold=0.6)
 
-        # 生成新的文件名：视频名+序号
+        # Generate new file name: video name + index
         new_filename = f"{video_name}_{idx:02d}"
         output_image_path = os.path.join(img_dir, f"{new_filename}.jpg")
         output_label_path = os.path.join(gt_dir, f"{new_filename}.png")
 
-        # 使用PIL读取和保存图像，保持原始质量
+        # Use PIL to read and save image, keep original quality
         with Image.open(frame_path) as img:
             img.save(output_image_path)
 
-        # 保存二值化伪标签 (只有0和255两种值)
+        # Save binarized pseudo label (only 0 and 255 values)
         binary_label = (binary_pred * 255).astype(np.uint8)
         cv2.imwrite(output_label_path, binary_label)
 
-        # 验证保存的标签确实是二值的
+        # Verify that the saved label is indeed binary
         unique_values = np.unique(binary_label)
         if len(unique_values) > 2 or (len(unique_values) == 2 and not (0 in unique_values and 255 in unique_values)):
-            print(f"警告: 帧 {new_filename} 的伪标签不是纯二值! 唯一值: {unique_values}")
-        elif idx == start_idx:  # 只打印第一帧的验证信息
-            print(f"    二值化验证: 唯一灰度值 {unique_values} ✓")
+            print(f"Warning: Frame {new_filename} pseudo label is not pure binary! Unique values: {unique_values}")
+        elif idx == start_idx:  # Only print validation info for the first frame
+            print(f"    Binarization check: unique gray values {unique_values} ✓")
 
-        # 添加到已保存文件列表（不含扩展名，但包含完整的新文件名）
+        # Add to saved file list (without extension, but with full new file name)
         saved_files.append(new_filename)
         saved_count += 1
 
-    print(f"保存了 {saved_count} 对图像和二值化伪标签")
-    print(f"  - 图像目录: {img_dir}")
-    print(f"  - 标签目录: {gt_dir}")
-    print(f"  - 所有伪标签均为纯二值图像 (0和255)")
+    print(f"Saved {saved_count} pairs of images and binarized pseudo labels")
+    print(f"  - Image directory: {img_dir}")
+    print(f"  - Label directory: {gt_dir}")
+    print(f"  - All pseudo labels are pure binary images (0 and 255)")
 
-    return saved_files, start_idx + saved_count  # 返回保存的文件名列表和下一个起始索引
+    return saved_files, start_idx + saved_count  # Return the list of saved file names and the next starting index
 
 
 def generate_transmission_maps(output_path, saved_files):
     """
-    为保存的图像生成透光率图
+    Generate transmission maps for saved images
     Args:
-        output_path: 输出根路径
-        saved_files: 已保存的文件名列表
+        output_path: Output root path
+        saved_files: List of saved file names
 
-    输出结构:
+    Output structure:
     output_path/
-        ├── img/   # 存储原始图像
-        ├── gt/    # 存储伪标签
-        └── trans/ # 存储透光率图
+        ├── img/   # Store original images
+        ├── gt/    # Store pseudo labels
+        └── trans/ # Store transmission maps
     """
     img_dir = os.path.join(output_path, "img")
     trans_dir = os.path.join(output_path, "trans")
 
-    # 创建透光率图输出目录
+    # Create transmission map output directory
     os.makedirs(trans_dir, exist_ok=True)
 
-    print(f"为 {len(saved_files)} 张图像生成透光率图...")
+    print(f"Generating transmission maps for {len(saved_files)} images ...")
     total = len(saved_files)
     for i, filename in enumerate(saved_files):
         if i % 5 == 0:
-            print(f"透光率图生成进度: {i}/{total} ({i/total*100:.1f}%)")
+            print(f"Transmission map generation progress: {i}/{total} ({i/total*100:.1f}%)")
 
-        # 加载原始图像
+        # Load original image
         img_path = os.path.join(img_dir, f"{filename}.jpg")
         if not os.path.exists(img_path):
             img_path = os.path.join(img_dir, f"{filename}.png")
             if not os.path.exists(img_path):
-                print(f"警告: 找不到图像文件 {filename}")
+                print(f"Warning: Cannot find image file {filename}")
                 continue
 
-        # 读取图像
+        # Read image
         src = cv2.imread(img_path)
         if src is None:
-            print(f"警告: 无法读取图像 {img_path}")
+            print(f"Warning: Cannot read image {img_path}")
             continue
 
-        # 生成透光率图 - 直接使用transmission_map.py中的函数
+        # Generate transmission map - use function from transmission_map.py
         trans = find_transmission_map(src)
 
-        # 保存透光率图
+        # Save transmission map
         trans_path = os.path.join(trans_dir, f"{filename}.png")
         cv2.imwrite(trans_path, trans * 255)
 
-    print(f"透光率图生成完成，保存在: {trans_dir}")
+    print(f"Transmission map generation completed, saved in: {trans_dir}")
 
 
 def clean_output_directories(output_path):
     """
-    清理输出目录中的所有现有文件
+    Clean all existing files in output directories
     Args:
-        output_path: 输出根路径
+        output_path: Output root path
     """
     directories = ["img", "gt", "trans"]
 
     for directory in directories:
         dir_path = os.path.join(output_path, directory)
         if os.path.exists(dir_path):
-            print(f"清理目录: {dir_path}")
-            # 删除目录中的所有文件
+            print(f"Cleaning directory: {dir_path}")
+            # Delete all files in directory
             for file_name in os.listdir(dir_path):
                 file_path = os.path.join(dir_path, file_name)
                 if os.path.isfile(file_path):
                     os.remove(file_path)
-            print(f"目录 {directory} 已清空")
+            print(f"Directory {directory} cleared")
         else:
-            print(f"创建目录: {dir_path}")
+            print(f"Creating directory: {dir_path}")
             os.makedirs(dir_path, exist_ok=True)
 
-    print("所有输出目录已清理完成")
+    print("All output directories cleaned")
 
 
 def validate_pseudo_labels(output_path):
     """
-    验证生成的伪标签是否为纯二值图像
+    Validate whether generated pseudo labels are pure binary images
     Args:
-        output_path: 输出路径
+        output_path: Output path
     """
     gt_dir = os.path.join(output_path, "gt")
     if not os.path.exists(gt_dir):
-        print("警告: 伪标签目录不存在")
+        print("Warning: Pseudo label directory does not exist")
         return
 
     label_files = [f for f in os.listdir(gt_dir) if f.endswith(".png")]
     if not label_files:
-        print("警告: 没有找到伪标签文件")
+        print("Warning: No pseudo label files found")
         return
 
-    print(f"\n验证 {len(label_files)} 个伪标签文件...")
+    print(f"\nValidating {len(label_files)} pseudo label files ...")
 
     non_binary_count = 0
     gray_value_stats = {}
@@ -695,51 +695,51 @@ def validate_pseudo_labels(output_path):
         label = cv2.imread(label_path, 0)
 
         if label is None:
-            print(f"警告: 无法读取标签文件 {label_file}")
+            print(f"Warning: Cannot read label file {label_file}")
             continue
 
         unique_values = np.unique(label)
 
-        # 记录灰度值统计
+        # Record gray value statistics
         for val in unique_values:
             gray_value_stats[val] = gray_value_stats.get(val, 0) + 1
 
-        # 检查是否为纯二值
+        # Check if it is pure binary
         if len(unique_values) > 2 or (len(unique_values) == 2 and not (0 in unique_values and 255 in unique_values)):
             non_binary_count += 1
-            if non_binary_count <= 5:  # 只显示前5个非二值文件
-                print(f"  非二值标签: {label_file}, 灰度值: {unique_values}")
+            if non_binary_count <= 5:  # Only show first 5 non-binary files
+                print(f"  Non-binary label: {label_file}, gray values: {unique_values}")
 
-    print(f"\n验证结果:")
-    print(f"  总文件数: {len(label_files)}")
-    print(f"  二值文件数: {len(label_files) - non_binary_count}")
-    print(f"  非二值文件数: {non_binary_count}")
+    print(f"\nValidation result:")
+    print(f"  Total files: {len(label_files)}")
+    print(f"  Binary files: {len(label_files) - non_binary_count}")
+    print(f"  Non-binary files: {non_binary_count}")
 
-    print(f"\n所有灰度值分布:")
+    print(f"\nAll gray value distribution:")
     for gray_val, count in sorted(gray_value_stats.items()):
-        print(f"  灰度值 {gray_val}: {count} 次出现")
+        print(f"  Gray value {gray_val}: {count} occurrences")
 
     if non_binary_count == 0:
-        print("✅ 所有伪标签均为纯二值图像 (只包含0和255)")
+        print("All pseudo labels are pure binary images (only 0 and 255)")
     else:
-        print(f"⚠️  有 {non_binary_count} 个伪标签不是纯二值图像")
+        print(f"{non_binary_count} pseudo labels are not pure binary images")
 
     return non_binary_count == 0
 
 
 def calculate_frame_similarity(pred1, pred2):
     """
-    计算两个预测结果之间的相似度
+    Calculate similarity between two prediction results
     Args:
-        pred1: 第一个预测结果 (numpy array)
-        pred2: 第二个预测结果 (numpy array)
+        pred1: First prediction (numpy array)
+        pred2: Second prediction (numpy array)
     Returns:
-        float: 相似度分数 (0-1，越高表示越相似)
+        float: Similarity score (0-1, higher means more similar)
     """
     if pred1.shape != pred2.shape:
         return 0.0
 
-    # 计算IoU相似度
+    # Compute IoU similarity
     pred1_binary = (pred1 > 0.5).astype(np.float32)
     pred2_binary = (pred2 > 0.5).astype(np.float32)
 
@@ -747,16 +747,16 @@ def calculate_frame_similarity(pred1, pred2):
     union = np.sum(np.maximum(pred1_binary, pred2_binary))
 
     if union == 0:
-        return 1.0  # 两个都是全黑，认为相似
+        return 1.0  # Both are all black, considered similar
 
     iou = intersection / union
 
-    # 同时计算像素级别的相关性
+    # Also compute pixel-level correlation
     correlation = np.corrcoef(pred1.flatten(), pred2.flatten())[0, 1]
     if np.isnan(correlation):
         correlation = 0.0
 
-    # 综合IoU和相关性
+    # Combine IoU and correlation
     similarity = 0.7 * iou + 0.3 * max(0, correlation)
 
     return similarity
@@ -764,36 +764,36 @@ def calculate_frame_similarity(pred1, pred2):
 
 def main():
     """
-    主函数 - 执行整个伪标签生成流程:
-    1. 加载预训练模型
-    2. 加载视频标签约束（如果启用）
-    3. 处理所有视频文件
-    4. 从每个视频中提取帧
-    5. 对帧进行预测（应用约束）
-    6. 选择高置信度帧及其上下文
-    7. 输出原始图像和伪标签到对应的约束目录
-    8. 生成透光率图
+    Main function - execute the whole pseudo label generation process:
+    1. Load pretrained model
+    2. Load video label constraints (if enabled)
+    3. Process all video files
+    4. Extract frames from each video
+    5. Predict on frames (apply constraints)
+    6. Select high-confidence frames and their context
+    7. Output original images and pseudo labels to corresponding constraint directory
+    8. Generate transmission maps
     """
     opt = arg_parse()
 
-    # 设置设备
+    # Set device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"使用设备: {device}")
+    print(f"Using device: {device}")
 
-    # 加载模型
+    # Load model
     generator = Generator(channel=opt.feat_channel, latent_dim=opt.latent_dim)
     generator.load_state_dict(torch.load(opt.pretrained_weights, map_location=device, weights_only=False))
     generator.to(device)
     generator.eval()
-    print(f"模型已加载: {opt.pretrained_weights}")
+    print(f"Model loaded: {opt.pretrained_weights}")
 
-    # 加载视频标签（如果启用约束）
+    # Load video labels (if constraints enabled)
     video_labels = {}
     if opt.constraint_type != "none":
         video_labels = load_video_labels(opt.video_labels_csv)
-        print(f"约束类型: {opt.constraint_type}")
+        print(f"Constraint type: {opt.constraint_type}")
 
-    # 根据约束类型设置输出路径
+    # Set output path according to constraint type
     if opt.constraint_type == "none":
         final_output_path = os.path.join(opt.output_path, "non_constraint")
     elif opt.constraint_type == "citizen":
@@ -803,58 +803,58 @@ def main():
     else:
         final_output_path = opt.output_path
 
-    # 创建输出目录
+    # Create output directory
     os.makedirs(final_output_path, exist_ok=True)
-    print(f"输出路径: {final_output_path}")
+    print(f"Output path: {final_output_path}")
 
-    # 清理输出目录中的现有文件
+    # Clean existing files in output directory
     clean_output_directories(final_output_path)
 
-    # 获取所有视频文件
+    # Get all video files
     video_files = glob.glob(os.path.join(opt.videos_path, "*.mp4")) + glob.glob(os.path.join(opt.videos_path, "*.avi"))
-    print(f"找到 {len(video_files)} 个视频文件")
+    print(f"Found {len(video_files)} video files")
 
     if len(video_files) == 0:
-        print(f"错误: 在 {opt.videos_path} 中未找到视频文件")
+        print(f"Error: No video files found in {opt.videos_path}")
         return
 
-    # 用于在多个视频间确保索引唯一性
+    # Used to ensure unique index across multiple videos
     next_idx = 0
     all_saved_files = []
     processed_videos = 0
     skipped_videos = 0
 
     for video_file in video_files:
-        video_name = os.path.basename(video_file).split(".")[0]  # 获取完整的视频名（包含后缀）
-        print(f"\n处理视频: {video_name}")
+        video_name = os.path.basename(video_file).split(".")[0]  # Get full video name (with extension)
+        print(f"\nProcessing video: {video_name}")
 
-        # 获取视频约束信息（现在使用完整的视频名）
+        # Get video constraint info (now using full video name)
         constraint_info = get_video_constraint_info(video_name, video_labels, opt.constraint_type)
 
         if constraint_info["has_constraint"]:
             print(
-                f"  约束信息: {constraint_info['constraint_strength']}, "
-                f"期望烟雾: {constraint_info['expected_smoke']}, "
-                f"约束置信度: {constraint_info['constraint_confidence']:.2f}"
+                f"  Constraint info: {constraint_info['constraint_strength']}, "
+                f"expected smoke: {constraint_info['expected_smoke']}, "
+                f"constraint confidence: {constraint_info['constraint_confidence']:.2f}"
             )
 
-            # 新增：只要是负样本，直接跳过预测，采样5帧保存全0掩码
+            # New: For negative samples, skip prediction, sample 5 frames and save all-zero masks
             if constraint_info["expected_smoke"] is False:
-                print(f"  跳过模型预测，负样本直接采样5帧并保存全0掩码")
+                print(f"  Skip model prediction, negative sample: sample 5 frames and save all-zero masks")
                 temp_frames_dir = os.path.join(final_output_path, f"temp_{video_name}")
                 os.makedirs(temp_frames_dir, exist_ok=True)
                 frame_infos = extract_frames_from_video(video_file, temp_frames_dir, opt.sampling_rate)
                 frame_paths = list(frame_infos.keys())
                 if len(frame_paths) == 0:
-                    print(f"跳过视频 {video_name}: 无法提取帧")
+                    print(f"Skip video {video_name}: cannot extract frames")
                     skipped_videos += 1
                     continue
-                # 随机采样5帧
+                # Randomly sample 5 frames
                 import random
 
                 sample_num = min(5, len(frame_paths))
                 sampled_frames = random.sample(frame_paths, sample_num)
-                # 保存原图和全0掩码
+                # Save original images and all-zero masks
                 img_dir = os.path.join(final_output_path, "img")
                 gt_dir = os.path.join(final_output_path, "gt")
                 os.makedirs(img_dir, exist_ok=True)
@@ -865,88 +865,88 @@ def main():
                     output_label_path = os.path.join(gt_dir, f"{new_filename}.png")
                     with Image.open(frame_path) as img:
                         img.save(output_image_path)
-                    # 生成全0掩码，尺寸与原图一致
+                    # Generate all-zero mask, same size as original image
                     img0 = Image.open(frame_path)
                     mask = np.zeros(img0.size[::-1], dtype=np.uint8)  # (H, W)
                     cv2.imwrite(output_label_path, mask)
                 next_idx += sample_num
                 all_saved_files.extend([f"{video_name}_{i:02d}" for i in range(next_idx - sample_num, next_idx)])
                 processed_videos += 1
-                # 清理临时帧目录
+                # Clean up temporary frame directory
                 for frame_path in frame_paths:
                     if os.path.exists(frame_path):
                         os.remove(frame_path)
                 os.rmdir(temp_frames_dir)
-                print(f"视频 {video_name} 处理完成 (负样本全0掩码)")
+                print(f"Video {video_name} processed (negative sample all-zero mask)")
                 continue
         else:
-            print(f"  无约束信息，正常处理")
+            print(f"  No constraint info, normal processing")
 
-        # 为每个视频创建临时帧目录
+        # Create temporary frame directory for each video
         temp_frames_dir = os.path.join(final_output_path, f"temp_{video_name}")
         os.makedirs(temp_frames_dir, exist_ok=True)
 
-        # 提取帧
+        # Extract frames
         frame_infos = extract_frames_from_video(video_file, temp_frames_dir, opt.sampling_rate)
         if not frame_infos:
-            print(f"跳过视频 {video_name}: 无法提取帧")
+            print(f"Skip video {video_name}: cannot extract frames")
             skipped_videos += 1
             continue
 
-        # 获取所有提取的帧路径
+        # Get all extracted frame paths
         frame_paths = list(frame_infos.keys())
 
-        # 预测所有帧（应用约束）
+        # Predict all frames (apply constraints)
         predictions = predict_frames(generator, frame_paths, opt.testsize, device, constraint_info)
 
-        # 选择高置信度帧及其上下文（不再包含时序一致性约束）
+        # Select high-confidence frames and their context (no longer includes temporal consistency constraint)
         selected_frames = select_high_confidence_frames(predictions, frame_infos, opt.context_frames, opt.threshold)
 
-        print(f"选择了 {len(selected_frames)} 帧 (从 {len(frame_paths)} 帧中)")
+        print(f"Selected {len(selected_frames)} frames (from {len(frame_paths)} frames)")
 
-        # 保存结果到对应的约束目录，并获取下一个起始索引
+        # Save results to corresponding constraint directory and get next start index
         saved_files, next_idx = save_results(predictions, selected_frames, video_name, final_output_path, next_idx, constraint_info)
         all_saved_files.extend(saved_files)
         processed_videos += 1
 
-        # 清理临时帧目录
+        # Clean up temporary frame directory
         for frame_path in frame_paths:
             if os.path.exists(frame_path):
                 os.remove(frame_path)
         os.rmdir(temp_frames_dir)
 
-        print(f"视频 {video_name} 处理完成")
+        print(f"Video {video_name} processed")
 
-    # 所有视频处理完毕后，一次性生成所有透光率图
+    # After all videos are processed, generate all transmission maps at once
     if all_saved_files:
         generate_transmission_maps(final_output_path, all_saved_files)
 
-    # 验证所有生成的伪标签是否为纯二值图像
+    # Validate whether all generated pseudo labels are pure binary images
     is_all_binary = validate_pseudo_labels(final_output_path)
 
-    print(f"\n处理完成统计:")
-    print(f"  处理的视频: {processed_videos}")
-    print(f"  跳过的视频: {skipped_videos}")
-    print(f"  约束类型: {opt.constraint_type}")
-    print(f"  输出目录: {final_output_path}")
-    print(f"  伪标签质量: {'✅ 全部为纯二值' if is_all_binary else '⚠️ 存在非二值标签'}")
-    print("目录结构:")
-    print("  - img/    (原始图像)")
-    print("  - gt/     (伪标签 - 纯二值: 0和255)")
-    print("  - trans/  (透光率图)")
+    print(f"\nProcessing summary:")
+    print(f"  Processed videos: {processed_videos}")
+    print(f"  Skipped videos: {skipped_videos}")
+    print(f"  Constraint type: {opt.constraint_type}")
+    print(f"  Output directory: {final_output_path}")
+    print(f"  Pseudo label quality: {'✅ All pure binary' if is_all_binary else '⚠️ Non-binary labels exist'}")
+    print("Directory structure:")
+    print("  - img/    (original images)")
+    print("  - gt/     (pseudo labels - pure binary: 0 and 255)")
+    print("  - trans/  (transmission maps)")
 
     if opt.constraint_type != "none":
-        print(f"\n约束作用说明 (统一阈值0.6):")
-        print(f"  • '黄金正样本' 约束: 概率0.9 > 0.6 → 前景(255)")
-        print(f"  • '强正' 约束: 概率0.8 > 0.6 → 前景(255)")
-        print(f"  • '弱正/可能有' 约束: 概率0.7 > 0.6 → 前景(255)")
-        print(f"  • '其他正' 约束: 概率0.65 > 0.6 → 前景(255)")
-        print(f"  • '其他负' 约束: 概率0.58 < 0.6 → 背景(0)")
-        print(f"  • '弱负' 约束: 概率0.55 < 0.6 → 背景(0) (但接近阈值，给原始预测机会)")
-        print(f"  • '强负' 约束: 概率0.4 < 0.6 → 背景(0)")
-        print(f"  • '黄金负样本' 约束: 概率0.2 < 0.6 → 背景(0)")
-        print(f"  • 弱约束保留40%原始预测 + 60%约束概率，平衡约束与模型预测")
-        print(f"  • 统一阈值0.6确保二值化决策的一致性")
+        print(f"\nConstraint effect explanation (unified threshold 0.6):")
+        print(f"  • 'Gold positive' constraint: probability 0.9 > 0.6 → foreground (255)")
+        print(f"  • 'Strong positive' constraint: probability 0.8 > 0.6 → foreground (255)")
+        print(f"  • 'Weak positive/maybe' constraint: probability 0.7 > 0.6 → foreground (255)")
+        print(f"  • 'Other positive' constraint: probability 0.65 > 0.6 → foreground (255)")
+        print(f"  • 'Other negative' constraint: probability 0.58 < 0.6 → background (0)")
+        print(f"  • 'Weak negative' constraint: probability 0.55 < 0.6 → background (0) (but close to threshold, give original prediction a chance)")
+        print(f"  • 'Strong negative' constraint: probability 0.4 < 0.6 → background (0)")
+        print(f"  • 'Gold negative' constraint: probability 0.2 < 0.6 → background (0)")
+        print(f"  • Weak constraint keeps 40% original prediction + 60% constraint probability, balancing constraint and model prediction")
+        print(f"  • Unified threshold 0.6 ensures consistency of binarization decision")
 
 
 if __name__ == "__main__":

@@ -1,16 +1,18 @@
 #!/bin/bash
 
 # ----------- SLURM directives (keep necessary parts) ------------
-#SBATCH --job-name=train_bvm_weakly_supervised
+#SBATCH --job-name=inference_full
 #SBATCH --partition=gpu_mig
 #SBATCH --gres=gpu:1
 #SBATCH --time=24:00:00
 #SBATCH --mem=24G
 #SBATCH --cpus-per-task=6
-#SBATCH --output=../logs_out/trans_bvm_weak_train_%j.out
-#SBATCH --error=../logs_err/trans_bvm_weak_train_%j.err
+#SBATCH --output=../logs_out/inference_full_%j.out
+#SBATCH --error=../logs_err/inference_full_%j.err
 
-
+# ============================================================================
+# Full inference script
+# ============================================================================
 
 # Load execution environment
 module purge
@@ -24,40 +26,10 @@ cd "$(dirname "$0")/.."
 # Create log directories
 mkdir -p logs_out logs_err
 
-# Run weaklysupervised training script
-#
-# Experiment config: SMOKE5K labeled data (full training) + ijmond pseudo-labeled data (train + target domain validation)
-# 🎯 Key change: Validation is performed on the target domain (ijmond) instead of the source domain (SMOKE5K)
-python src/bvm_training/trans_bvm_weakly_supervised/train.py \
---epoch 100 \
---batchsize 8 \
---trainsize 352 \
---lr_gen 5e-5 \
---labeled_dataset_path "data/SMOKE5K_Dataset/SMOKE5K/train" \
---unlabeled_dataset_path "data/ijmond_camera/SMOKE5K-full/non_constraint" \
---save_model_path "models/weak-supervision/SMOKE5K-ijmond-camera-on-SMOKE5K" \
---no_samples 500 \
---aug \
---enable_validation \
---val_split 0.2 \
---patience 25 \
---min_delta 0.001 \
---random_seed 422h "data/SMOKE5K_Dataset/SMOKE5K/train" \
---target_dataset_path "data/ijmond_data/train" \
---save_model_path "models/thesis/gold" \
---contrastive_loss_weight 1.0 \
---no_samples 500 \
---enable_validation \
---val_split 0.2 \
---aug \
---batchsize 4 \
---use_attention_pool \
---use_ldconv--save_model_path "models/thesis/gold" \
---contrastive_loss_weight 1.0 \
---no_samples 500 \
---enable_validation \
---val_split 0.2 \
---aug \
---batchsize 4 \
---use_attention_pool \
---use_ldconv
+# Run inference script
+python src/bvm_training/trans_bvm_self_supervised_thesis/inference.py \
+--videos_path "data/ijmond_camera/videos" \
+--output_path "data/ijmond_camera/SMOKE5K-full" \
+--pretrained_weights "models/full-supervision/SMOKE5K-supervised/SMOKE5K_Dataset_SMOKE5K_train/SMOKE5K_Dataset_SMOKE5K_train_best_model.pth" \
+--context_frames 2 \
+--threshold 0.6

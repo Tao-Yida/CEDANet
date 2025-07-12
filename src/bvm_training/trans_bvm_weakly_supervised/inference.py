@@ -81,7 +81,6 @@ def load_video_labels(csv_path):
             label_state = row["label_state"]
             label_state_admin = row["label_state_admin"]
 
-            # 直接使用完整的文件名作为键，不去除后缀
             video_labels[file_name] = {"label_state": label_state, "label_state_admin": label_state_admin}
 
         print(f"Loaded label info for {len(video_labels)} video segments")
@@ -232,15 +231,15 @@ class InferenceDataset:
 
 def predict_frames(model, image_paths, testsize, device, constraint_info=None):
     """
-    预测多个图像帧，并应用视频标签约束
+    Predict multiple image frames and apply video label constraints
     Args:
-        model: 预训练模型
-        image_paths: 图像路径列表
-        testsize: 测试尺寸
-        device: 计算设备
-        constraint_info: 约束信息字典
+        model: Pretrained model
+        image_paths: List of image paths
+        testsize: Test size
+        device: Computation device
+        constraint_info: Constraint info dictionary
     Returns:
-        dict: 预测结果字典，键为图像路径，值为(预测结果, 置信度)
+        dict: Prediction result dictionary, key is image path, value is (prediction, confidence)
     """
     dataset = InferenceDataset(image_paths, testsize)
     predictions = {}
@@ -250,7 +249,7 @@ def predict_frames(model, image_paths, testsize, device, constraint_info=None):
         total = len(dataset)
         for idx in range(len(dataset)):
             if idx % 10 == 0:
-                print(f"预测进度: {idx}/{total} ({idx/total*100:.1f}%)")
+                print(f"Prediction progress: {idx}/{total} ({idx/total*100:.1f}%)")
 
             image, HH, WW, image_path = dataset[idx]
 
@@ -449,7 +448,7 @@ def select_high_confidence_frames(predictions, frame_infos, context_frames=2, th
     sorted_preds = sorted(predictions.items(), key=lambda x: x[1][1], reverse=True)
 
     if not sorted_preds:
-        print("警告: 没有可用的帧")
+        print("Warning: No frames available")
         return []
 
     # Select top 3 frames by confidence for quality evaluation
@@ -472,8 +471,7 @@ def select_high_confidence_frames(predictions, frame_infos, context_frames=2, th
         # Combined score: higher confidence is better, lower quality score is better
         # Normalize confidence to 0-1, quality score usually in 0-1 range
         normalized_confidence = confidence
-        combined_score = quality_score - normalized_confidence * 0.5  # 置信度权重为0.5
-
+        combined_score = quality_score - normalized_confidence * 0.5
         print(f"  Frame {os.path.basename(frame_path)}: confidence={confidence:.3f}, quality={quality_score:.3f}, combined={combined_score:.3f}")
 
         if combined_score < best_score:
@@ -571,9 +569,9 @@ def save_results(predictions, selected_frames, video_name, output_path, start_id
         # Verify saved label is truly binary
         unique_values = np.unique(binary_label)
         if len(unique_values) > 2 or (len(unique_values) == 2 and not (0 in unique_values and 255 in unique_values)):
-            print(f"警告: 帧 {new_filename} 的伪标签不是纯二值! 唯一值: {unique_values}")
-        elif idx == start_idx:  # 只打印第一帧的验证信息
-            print(f"    二值化验证: 唯一灰度值 {unique_values} ✓")
+            print(f"Warning: Pseudo label for frame {new_filename} is not binary! Unique values: {unique_values}")
+        elif idx == start_idx:  # Only print validation info for the first frame
+            print(f"    Binarization check: unique gray values {unique_values} ✓")
 
         # Add to saved file list (without extension, but with full new file name)
         saved_files.append(new_filename)
@@ -584,7 +582,7 @@ def save_results(predictions, selected_frames, video_name, output_path, start_id
     print(f"  - Label directory: {pl_dir}")
     print(f"  - All pseudo labels are binary images (0 and 255)")
 
-    return saved_files, start_idx + saved_count  # 返回保存的文件名列表和下一个起始索引
+    return saved_files, start_idx + saved_count  # Return saved file name list and next start index
 
 
 def generate_transmission_maps(output_path, saved_files):
@@ -700,7 +698,7 @@ def validate_pseudo_labels(output_path):
         # Check if truly binary
         if len(unique_values) > 2 or (len(unique_values) == 2 and not (0 in unique_values and 255 in unique_values)):
             non_binary_count += 1
-            if non_binary_count <= 5:  # 只显示前5个非二值文件
+            if non_binary_count <= 5:  # Only show first 5 non-binary files
                 print(f"  Non-binary label: {label_file}, gray values: {unique_values}")
 
     print(f"\nValidation result:")
@@ -773,10 +771,10 @@ def main():
     print(f"Found {len(video_files)} video files")
 
     if len(video_files) == 0:
-        print(f"错误: 在 {opt.videos_path} 中未找到视频文件")
+        print(f"Error: No video files found in {opt.videos_path}")
         return
 
-    # 用于在多个视频间确保索引唯一性
+    # Used to ensure index uniqueness across multiple videos
     next_idx = 0
     all_saved_files = []
     processed_videos = 0

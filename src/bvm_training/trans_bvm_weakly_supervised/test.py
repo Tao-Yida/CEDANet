@@ -70,19 +70,20 @@ def compute_mse(pred, gt):
 
 
 def compute_mae(pred, gt):
-    """计算平均绝对误差 (MAE)"""
+    """Calculate Mean Absolute Error (MAE)"""
     pred_norm = pred.astype(np.float32) / 255.0
     gt_norm = gt.astype(np.float32) / 255.0
     return mean_absolute_error(gt_norm.flatten(), pred_norm.flatten())
 
 
 for dataset in test_datasets:
-    # 从模型路径中提取模型信息
-    model_name = os.path.splitext(os.path.basename(opt.model_path))[0]  # 不带扩展名的文件名
-    model_dir = os.path.basename(os.path.dirname(opt.model_path))  # 父目录名
 
-    # 构建保存路径，包含模型信息
-    save_path = os.path.join("./results", "self_supervised", opt.test_dataset, model_dir, model_name, dataset)
+    # Extract model info from model path
+    model_name = os.path.splitext(os.path.basename(opt.model_path))[0]  # File name without extension
+    model_dir = os.path.basename(os.path.dirname(opt.model_path))  # Parent directory name
+
+    # Build save path, including model info
+    save_path = os.path.join("./results", "weakly_supervised", opt.test_dataset, model_dir, model_name, dataset)
 
     if not os.path.exists(save_path):
         os.makedirs(save_path)
@@ -90,31 +91,31 @@ for dataset in test_datasets:
     image_root = os.path.join(dataset_path, dataset) if dataset else dataset_path
     print(f"Loading test data from: {image_root}")
 
-    # 检查路径是否存在
+    # Check if path exists
     if not os.path.exists(image_root):
         print(f"Warning: Path {image_root} does not exist, skipping...")
         continue
 
-    # 确定GT路径
+    # Determine GT path
     gt_root = None
     if opt.test_dataset == "ijmond":
         gt_root = os.path.join("data/ijmond_data/test/gt", dataset) if dataset else "data/ijmond_data/test/gt/"
     elif opt.test_dataset == "smoke5k":
         gt_root = os.path.join("data/SMOKE5K_Dataset/SMOKE5K/test/gt_", dataset) if dataset else "data/SMOKE5K_Dataset/SMOKE5K/test/gt_/"
 
-    # 检查GT路径是否存在
+    # Check if GT path exists
     if gt_root and not os.path.exists(gt_root):
         print(f"Warning: GT path {gt_root} does not exist, evaluation metrics will not be calculated")
         gt_root = None
 
-    # 初始化评价指标统计变量
+    # Initialize evaluation metric statistics
     sum_TP = 0
     sum_FP = 0
     sum_FN = 0
     sum_TN = 0
     total_images = 0
 
-    # 初始化额外的评估指标累积变量
+    # Initialize additional evaluation metric accumulators
     sum_mse = 0.0
     sum_mae = 0.0
 
@@ -129,25 +130,25 @@ for dataset in test_datasets:
         res = res.sigmoid().data.cpu().numpy().squeeze()
         res = 255 * (res - res.min()) / (res.max() - res.min() + 1e-8)
 
-        # 安全的文件保存
+        # Safe file saving
         save_file_path = os.path.join(save_path, name)
         try:
             cv2.imwrite(save_file_path, res)
         except Exception as e:
             print(f"Failed to save {save_file_path}: {e}")
 
-        # 计算评价指标（如果GT路径存在）
+        # Compute evaluation metrics (if GT path exists)
         if gt_root is not None:
             gt_path = os.path.join(gt_root, name)
             if os.path.exists(gt_path):
-                # 读取GT图像
+                # Read GT image
                 gt_mask = cv2.imread(gt_path, 0)
                 if gt_mask is not None:
-                    # 二值化GT和预测结果
+                    # Binarize GT and prediction
                     gt_bin = (gt_mask > 128).astype(np.uint8)
                     pred_bin = (res > 128).astype(np.uint8)
 
-                    # 计算TP, FP, FN, TN
+                    # Compute TP, FP, FN, TN
                     TP = np.logical_and(pred_bin, gt_bin).sum()
                     FP = np.logical_and(pred_bin, 1 - gt_bin).sum()
                     FN = np.logical_and(1 - pred_bin, gt_bin).sum()
@@ -159,7 +160,7 @@ for dataset in test_datasets:
                     sum_TN += TN
                     total_images += 1
 
-                    # 计算额外的评估指标
+                    # Compute additional evaluation metrics
                     mse = compute_mse(res, gt_mask)
                     mae = compute_mae(res, gt_mask)
 
@@ -168,28 +169,28 @@ for dataset in test_datasets:
             else:
                 print(f"Warning: GT file {gt_path} not found")
 
-    # 计算并保存评价指标
+    # Compute and save evaluation metrics
     if total_images > 0:
-        # 计算各项指标
+        # Compute metrics
         precision = sum_TP / (sum_TP + sum_FP + 1e-8)
         recall = sum_TP / (sum_TP + sum_FN + 1e-8)
         f1_score = 2 * precision * recall / (precision + recall + 1e-8)
         specificity = sum_TN / (sum_TN + sum_FP + 1e-8)
         accuracy = (sum_TP + sum_TN) / (sum_TP + sum_TN + sum_FP + sum_FN + 1e-8)
 
-        # IoU 计算
-        iou_positive = sum_TP / (sum_TP + sum_FP + sum_FN + 1e-8)  # 烟雾类 IoU
-        iou_negative = sum_TN / (sum_TN + sum_FN + sum_FP + 1e-8)  # 背景类 IoU
-        miou = (iou_positive + iou_negative) / 2  # 真正的 mIoU：两个类别 IoU 的平均
+        # IoU calculation
+        iou_positive = sum_TP / (sum_TP + sum_FP + sum_FN + 1e-8)  # Smoke class IoU
+        iou_negative = sum_TN / (sum_TN + sum_FN + sum_FP + 1e-8)  # Background class IoU
+        miou = (iou_positive + iou_negative) / 2  # True mIoU: average of two class IoUs
 
-        # Dice 系数（与 F1-Score 等价）
+        # Dice coefficient (equivalent to F1-Score)
         dice = 2 * sum_TP / (2 * sum_TP + sum_FP + sum_FN + 1e-8)
 
-        # 计算平均高级指标
+        # Compute average advanced metrics
         avg_mse = sum_mse / total_images
         avg_mae = sum_mae / total_images
 
-        # 打印结果
+        # Print results
         print(f"\n=== Evaluation Results for {opt.test_dataset} dataset ===")
         print(f"Processed {total_images} images")
         print(f"Precision: {precision:.4f}")
@@ -205,7 +206,7 @@ for dataset in test_datasets:
         print(f"Mean MSE: {avg_mse:.6f}")
         print(f"Mean MAE: {avg_mae:.6f}")
 
-        # 混淆矩阵
+        # Confusion matrix
         confusion_matrix = f"""
 Confusion Matrix:
                 Predicted
@@ -215,13 +216,13 @@ Actual N    {sum_FP:8d} {sum_TN:8d}
 """
         print(confusion_matrix)
 
-        # 保存评价指标到txt文件
+        # Save evaluation metrics to txt file
         metrics_file = os.path.join(save_path, "evaluation_metrics.txt")
         with open(metrics_file, "w") as f:
             f.write(f"Self-Supervised Evaluation Results for {opt.test_dataset} dataset\n")
             f.write(f"Test Dataset: {opt.test_dataset}\n")
             f.write(f"Model: {opt.model_path}\n")
-            f.write(f"Method: self_supervised\n")
+            f.write(f"Method: weakly_supervised\n")
             f.write(f"Test size: {opt.testsize}\n")
             f.write(f"Total images processed: {total_images}\n\n")
 

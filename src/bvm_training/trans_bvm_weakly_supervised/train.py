@@ -356,7 +356,7 @@ def print_training_configuration(opt, device, labeled_dataset_name, unlabeled_da
 
 opt.save_model_path = os.path.join(original_save_path, model_name)
 
-# 打印训练配置
+# Print the training configuration
 print_training_configuration(opt, device, labeled_dataset_name, unlabeled_dataset_name, model_name, original_save_path)
 
 # Build model
