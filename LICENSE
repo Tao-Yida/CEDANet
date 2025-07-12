@@ -1,0 +1,62 @@
+CEDANet License Agreement
+
+Copyright (c) 2024 Tao Yida, University of Amsterdam
+All rights reserved.
+
+RESTRICTED USE LICENSE
+
+1. DEFINITIONS
+   - "Software" refers to the CEDANet codebase, models, algorithms, and documentation
+   - "Commercial Use" means any use for financial gain or in a commercial product/service
+   - "Research Use" means use for academic, educational, or non-commercial research purposes
+
+2. GRANT OF LICENSE
+   Subject to the terms and conditions of this License, the copyright holder hereby grants
+   you a limited, non-exclusive, non-transferable license to use the Software solely for
+   Research Use.
+
+3. RESTRICTIONS
+   You may NOT:
+   a) Use the Software for Commercial Use without explicit written permission
+   b) Distribute, sublicense, or sell copies of the Software
+   c) Reverse engineer, decompile, or disassemble the Software
+   d) Remove or modify any copyright notices or license terms
+   e) Use the Software in any product or service that competes with CEDANet
+   f) Train derivative models for commercial purposes using the provided code
+
+4. ACADEMIC AND RESEARCH USE
+   Academic and research use is permitted provided that:
+   a) Proper attribution is given in any publications or presentations
+   b) The research is conducted at an accredited academic institution
+   c) Results are published in open academic forums
+   d) No commercial benefit is derived from the research
+
+5. ATTRIBUTION REQUIREMENTS
+   Any use of this Software must include the following citation:
+   "CEDANet: Citizen-engaged Domain Adaptation Net for Industrial Toxic Emission Segmentation"
+   Author: Tao Yida, University of Amsterdam, 2024
+
+6. NO WARRANTY
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+   INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+   PARTICULAR PURPOSE AND NONINFRINGEMENT.
+
+7. LIMITATION OF LIABILITY
+   IN NO EVENT SHALL THE COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
+   OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+8. TERMINATION
+   This license is effective until terminated. Your rights under this license will
+   terminate automatically without notice if you fail to comply with any term(s) of
+   this license.
+
+9. CONTACT FOR COMMERCIAL LICENSING
+   For commercial licensing inquiries, please contact: [Contact information to be added]
+
+10. GOVERNING LAW
+    This License shall be governed by and construed in accordance with the laws of
+    the Netherlands.
+
+By using the Software, you acknowledge that you have read this License and agree
+to be bound by its terms and conditions.

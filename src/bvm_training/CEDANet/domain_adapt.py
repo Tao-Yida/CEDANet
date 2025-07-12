@@ -1,3 +1,16 @@
+#!/usr/bin/env python3
+"""
+CEDANet: Citizen-engaged Domain Adaptation Net
+Copyright (c) 2024 Tao Yida, University of Amsterdam
+All rights reserved.
+
+This file is part of CEDANet and is protected under the terms of the
+CEDANet License Agreement. See LICENSE file for details.
+
+Domain Adaptation Module - Contains proprietary algorithms for 
+citizen-engaged domain adaptation. Unauthorized commercial use prohibited.
+"""
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F

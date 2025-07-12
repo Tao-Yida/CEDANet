@@ -1,4 +1,12 @@
+#!/usr/bin/env python3
 """
+CEDANet: Citizen-engaged Domain Adaptation Net - Video Download Module
+Copyright (c) 2024 Tao Yida, University of Amsterdam
+All rights reserved.
+
+This file is part of CEDANet and is protected under the terms of the
+CEDANet License Agreement. See LICENSE file for details.
+
 This script downloads videos from the dataset and saves their labels with filtering options.
 
 Usage:

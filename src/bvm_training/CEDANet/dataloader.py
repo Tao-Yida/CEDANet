@@ -1,3 +1,16 @@
+#!/usr/bin/env python3
+"""
+CEDANet: Citizen-engaged Domain Adaptation Net - Data Loader Module
+Copyright (c) 2024 Tao Yida, University of Amsterdam
+All rights reserved.
+
+This file is part of CEDANet and is protected under the terms of the
+CEDANet License Agreement. See LICENSE file for details.
+
+Data loading utilities for domain adaptation training.
+Unauthorized commercial use prohibited.
+"""
+
 import os
 from PIL import Image
 import torch

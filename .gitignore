@@ -1,0 +1,208 @@
+# CEDANet .gitignore - Comprehensive protection against sensitive data exposure
+
+# =========================
+# Python
+# =========================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# =========================
+# Virtual Environments
+# =========================
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.conda/
+conda-meta/
+
+# =========================
+# IDEs and Editors
+# =========================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# =========================
+# Jupyter Notebooks
+# =========================
+.ipynb_checkpoints
+*.ipynb
+
+# =========================
+# Data and Models (Sensitive)
+# =========================
+# Training data
+data/
+datasets/
+raw_data/
+processed_data/
+annotations/
+
+# Model weights and checkpoints
+*.pth
+*.pt
+*.ckpt
+*.h5
+*.pkl
+*.pickle
+models/
+checkpoints/
+saved_models/
+weights/
+
+# Training logs and outputs
+logs/
+runs/
+tensorboard_logs/
+wandb/
+mlruns/
+outputs/
+
+# =========================
+# Configuration and Secrets
+# =========================
+# Configuration files that might contain sensitive info
+config.ini
+config.yaml
+config.json
+settings.py
+local_settings.py
+.env.local
+.env.production
+secrets.json
+
+# API keys and credentials
+*_key.txt
+*_secret.txt
+credentials.json
+auth.json
+token.txt
+
+# =========================
+# Research and Development
+# =========================
+# Experimental code
+experiments/
+scratch/
+temp/
+tmp/
+test_runs/
+
+# Research notes and drafts
+notes/
+drafts/
+private_notes/
+TODO.md
+RESEARCH_NOTES.md
+
+# =========================
+# Video and Image Data
+# =========================
+# Large media files
+*.mp4
+*.avi
+*.mov
+*.mkv
+*.wmv
+*.flv
+*.webm
+
+# Image datasets
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.bmp
+*.tiff
+*.tif
+!/readme_figs/*.jpg
+!/readme_figs/*.png
+
+# =========================
+# System and Backup Files
+# =========================
+*.log
+*.out
+*.err
+*.tmp
+*.backup
+*.bak
+*~
+
+# =========================
+# Documentation Drafts
+# =========================
+# Internal documentation
+INTERNAL_DOCS.md
+PROPRIETARY_INFO.md
+ALGORITHM_DETAILS.md
+
+# =========================
+# Version Control
+# =========================
+.git/
+.gitattributes_local
+
+# =========================
+# Database Files
+# =========================
+*.db
+*.sqlite
+*.sqlite3
+
+# =========================
+# Compressed Files
+# =========================
+*.zip
+*.tar.gz
+*.tar.bz2
+*.rar
+*.7z
+
+# =========================
+# Custom CEDANet Exclusions
+# =========================
+# Citizen science data
+citizen_data/
+volunteer_annotations/
+user_submissions/
+
+# Industrial monitoring data
+industrial_data/
+ijmond_data/
+factory_videos/
+surveillance_footage/
+
+# Analysis results
+results/
+analysis/
+performance_metrics/
+evaluation_results/
