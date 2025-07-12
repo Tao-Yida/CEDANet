@@ -1,40 +1,66 @@
 #!/bin/bash
 
-# ----------- SLURM 指令 ------------
-#SBATCH --job-name=full_inference_
-#SBATCH --partition=gpu_h100
+# ----------- SLURM 指令（保留必要部分） ------------
+#SBATCH --job-name=train_bvm_semi_supervised
+#SBATCH --partition=gpu_mig
 #SBATCH --gres=gpu:1
-#SBATCH --time=06:00:00
+#SBATCH --time=24:00:00
 #SBATCH --mem=24G
 #SBATCH --cpus-per-task=6
-#SBATCH --output=logs_out/full_inference_%j.out
-#SBATCH --error=logs_err/full_inference_%j.err
+#SBATCH --output=logs_out/trans_bvm_semi_train_%j.out
+#SBATCH --error=logs_err/trans_bvm_semi_train_%j.err
 
 # ============================================================================
-# 伪标签生成脚本参数说明（与 inference.py 保持同步）
+# BVM 半监督训练脚本参数说明
 # ============================================================================
 
-# --------------- 基础参数 ---------------
-# --testsize:         测试图像大小 (默认: 352)
-# --latent_dim:       潜在空间维度 (默认: 3)
-# --feat_channel:     特征通道数 (默认: 32)
+# --------------- 基础训练参数 ---------------
+# --epoch:                训练轮数 (默认: 50)
+# --batchsize:            每批次样本数量 (默认: 8)
+# --trainsize:            输入图像分辨率 (默认: 352x352)
 
-# --------------- 路径参数 ---------------
-# --videos_path:      视频文件路径 (默认: data/ijmond_camera/videos)
-# --output_path:      输出路径 (默认: data/ijmond_camera)
-# --pretrained_weights: 预训练权重路径 (默认: models/self-supervision/Model_50_gen.pth)
+# --------------- 优化器参数 ---------------
+# --lr_gen:               生成器学习率 (默认: 5e-5)
+# --beta:                 Adam优化器beta参数 (默认: 0.5)
+# --clip:                 梯度裁剪边际，防止梯度爆炸 (默认: 0.5)
+# --decay_rate:           学习率衰减率 (默认: 0.8)
+# --decay_epoch:          学习率衰减周期/耐心值 (默认: 12)
 
-# --------------- 视频处理参数 ---------------
-# --sampling_rate:    帧采样率 (默认: 1)
-# --context_frames:   高置信度帧前后的上下文帧数 (默认: 2)
-# --threshold:        伪标签置信度阈值 (默认: 0.5)
+# --------------- 模型架构参数 ---------------
+# --feat_channel:         重要性特征的通道数 (默认: 32)
+# --latent_dim:           潜在维度 (默认: 3)
+# --num_filters:          最终对比损失特定层的通道数 (默认: 16)
 
-# --------------- 约束参数 ---------------
-# --constraint_type:  约束类型 (默认: none)
-#                     - none: 无约束，纯模型预测
-#                     - citizen: 使用市民标签约束 (label_state列)
-#                     - expert: 使用专家标签约束 (label_state_admin列)
-# --video_labels_csv: 视频标签CSV文件路径 (默认: data/ijmond_camera/video_labels.csv)
+# --------------- 损失函数权重 ---------------
+# --reg_weight:           L2正则化项的权重 (默认: 1e-4)
+# --lat_weight:           潜在损失的权重 (默认: 2.0)
+# --vae_loss_weight:      VAE损失的权重 (默认: 1.0)
+# --contrastive_loss_weight: 对比损失的权重 (默认: 0.2)
+
+# --------------- 半监督学习特有参数 ---------------
+# --inter:                是否进行跨图像像素匹配 (默认: False)
+#                        如果为True，则在不同图像之间进行匹配
+#                        否则在同一图像内进行匹配
+# --no_samples:           对比损失中考虑的像素数量 (默认: 50)
+
+# --------------- 数据集路径 ---------------
+# --labeled_dataset_path:   标注数据集路径 (默认: data/SMOKE5K_Dataset/SMOKE5K/train)
+# --unlabeled_dataset_path: 无标注数据集路径 (默认: data/SMOKE5K_Dataset/SMOKE5K/weak_supervision)
+# --pretrained_weights:     预训练权重路径 (默认: None)
+# --save_model_path:        模型保存路径 (默认: models/semi-supervision)
+
+# --------------- 校验和早停参数 ---------------
+# --val_split:            标注数据集中用于校验的比例 (默认: 0.2)
+# --patience:             早停耐心值 (默认: 15)
+# --min_delta:            早停最小改善值 (默认: 0.001)
+# --enable_validation:    启用在标注数据子集上的校验 (默认: False)
+
+# --------------- 数据增强和可重现性参数 ---------------
+# --aug:                  启用无标注数据的数据增强 (默认启用，除非使用--no_aug禁用)
+# --no_aug:               显式禁用数据增强
+# --freeze:               冻结所有随机性以确保完全可重现 (默认: False)
+#                        注意：当使用--freeze时，数据增强会被自动禁用
+# --random_seed:          随机种子 (默认: 42)
 
 # ============================================================================
 
@@ -47,53 +73,27 @@ module load 2024
 source ~/anaconda3/etc/profile.d/conda.sh
 source activate dl2024 || { echo "Failed to activate Conda env"; exit 1; }
 
-# 创建输出目录结构
-mkdir -p data/ijmond_camera/SMOKE5K-full
-mkdir -p data/ijmond_camera/ijmond_900_trained
-mkdir -p data/ijmond_camera/ijmond_900_test
-
-# ============================================================================
-# 伪标签生成 - 支持多种约束类型和模型
-# ============================================================================
+# 执行半监督训练脚本
 #
-# 输出目录结构：
-# data/ijmond_camera/
-# ├── SMOKE5K-full/               # SMOKE5K全监督模型输出
-# │   ├── non_constraint/
-# │   ├── citizen_constraint/
-# │   └── expert_constraint/
-# ├── ijmond_900_trained/         # ijmond训练集模型输出
-# │   ├── non_constraint/
-# │   ├── citizen_constraint/
-# │   └── expert_constraint/
-# └── ijmond_900_test/            # ijmond测试集模型输出
-#     ├── non_constraint/
-#     ├── citizen_constraint/
-#     └── expert_constraint/
-#
-# 注意：约束类型会自动在模型输出路径下创建对应子目录
-# ============================================================================
-
-echo "开始生成伪标签..."
-
-# ============================================================================
-# 模型1: SMOKE5K全监督模型
-# ============================================================================
-echo "=== 开始处理 SMOKE5K 全监督模型 ==="
-
-# 1.1 无约束生成（SMOKE5K模型）
-echo "执行无约束伪标签生成（SMOKE5K模型）..."
-python ijmond-camera-ai/bvm_training/trans_bvm_self_supervised_thesis/inference.py \
---videos_path "data/ijmond_camera/videos" \
---output_path "data/ijmond_camera/SMOKE5K-full" \
---pretrained_weights "models/full-supervision/SMOKE5K-supervised/SMOKE5K_Dataset_SMOKE5K_train/SMOKE5K_Dataset_SMOKE5K_train_best_model.pth" \
---context_frames 2 \
---threshold 0.6 \
---constraint_type none
-
-# 1.2 市民标签约束生成（SMOKE5K模型）
+# 实验配置：SMOKE5K标注数据(完整训练) + ijmond伪标签数据(训练+目标域验证)
+# 🎯 关键修改：验证在目标域(ijmond)上进行，而非源域(SMOKE5K)
+python src/bvm_training/trans_bvm_self_supervised/train.py \
+--epoch 100 \
+--batchsize 8 \
+--trainsize 352 \
+--lr_gen 5e-5 \
+--labeled_dataset_path "data/SMOKE5K_Dataset/SMOKE5K/train" \
+--unlabeled_dataset_path "data/ijmond_camera/SMOKE5K-full/non_constraint" \
+--save_model_path "models/semi-supervision/SMOKE5K-ijmond-camera-on-SMOKE5K" \
+--no_samples 500 \
+--aug \
+--enable_validation \
+--val_split 0.2 \
+--patience 25 \
+--min_delta 0.001 \
+--random_seed 422
 echo "执行市民标签约束伪标签生成（SMOKE5K模型）..."
-python ijmond-camera-ai/bvm_training/trans_bvm_self_supervised_thesis/inference.py \
+python src/bvm_training/trans_bvm_self_supervised_thesis/inference.py \
 --videos_path "data/ijmond_camera/videos" \
 --output_path "data/ijmond_camera/SMOKE5K-full" \
 --pretrained_weights "models/full-supervision/SMOKE5K-supervised/SMOKE5K_Dataset_SMOKE5K_train/SMOKE5K_Dataset_SMOKE5K_train_best_model.pth" \
@@ -104,7 +104,7 @@ python ijmond-camera-ai/bvm_training/trans_bvm_self_supervised_thesis/inference.
 
 # 1.3 专家标签约束生成（SMOKE5K模型）
 echo "执行专家标签约束伪标签生成（SMOKE5K模型）..."
-python ijmond-camera-ai/bvm_training/trans_bvm_self_supervised_thesis/inference.py \
+python src/bvm_training/trans_bvm_self_supervised_thesis/inference.py \
 --videos_path "data/ijmond_camera/videos" \
 --output_path "data/ijmond_camera/SMOKE5K-full" \
 --pretrained_weights "models/full-supervision/SMOKE5K-supervised/SMOKE5K_Dataset_SMOKE5K_train/SMOKE5K_Dataset_SMOKE5K_train_best_model.pth" \
@@ -120,7 +120,7 @@ echo "=== 开始处理 ijmond 训练集模型 ==="
 
 # 2.1 无约束生成（ijmond训练集模型）
 echo "执行无约束伪标签生成（ijmond训练集模型）..."
-python ijmond-camera-ai/bvm_training/trans_bvm_self_supervised_thesis/inference.py \
+python src/bvm_training/trans_bvm_self_supervised_thesis/inference.py \
 --videos_path "data/ijmond_camera/videos" \
 --output_path "data/ijmond_camera/ijmond_900_trained" \
 --pretrained_weights "models/full-supervision/ijmond-limited-train/ijmond_data_train/ijmond_data_train_best_model.pth" \
@@ -130,7 +130,7 @@ python ijmond-camera-ai/bvm_training/trans_bvm_self_supervised_thesis/inference.
 
 # 2.2 市民标签约束生成（ijmond训练集模型）
 echo "执行市民标签约束伪标签生成（ijmond训练集模型）..."
-python ijmond-camera-ai/bvm_training/trans_bvm_self_supervised_thesis/inference.py \
+python src/bvm_training/trans_bvm_self_supervised_thesis/inference.py \
 --videos_path "data/ijmond_camera/videos" \
 --output_path "data/ijmond_camera/ijmond_900_trained" \
 --pretrained_weights "models/full-supervision/ijmond-limited-train/ijmond_data_train/ijmond_data_train_best_model.pth" \
@@ -141,7 +141,7 @@ python ijmond-camera-ai/bvm_training/trans_bvm_self_supervised_thesis/inference.
 
 # 2.3 专家标签约束生成（ijmond训练集模型）
 echo "执行专家标签约束伪标签生成（ijmond训练集模型）..."
-python ijmond-camera-ai/bvm_training/trans_bvm_self_supervised_thesis/inference.py \
+python src/bvm_training/trans_bvm_self_supervised_thesis/inference.py \
 --videos_path "data/ijmond_camera/videos" \
 --output_path "data/ijmond_camera/ijmond_900_trained" \
 --pretrained_weights "models/full-supervision/ijmond-limited-train/ijmond_data_train/ijmond_data_train_best_model.pth" \

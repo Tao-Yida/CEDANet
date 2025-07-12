@@ -77,7 +77,7 @@ source activate dl2024 || { echo "Failed to activate Conda env"; exit 1; }
 #
 # 实验配置：SMOKE5K标注数据(完整训练) + ijmond伪标签数据(训练+目标域验证)
 # 🎯 关键修改：验证在目标域(ijmond)上进行，而非源域(SMOKE5K)
-python ijmond-camera-ai/bvm_training/trans_bvm_self_supervised/train.py \
+python src/bvm_training/trans_bvm_self_supervised/train.py \
 --epoch 100 \
 --batchsize 8 \
 --trainsize 352 \

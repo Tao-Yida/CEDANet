@@ -8,7 +8,7 @@
 - [x] **修复数据增强状态显示不完整问题** ✅ **已完成**
   - 问题：训练日志中只显示一个数据增强选项（`Data augmentation: DISABLED`）
   - 应该显示：标注数据集和无标注数据集的独立增强状态
-  - 影响文件：`ijmond-camera-ai/bvm_training/trans_bvm_self_supervised/dataloader.py` `ijmond-camera-ai/bvm_training/trans_bvm_self_supervised/train.py`
+  - 影响文件：`src/bvm_training/trans_bvm_self_supervised/dataloader.py` `src/bvm_training/trans_bvm_self_supervised/train.py`
   - 预期输出格式：
     ```
     Labeled dataset size: XXX

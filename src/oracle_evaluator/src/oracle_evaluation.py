@@ -1,7 +1,7 @@
 import sys
 
 sys.path.append("../utils")
-sys.path.append("ijmond-camera-ai/oracle_evaluator/utils")
+sys.path.append("src/oracle_evaluator/utils")
 # import os
 # print(os.getcwd())
 

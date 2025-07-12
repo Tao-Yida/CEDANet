@@ -6,7 +6,7 @@
 import sys
 import os
 
-sys.path.append("/home/ytao/Thesis/ijmond-camera-ai/bvm_training/trans_bvm_self_supervised")
+sys.path.append("/home/ytao/Thesis/src/bvm_training/trans_bvm_self_supervised")
 
 from dataloader import get_loader, get_train_val_loaders
 

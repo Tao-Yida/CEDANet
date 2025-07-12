@@ -9,7 +9,7 @@ import os
 
 def check_unused_parameters():
     """检查未使用的参数"""
-    script_path = "/home/ytao/Thesis/ijmond-camera-ai/bvm_training/trans_bvm_self_supervised_thesis/train.py"
+    script_path = "/home/ytao/Thesis/src/bvm_training/trans_bvm_self_supervised_thesis/train.py"
 
     print("🔍 检查域适应训练脚本中的参数使用情况")
     print("=" * 60)
