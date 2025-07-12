@@ -33,13 +33,13 @@ The project follows a structured layout for data, models, and results:
     │   └── bvm_training/       # Main source code directory
     │       ├── CEDANet/
     │       ├── trans_bvm/
-    │       ├── trans_bvm_self_supervised/
-    │       └── trans_bvm_self_supervised_thesis/
+    │       ├── trans_bvm_weakly_supervised/
+    │       └── CEDANet/
     ├── logs_err/               # SLURM error logs
     ├── logs_out/               # SLURM output logs
     ├── models/                 # Trained model weights
     │   ├── full-supervision/
-    │   ├── semi-supervision/
+    │   ├── weak-supervision/
     │   └── thesis/
     ├── results/                # Prediction results for evaluation
     ├── *.job                   # SLURM job scripts for training/inference
@@ -80,7 +80,7 @@ You can use pre-trained fully-supervised models to generate pseudo-labels from r
 **Python Execution:**
 ```bash
 # Example: Generate labels using a model pre-trained on SMOKE5K
-python src/bvm_training/trans_bvm_self_supervised_thesis/inference.py \
+python src/bvm_training/CEDANet/inference.py \
     --videos_path "data/ijmond_camera/videos" \
     --output_path "data/ijmond_camera/SMOKE5K-full" \
     --pretrained_weights "models/full-supervision/SMOKE5K-supervised/SMOKE5K_Dataset_SMOKE5K_train/SMOKE5K_Dataset_SMOKE5K_train_best_model.pth" \
@@ -155,7 +155,7 @@ Generate pseudo-labels using a self-supervised model. These labels will be used 
 **Python Execution:**
 ```bash
 # Example: Generate labels with a self-supervised model
-python src/bvm_training/trans_bvm_self_supervised/inference.py \
+python src/bvm_training/trans_bvm_weakly_supervised/inference.py \
     --videos_path "data/ijmond_camera/videos" \
     --output_path "data/ijmond_camera/SMOKE5K-self" \
     --pretrained_weights "models/weak-supervision/SMOKE5K_Dataset_SMOKE5K_train_ssl_SMOKE5K_Dataset_SMOKE5K_weak_supervision/SMOKE5K_Dataset_SMOKE5K_train_ssl_SMOKE5K_Dataset_SMOKE5K_weak_supervision_best_model.pth" \
@@ -182,10 +182,10 @@ Train the model using both a labeled dataset and the generated pseudo-labels.
 
 **Python Execution:**
 ```bash
-python src/bvm_training/trans_bvm_self_supervised/train.py \
+python src/bvm_training/trans_bvm_weakly_supervised/train.py \
     --labeled_dataset_path "data/SMOKE5K_Dataset/SMOKE5K_train" \
     --unlabeled_dataset_path "data/ijmond_camera/SMOKE5K-self/non_constraint" \
-    --save_model_path "models/semi-supervision/my_weakly_model" \
+    --save_model_path "models/weak-supervision/my_weakly_model" \
     --contrastive_loss_weight 0.1 \
     --epoch 100
 ```
@@ -195,14 +195,14 @@ python src/bvm_training/trans_bvm_self_supervised/train.py \
 Evaluate the trained weakly-supervised model.
 
 **Configuration:**
-**Note:** Before running, you must manually edit the `src/bvm_training/trans_bvm_self_supervised/test.py` script to set the following variables:
+**Note:** Before running, you must manually edit the `src/bvm_training/trans_bvm_weakly_supervised/test.py` script to set the following variables:
 *   `dataset_path`: Path to the test dataset images.
 *   `model_path`: Path to the trained weakly-supervised `.pth` model file.
 
 **Python Execution:**
 ```bash
 # First, edit the paths inside the script, then run:
-python src/bvm_training/trans_bvm_self_supervised/test.py
+python src/bvm_training/trans_bvm_weakly_supervised/test.py
 ```
 The prediction results will be saved to a subdirectory within the `results/` folder.
 

@@ -247,7 +247,7 @@ def print_training_configuration(opt, device, model_name):
     print(f"  Pseudo Label Weight: {opt.pseudo_loss_weight}")
 
     # ================================== 半监督学习配置 ==================================
-    print("\n🎯 SEMI-SUPERVISED LEARNING")
+    print("\n🎯 WEAKLY-SUPERVISED LEARNING")
     print("-" * 40)
     print(f"  Contrastive Pixel Matching: {'Inter-image' if opt.inter else 'Intra-image'}")
     print(f"  Contrastive Sample Count: {opt.no_samples}")

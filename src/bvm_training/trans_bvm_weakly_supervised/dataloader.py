@@ -123,7 +123,7 @@ def get_loader(
     dataset_type="",
 ):
     """
-    Create single training data loader (for semi-supervised learning)
+    Create single training data loader (for weaklysupervised learning)
     Args:
         image_root: Image root directory
         gt_root: Ground truth root directory

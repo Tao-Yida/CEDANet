@@ -43,7 +43,7 @@ def argparser():
     parser.add_argument("--vae_loss_weight", type=float, default=0.6, help="weight for VAE loss component")  # Reduced from 1.0 to 0.6
     parser.add_argument("--contrastive_loss_weight", type=float, default=1, help="weight for contrastive loss")
 
-    # ================================== Semi-Supervised Learning Configuration ==================================
+    # ================================== WEAKLY-Supervised Learning Configuration ==================================
     parser.add_argument("--inter", action="store_true", default=False, help="use inter-image pixel matching (vs intra-image)")
     parser.add_argument("--no_samples", type=int, default=500, help="number of pixels for contrastive loss sampling")
 
@@ -194,7 +194,7 @@ def linear_annealing(init, fin, step, annealing_steps):
 
 def load_data(dataset_path, opt, aug=True, freeze=False, dataset_type=""):
     """
-    Load dataset (for semi-supervised learning)
+    Load dataset (for weaklysupervised learning)
     Args:
         dataset_path: Dataset path
         opt: Training options
@@ -275,7 +275,7 @@ def print_training_configuration(opt, device, labeled_dataset_name, unlabeled_da
     Print training configuration information
     """
     print("=" * 80)
-    print("SEMI-SUPERVISED TRAINING CONFIGURATION")
+    print("WEAKLY-SUPERVISED TRAINING CONFIGURATION")
     print("=" * 80)
 
     # ================================== Basic Configuration ==================================
@@ -311,8 +311,8 @@ def print_training_configuration(opt, device, labeled_dataset_name, unlabeled_da
     print(f"  VAE Loss: {opt.vae_loss_weight}")
     print(f"  Contrastive Loss: {opt.contrastive_loss_weight}")
 
-    # ================================== Semi-Supervised Learning Configuration ==================================
-    print("\n🎯 SEMI-SUPERVISED LEARNING")
+    # ================================== WEAKLY-Supervised Learning Configuration ==================================
+    print("\n🎯 WEAKLY-SUPERVISED LEARNING")
     print("-" * 40)
     print(f"  Contrastive Pixel Matching: {'Inter-image' if opt.inter else 'Intra-image'}")
     print(f"  Contrastive Sample Count: {opt.no_samples}")
