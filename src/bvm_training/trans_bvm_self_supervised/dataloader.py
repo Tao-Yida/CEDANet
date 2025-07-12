@@ -11,16 +11,16 @@ import cv2
 
 def _setup_reproducibility(freeze, random_seed, verbose=True):
     """
-    统一的随机性控制函数
+    Unified randomness control function
     Args:
-        freeze: 是否冻结所有随机性
-        random_seed: 随机种子
-        verbose: 是否打印信息
+        freeze: Whether to freeze all randomness
+        random_seed: Random seed
+        verbose: Whether to print info
     Returns:
-        bool: 实际的shuffle设置
+        bool: Actual shuffle setting
     """
     if freeze:
-        # 设置所有随机种子
+        # Set all random seeds
         random.seed(random_seed)
         np.random.seed(random_seed)
         torch.manual_seed(random_seed)
@@ -31,36 +31,36 @@ def _setup_reproducibility(freeze, random_seed, verbose=True):
             torch.backends.cudnn.benchmark = False
 
         if verbose:
-            print(f"[FREEZE MODE] 所有随机性已冻结，种子={random_seed}，shuffle已禁用")
+            print(f"[FREEZE MODE] All randomness frozen, seed={random_seed}, shuffle disabled")
         return False  # 返回shuffle=False
     return True  # 返回shuffle=True
 
 
 def _get_file_paths(image_root, gt_root, trans_map_root):
     """
-    获取所有文件路径并排序
+    Get all file paths and sort them
     Args:
-        image_root: 图像根目录
-        gt_root: 真实标签根目录
-        trans_map_root: 传输图根目录
+        image_root: Image root directory
+        gt_root: Ground truth root directory
+        trans_map_root: Transmission map root directory
     Returns:
-        tuple: (images, gts, trans) 路径列表
+        tuple: (images, gts, trans) path lists
     """
     images = [image_root + f for f in os.listdir(image_root) if f.endswith((".jpg", ".png"))]
     gts = [gt_root + f for f in os.listdir(gt_root) if f.endswith((".jpg", ".png"))]
     trans = [trans_map_root + f for f in os.listdir(trans_map_root) if f.endswith((".jpg", ".png"))]
 
-    # 排序确保一致性
+    # Sort to ensure consistency
     return sorted(images), sorted(gts), sorted(trans)
 
 
 def _print_augmentation_status(aug, freeze, dataset_type=""):
     """
-    打印数据增强状态信息
+    Print data augmentation status info
     Args:
-        aug: 是否启用数据增强
-        freeze: 是否冻结模式
-        dataset_type: 数据集类型描述，如 "labeled data" 或 "unlabeled data"
+        aug: Whether to enable data augmentation
+        freeze: Whether in freeze mode
+        dataset_type: Dataset type description, e.g. "labeled data" or "unlabeled data"
     """
     if aug and not freeze:
         status = "ENABLED"
@@ -77,17 +77,17 @@ def _print_augmentation_status(aug, freeze, dataset_type=""):
 
 def get_dataset_name_from_path(dataset_path):
     """
-    从数据集路径中提取数据集名称
+    Extract dataset name from dataset path
     Args:
-        dataset_path: 数据集路径，如 'data/ijmond_data/train'
+        dataset_path: Dataset path, e.g. 'data/ijmond_data/train'
     Returns:
-        str: 数据集名称，如 'ijmond_data_train'
+        str: Dataset name, e.g. 'ijmond_data_train'
     """
-    # 移除末尾的斜杠并规范化路径
+    # Remove trailing slash and normalize path
     path = os.path.normpath(dataset_path.rstrip("/"))
     path_parts = path.split(os.sep)
 
-    # 移除常见的无意义部分
+    # Remove common meaningless parts
     filtered_parts = []
     skip_words = ["data", "dataset", "datasets"]
 
@@ -95,14 +95,14 @@ def get_dataset_name_from_path(dataset_path):
         if part.lower() not in skip_words and part.strip():
             filtered_parts.append(part)
 
-    # 如果过滤后没有剩余部分，使用原始路径的最后两部分
+    # If nothing left after filtering, use last two parts of original path
     if not filtered_parts:
         filtered_parts = path_parts[-2:] if len(path_parts) >= 2 else path_parts[-1:]
 
-    # 构建数据集名称
+    # Build dataset name
     dataset_name = "_".join(filtered_parts)
 
-    # 清理名称，只保留字母、数字、下划线和连字符
+    # Clean name, keep only letters, numbers, underscore, hyphen
     dataset_name = "".join(c if c.isalnum() or c in ["_", "-"] else "_" for c in dataset_name)
 
     return dataset_name
@@ -123,34 +123,34 @@ def get_loader(
     dataset_type="",
 ):
     """
-    创建单一训练数据加载器（半监督学习专用）
+    Create single training data loader (for semi-supervised learning)
     Args:
-        image_root: 图像根目录
-        gt_root: 真实标签根目录
-        trans_map_root: 传输图根目录
-        batchsize: 批量大小
-        trainsize: 训练图像尺寸
-        aug: 是否启用数据增强，默认True
-        freeze: 是否冻结所有随机性以确保完全可重现，默认False
-        shuffle: 是否打乱训练数据（当freeze=True时会被覆盖为False）
-        num_workers: 数据加载线程数
-        pin_memory: 是否固定内存
-        random_seed: 随机种子
-        dataset_type: 数据集类型描述，用于增强日志显示
+        image_root: Image root directory
+        gt_root: Ground truth root directory
+        trans_map_root: Transmission map root directory
+        batchsize: Batch size
+        trainsize: Training image size
+        aug: Whether to enable data augmentation, default True
+        freeze: Whether to freeze all randomness for full reproducibility, default False
+        shuffle: Whether to shuffle training data (overridden to False if freeze=True)
+        num_workers: Number of data loading threads
+        pin_memory: Whether to pin memory
+        random_seed: Random seed
+        dataset_type: Dataset type description, for enhanced logging
     Returns:
-        DataLoader: 训练数据加载器
+        DataLoader: Training data loader
     """
-    # 统一处理随机性设置
+    # Unified randomness setting
     actual_shuffle = _setup_reproducibility(freeze, random_seed) and shuffle
 
-    # 获取文件路径并创建数据集
+    # Get file paths and create dataset
     images, gts, trans = _get_file_paths(image_root, gt_root, trans_map_root)
     dataset = SalObjDataset(images, gts, trans, trainsize, aug=aug, freeze=freeze)
 
     print(f"Dataset size: {len(dataset)}")
     _print_augmentation_status(aug, freeze, dataset_type)
 
-    # 创建数据加载器
+    # Create data loader
     train_loader = data.DataLoader(
         dataset, batch_size=batchsize, shuffle=actual_shuffle, num_workers=num_workers, pin_memory=pin_memory, drop_last=True
     )
@@ -173,44 +173,44 @@ def get_train_val_loaders(
     random_seed=42,
 ):
     """
-    创建训练和校验数据加载器（与全监督模块兼容）
+    Create training and validation data loaders (compatible with fully-supervised module)
     Args:
-        image_root: 图像根目录
-        gt_root: 真实标签根目录
-        trans_map_root: 传输图根目录
-        batchsize: 批量大小
-        trainsize: 训练图像尺寸
-        val_split: 校验集比例，默认0.2(20%)
-        aug: 是否对训练集启用数据增强，默认True
-        freeze: 是否冻结所有随机性以确保完全可重现，默认False
-        shuffle: 是否打乱训练数据（当freeze=True时会被覆盖为False）
-        num_workers: 数据加载线程数
-        pin_memory: 是否固定内存
-        random_seed: 随机种子
+        image_root: Image root directory
+        gt_root: Ground truth root directory
+        trans_map_root: Transmission map root directory
+        batchsize: Batch size
+        trainsize: Training image size
+        val_split: Validation set ratio, default 0.2 (20%)
+        aug: Whether to enable data augmentation for training set, default True
+        freeze: Whether to freeze all randomness for full reproducibility, default False
+        shuffle: Whether to shuffle training data (overridden to False if freeze=True)
+        num_workers: Number of data loading threads
+        pin_memory: Whether to pin memory
+        random_seed: Random seed
     Returns:
         tuple: (train_loader, val_loader)
     """
-    # 统一处理随机性设置
+    # Unified randomness setting
     actual_shuffle = _setup_reproducibility(freeze, random_seed) and shuffle
 
-    # 获取文件路径
+    # Get file paths
     images, gts, trans = _get_file_paths(image_root, gt_root, trans_map_root)
 
-    # 创建索引列表并划分训练集和校验集
+    # Create index list and split into training and validation sets
     indices = list(range(len(images)))
     train_indices, val_indices = train_test_split(indices, test_size=val_split, random_state=random_seed, shuffle=True)
 
-    # 创建数据集
+    # Create datasets
     train_dataset = SalObjDataset.from_indices(images, gts, trans, train_indices, trainsize, aug=aug, freeze=freeze)
-    val_dataset = SalObjDataset.from_indices(images, gts, trans, val_indices, trainsize, aug=False, freeze=freeze)  # 验证时不使用数据增强
+    val_dataset = SalObjDataset.from_indices(images, gts, trans, val_indices, trainsize, aug=False, freeze=freeze)  # No augmentation for validation
 
     print(f"Total dataset size: {len(images)}")
     print(f"Training set size: {len(train_dataset)}")
     _print_augmentation_status(aug, freeze, "training data")
     print(f"Validation set size: {len(val_dataset)}")
-    _print_augmentation_status(False, freeze, "validation data")  # 验证集总是不使用数据增强
+    _print_augmentation_status(False, freeze, "validation data")  # Validation set never uses augmentation
 
-    # 创建数据加载器
+    # Create data loaders
     train_loader = data.DataLoader(
         train_dataset, batch_size=batchsize, shuffle=actual_shuffle, num_workers=num_workers, pin_memory=pin_memory, drop_last=True
     )
@@ -220,24 +220,24 @@ def get_train_val_loaders(
 
 
 class SalObjDataset(data.Dataset):
-    """统一的显著性对象数据集类"""
+    """Unified saliency object dataset class"""
 
     def __init__(self, all_images, all_gts, all_trans, trainsize, indices=None, aug=False, freeze=False):
         """
         Args:
-            all_images: 所有图像路径列表
-            all_gts: 所有GT路径列表
-            all_trans: 所有传输图路径列表
-            trainsize: 训练图像尺寸
-            indices: 索引列表，如果为None则使用所有数据
-            aug: 是否启用数据增强
-            freeze: 是否冻结随机性
+            all_images: List of all image paths
+            all_gts: List of all GT paths
+            all_trans: List of all transmission map paths
+            trainsize: Training image size
+            indices: Index list, if None use all data
+            aug: Whether to enable data augmentation
+            freeze: Whether to freeze randomness
         """
         self.trainsize = trainsize
         self.aug = aug
         self.freeze = freeze
 
-        # 根据索引选择数据
+        # Select data by index
         if indices is not None:
             self.images = [all_images[i] for i in indices]
             self.gts = [all_gts[i] for i in indices]
@@ -247,23 +247,23 @@ class SalObjDataset(data.Dataset):
             self.gts = all_gts
             self.trans = all_trans
 
-        # 过滤不匹配的文件
+        # Filter unmatched files
         self._filter_files()
         self.size = len(self.images)
 
-        # 初始化数据变换
+        # Initialize data transforms
         self._setup_transforms()
 
     @classmethod
     def from_indices(cls, all_images, all_gts, all_trans, indices, trainsize, aug=False, freeze=False):
         """
-        类方法：从索引创建数据集实例
+        Class method: create dataset instance from indices
         """
         return cls(all_images, all_gts, all_trans, trainsize, indices=indices, aug=aug, freeze=freeze)
 
     def _setup_transforms(self):
-        """设置数据变换"""
-        # 颜色增强（只在需要时应用）
+        """Set up data transforms"""
+        # Color augmentation (only applied if needed)
         if self.aug and not self.freeze:
             self.img_color_transform = transforms.Compose(
                 [
@@ -273,9 +273,9 @@ class SalObjDataset(data.Dataset):
         else:
             self.img_color_transform = None
             if self.freeze and self.aug:
-                print("[FREEZE MODE] 数据增强已禁用以确保完全可重现")
+                print("[FREEZE MODE] Data augmentation disabled for full reproducibility")
 
-        # 基础变换（总是应用）
+        # Basic transforms (always applied)
         self.img_basic_transform = transforms.Compose(
             [
                 transforms.Resize((self.trainsize, self.trainsize)),
@@ -284,21 +284,21 @@ class SalObjDataset(data.Dataset):
             ]
         )
 
-        # GT和trans的变换
+        # GT and trans transforms
         self.gt_transform = transforms.Compose([transforms.Resize((self.trainsize, self.trainsize)), transforms.ToTensor()])
         self.trans_transform = transforms.Compose([transforms.Resize((self.trainsize, self.trainsize)), transforms.ToTensor()])
 
     def __getitem__(self, index):
-        """获取数据项"""
+        """Get data item"""
         image = self._rgb_loader(self.images[index])
         gt = self._binary_loader(self.gts[index])
         trans = self._binary_loader(self.trans[index])
 
-        # 应用颜色变换（仅对图像）
+        # Apply color transform (image only)
         if self.img_color_transform is not None:
             image = self.img_color_transform(image)
 
-        # 应用基础变换
+        # Apply basic transforms
         image = self.img_basic_transform(image)
         gt = self.gt_transform(gt)
         trans = self.trans_transform(trans)
@@ -306,8 +306,8 @@ class SalObjDataset(data.Dataset):
         return image, gt, trans
 
     def _filter_files(self):
-        """过滤尺寸不匹配的文件"""
-        assert len(self.images) == len(self.gts) == len(self.trans), "图像、GT和传输图数量不匹配"
+        """Filter files with unmatched sizes"""
+        assert len(self.images) == len(self.gts) == len(self.trans), "Number of images, GTs, and transmission maps do not match"
 
         filtered_images, filtered_gts, filtered_trans = [], [], []
 
@@ -327,12 +327,12 @@ class SalObjDataset(data.Dataset):
         self.trans = filtered_trans
 
     def _rgb_loader(self, path):
-        """加载RGB图像"""
+        """Load RGB image"""
         with open(path, "rb") as f:
             return Image.open(f).convert("RGB")
 
     def _binary_loader(self, path):
-        """加载二值图像"""
+        """Load binary image"""
         with open(path, "rb") as f:
             return Image.open(f).convert("L")
 

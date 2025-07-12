@@ -19,19 +19,19 @@ parser.add_argument("--model_path", type=str, default="./models/ss__no_samples_1
 parser.add_argument("--test_dataset", type=str, default="ijmond", choices=["ijmond", "smoke5k"], help="test dataset: ijmond | smoke5k")
 opt = parser.parse_args()
 
-# 根据测试数据集设置数据路径
+# Set data path based on test dataset
 if opt.test_dataset == "ijmond":
     dataset_path = "data/ijmond_data/test/img/"
 elif opt.test_dataset == "smoke5k":
     dataset_path = "data/SMOKE5K_Dataset/SMOKE5K/test/img/"
 
-# 检测设备并设置
+# Detect device and set up
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"Using device: {device}")
 
 generator = Generator(channel=opt.feat_channel, latent_dim=opt.latent_dim, num_filters=16)
 
-# 鲁棒的模型加载
+# Robust model loading
 print("Loading model...")
 try:
     if device.type == "cuda":
@@ -39,7 +39,7 @@ try:
     else:
         state_dict = torch.load(opt.model_path, map_location="cpu", weights_only=True)
 
-    # 过滤掉不匹配的键
+    # Filter out mismatched keys
     model_dict = generator.state_dict()
     filtered_dict = {k: v for k, v in state_dict.items() if k in model_dict and state_dict[k].shape == model_dict[k].shape}
 
@@ -47,7 +47,7 @@ try:
     if len(filtered_dict) != len(state_dict):
         print("Warning: Some parameters were not loaded due to architecture mismatch")
         missing_keys = set(state_dict.keys()) - set(filtered_dict.keys())
-        print(f"Missing keys: {list(missing_keys)[:5]}...")  # 只显示前5个
+        print(f"Missing keys: {list(missing_keys)[:5]}...")  # Show only first 5
 
     generator.load_state_dict(filtered_dict, strict=False)
 
@@ -63,7 +63,7 @@ test_datasets = [""]
 
 
 def compute_mse(pred, gt):
-    """计算均方误差 (MSE)"""
+    """Calculate Mean Squared Error (MSE)"""
     pred_norm = pred.astype(np.float32) / 255.0
     gt_norm = gt.astype(np.float32) / 255.0
     return mean_squared_error(gt_norm.flatten(), pred_norm.flatten())
