@@ -23,24 +23,24 @@ Environmental monitoring systems face multiple interconnected challenges when tr
 While laboratory conditions provide controlled datasets with abundant annotations, real-world scenarios often suffer from limited labeled data, significant distribution shifts, and the need for precise spatial localization of environmental hazards.
 
 <div align="center">
-  <img src="readme_figs/img8.jpg" width="250" alt="Real-world industrial monitoring" />
-  <img src="readme_figs/img10.jpg" width="250" alt="Real-world industrial monitoring" />
+  <img src="readme_figs/img8.jpg" width="350" alt="Real-world industrial monitoring" />
+  <img src="readme_figs/img10.jpg" width="350" alt="Real-world industrial monitoring" />
   <p><strong>Figure 1:</strong> Real-world industrial monitoring scenarios (Target Domain - IJmond Factory, Source: https://ijmondcam.multix.io/)</p>
 </div>
 
 The challenge becomes even more apparent when considering the annotation and data preparation process for target domain applications. Manual annotation of smoke regions and intelligent cropping strategies are essential for creating effective training datasets from real-world monitoring scenarios.
 
 <div align="center">
-  <img src="readme_figs/img786_anno.png" width="250" alt="Smoke annotation example" />
-  <img src="readme_figs/img786_crop.jpg" width="250" alt="Image cropping strategy" />
+  <img src="readme_figs/img786_anno.png" width="350" alt="Smoke annotation example" />
+  <img src="readme_figs/img786_crop.jpg" width="350" alt="Image cropping strategy" />
   <p><strong>Figure 1b:</strong> Target domain annotation and cropping examples - Left: Manual smoke region annotation; Right: We crop these images for enhanced detection</p>
 </div>
 
 The disparity becomes evident when comparing controlled research datasets with actual industrial monitoring conditions. Public datasets, while rich in annotations, may not capture the complexity and variability of real-world environments.
 
 <div align="center">
-  <img src="readme_figs/1_1397.jpg" height="150" alt="Research dataset examples" />
-  <img src="readme_figs/1528759386_+01980.jpg" height="150" alt="Research dataset examples" />
+  <img src="readme_figs/1_1397.jpg" height="250" alt="Research dataset examples" />
+  <img src="readme_figs/1528759386_+01980.jpg" height="250" alt="Research dataset examples" />
   <p><strong>Figure 2:</strong> Research dataset examples (Source Domain - SMOKE5K Dataset, Source: https://github.com/SiyuanYan1/Transmission-BVM)</p>
 </div>
 
@@ -78,7 +78,7 @@ Our citizen science approach leverages community engagement for scalable annotat
 <div align="center">
   <img src="readme_figs/5CiaQ_ppyHo-3_4199.jpg" width="250" alt="Citizen science data example" />
   <img src="readme_figs/6_j636Zv6fs-0_3771.jpg" width="250" alt="Citizen science data example" />
-  <p><strong>Figure 3:</strong> Examples of video frames presented to citizen volunteers for binary smoke/no-smoke labeling</p>
+  <p><strong>Figure 3:</strong> Examples of video frames presented to citizen volunteers for binary smoke/no-smoke labeling (cropped from surveillance camera footage)</p>
 </div>
 
 ## Impact and Applications
